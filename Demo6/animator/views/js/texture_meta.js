@@ -3,7 +3,6 @@ const TextureFactory = (function() {
 	const TEXTURE_CELL = 64;
 	const CELL_SIDE = TEXTURE_SIZE / TEXTURE_CELL;
 	const VERTICES_PER_SPRITE = 4;
-	const EMPTY = {};
 
 	function Factory(gl) {
 		if(!Meta) {
@@ -70,7 +69,7 @@ const TextureFactory = (function() {
 		}
 	}
 
-	function updateTexture(factory, canvas, animationFrame, texIndex, cellX, cellY, cellWidth, cellHeight, offset) {
+	function updateTexture(factory, canvas, crop, hotspot, texIndex, cellX, cellY, cellWidth, cellHeight, offset) {
 		if(!factory.textureMap[texIndex]) {
 			factory.textureMap[texIndex] = new Array(TEXTURE_SIZE).fill(0).map(elem => new Array(TEXTURE_SIZE));
 		}
@@ -105,8 +104,7 @@ const TextureFactory = (function() {
 		} else {
 			gl.bindTexture(gl.TEXTURE_2D, texture);			
 		}
-		const { x, y, width, height} = animationFrame.crop;
-		const hotspot = animationFrame.hotspot;
+		const { x, y, width, height} = crop;
 		const imageData = canvas.getContext('2d').getImageData(x, y, width, height);
 		gl.texSubImage2D(gl.TEXTURE_2D, level,
 			cellX * TEXTURE_CELL + offset.x,
@@ -114,154 +112,80 @@ const TextureFactory = (function() {
 			srcFormat, srcType, imageData);
 	};
 
-	function getFrame(name, animationTag, type, now) {
+	function getTextureData(name, animationTag, now) {
 		const animationFrame = Meta.getAnimationFrame(name, animationTag, now);
-		const { frameId, crop, hotspot, scale, bigRect } = animationFrame;
+		const { frameId } = animationFrame;
 		if(!frameId) {
-			return EMPTY;
+			return null;
 		}
 
-		const frameTag = `${frameId}_${type}`;
-
-		let frameData = this.cachedFrameData[frameTag];
-		if(!frameData) {
-			const textureTag = `${frameId}_${animationTag}`;
-			let texture = this.cachedTextureData[textureTag];
-			if (!texture) {
-				let fit = null, tex = 0;
-				const len = Math.min(this.textures.length, this.textureUnits.length);
-				const { width, height } = bigRect;
-				for(tex = 0; tex <= len; tex++) {
-					fit = getFit(this.textureMap, tex, width, height);
-					if(fit) {
-						break;
-					}
-				}
-				if(!fit) {
-					console.error("no fit for texture");
-					return EMPTY;
-				}
-				const { cellX, cellY, cellWidth, cellHeight } = fit;
-				const { meta, canvas } = Meta.getSpriteData(name);
-				if (!meta) {
-					return EMPTY;
-				}
-
-				const offset = {
-					x: -bigRect.minX - hotspot.x,
-					y: -bigRect.minY - hotspot.y,
-				};
-				updateTexture(this, canvas, animationFrame, tex, cellX, cellY, cellWidth, cellHeight, offset);
-
-		        const left = cellX * TEXTURE_CELL / TEXTURE_SIZE;
-		        const right = (cellX * TEXTURE_CELL + bigRect.width-1) / TEXTURE_SIZE;
-		        const top = cellY * TEXTURE_CELL / TEXTURE_SIZE;
-		        const bottom = (cellY * TEXTURE_CELL + bigRect.height-1) / TEXTURE_SIZE;
-	  
-		        const coordinates = new Float32Array([
-					left,   bottom,
-					right,  bottom,
-					right,  top,
-					left,   top,
-				]);
-
-				texture = {
-	        		coordinates,
-					indexBuffer: new Float32Array(VERTICES_PER_SPRITE).fill(tex),
-	        	};
-			}
-
-			let positions;
-			const baseZ = -4;
-			if (type === 'sprite') {
-				const textureHotSpotX = -bigRect.minX;
-				const textureHotSpotY = -bigRect.minY;
-				const { width, height } = bigRect;
-
-				const minSize = Math.max(width, height);
-				const vertexWidth = width / minSize, vertexHeight = height / minSize;
-				const vertexHotspotX = vertexWidth * textureHotSpotX / width;
-				const vertexHotspotY = -vertexHeight * textureHotSpotY / height;
-
-				const left = (0 - vertexHotspotX) * scale;
-				const right = (vertexWidth - vertexHotspotX) * scale;
-				const top = (-vertexHeight - vertexHotspotY) * scale;
-				const bottom = (0 - vertexHotspotY) * scale;
-
-				positions = new Float32Array([
-					left, top, baseZ,
-					right, top, baseZ,
-					right, bottom, baseZ,
-					left, bottom, baseZ,
-				]);
-			} else if(type === "floor") {
-				positions = new Float32Array([
-					0, 	0, 0 + baseZ,
-					1, 	0, 0 + baseZ,
-					1, 	0, -1 + baseZ,
-					0,  0, -1 + baseZ,
-				]);
-			} else if(type === "ceiling") {
-				positions = new Float32Array([
-					0,  0, -1 + baseZ,
-					1, 	0, -1 + baseZ,
-					1, 	0, 0 + baseZ,
-					0, 	0, 0 + baseZ,
-				]);
-			} else if(type === "leftwall") {
-				positions = new Float32Array([
-					0, 	0, 0 + baseZ,
-					0,  0, -1 + baseZ,
-					0, 	1, -1 + baseZ,
-					0, 	1, 0 + baseZ,
-				]);
-			} else if(type === "rightwall") {
-				positions = new Float32Array([
-					0,  0, -1 + baseZ,
-					0, 	0, 0 + baseZ,
-					0, 	1, 0 + baseZ,
-					0, 	1, -1 + baseZ,
-				]);
-
-			} else if(type === "wall") {
-				// const textureHotSpotX = -bigRect.minX;
-				// const textureHotSpotY = -bigRect.minY;
-				// const { width, height } = bigRect;
-
-				// const minSize = Math.max(width, height);
-				// const vertexWidth = width / minSize, vertexHeight = height / minSize;
-				// const vertexHotspotX = vertexWidth * textureHotSpotX / width;
-				// const vertexHotspotY = -vertexHeight * textureHotSpotY / height;
-
-				// const left = (0 - vertexHotspotX) * scale;
-				// const right = (vertexWidth - vertexHotspotX) * scale;
-				// const top = (-vertexHeight - vertexHotspotY) * scale;
-				// const bottom = (0 - vertexHotspotY) * scale;
-
-				// positions = new Float32Array([
-				// 	left, top + .5, baseZ,
-				// 	right, top + .5, baseZ,
-				// 	right, bottom + .5, baseZ,
-				// 	left, bottom + .5, baseZ,
-				// ]);
-				// window.ppp = positions;
-
-				positions = new Float32Array([
-					0, 	0, -1 + baseZ,
-					1, 	0, -1 + baseZ,
-					1, 	1, -1 + baseZ,
-					0, 	1, -1 + baseZ,
-				]);
-
-			} else {
-				return EMPTY;
-			}
-			const hash = md5(JSON.stringify({texture, positions}));
-	        frameData = this.cachedFrameData[frameTag] = { texture, positions, hash };
+		if (this.cachedTextureData[animationTag] && this.cachedTextureData[animationTag][frameId]) {
+			return this.cachedTextureData[animationTag][frameId];
 		}
 
-		return frameData;
-	};
+		const { crop, hotspot, scale, bigRect } = animationFrame;
+		let fit = null, tex = 0;
+		const len = Math.min(this.textures.length, this.textureUnits.length);
+		const { width, height } = bigRect;
+		for(tex = 0; tex <= len; tex++) {
+			fit = getFit(this.textureMap, tex, width, height);
+			if(fit) {
+				break;
+			}
+		}
+		if(!fit) {
+			console.error("no fit for texture");
+			return null;
+		}
+		const { cellX, cellY, cellWidth, cellHeight } = fit;
+		const { meta, canvas } = Meta.getSpriteData(name);
+		if (!meta) {
+			return null;
+		}
+
+		const offset = {
+			x: -bigRect.minX - hotspot.x,
+			y: -bigRect.minY - hotspot.y,
+		};
+		updateTexture(this, canvas, crop, hotspot, tex, cellX, cellY, cellWidth, cellHeight, offset);
+
+        const textureLeft = cellX * TEXTURE_CELL / TEXTURE_SIZE;
+        const textureRight = (cellX * TEXTURE_CELL + bigRect.width-1) / TEXTURE_SIZE;
+        const textureTop = cellY * TEXTURE_CELL / TEXTURE_SIZE;
+        const textureBottom = (cellY * TEXTURE_CELL + bigRect.height-1) / TEXTURE_SIZE;
+
+        const coordinates = new Float32Array([
+			textureLeft,   textureBottom,
+			textureRight,  textureBottom,
+			textureRight,  textureTop,
+			textureLeft,   textureTop,
+		]);
+
+		const textureHotSpotX = -bigRect.minX;
+		const textureHotSpotY = -bigRect.minY;
+
+		const minSize = Math.max(bigRect.width, bigRect.height);
+		const vertexWidth = bigRect.width / minSize, vertexHeight = bigRect.height / minSize;
+		const vertexHotspotX = vertexWidth * textureHotSpotX / bigRect.width;
+		const vertexHotspotY = -vertexHeight * textureHotSpotY / bigRect.height;
+
+		const left = (0 - vertexHotspotX) * scale;
+		const right = (vertexWidth - vertexHotspotX) * scale;
+		const top = (-vertexHeight - vertexHotspotY) * scale;
+		const bottom = (0 - vertexHotspotY) * scale;
+
+		if (!this.cachedTextureData[animationTag]) {
+			this.cachedTextureData[animationTag] = {};
+		}
+
+		return this.cachedTextureData[animationTag][frameId] = {
+			positions: {
+				left, right, top, bottom,
+			},
+    		coordinates,
+			indexBuffer: new Float32Array(VERTICES_PER_SPRITE).fill(tex),
+    	};
+	}
 
 	WebGL2RenderingContext.prototype.getTextureFactory = function() {
 		if(!this.textureFactory) {
@@ -270,7 +194,7 @@ const TextureFactory = (function() {
 		return this.textureFactory;
 	};
 
-	Factory.prototype.getFrame = getFrame;
+	Factory.prototype.getTextureData = getTextureData;
 
 	return {
 		Factory,
