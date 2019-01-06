@@ -130,6 +130,7 @@ const SpriteRenderer = (function() {
 	const FLOAT_PER_VERTEX = 3;			//	x,y,z
 	const TEXTURE_FLOAT_PER_VERTEX = 2;	//	x,y
 	const VERTICES_PER_SPRITE = 4;		//	4 corners
+	const SIZE_INCREASE = 100;
 
 	function Renderer(gl) {
 		if(!TextureFactory) {
@@ -170,6 +171,12 @@ const SpriteRenderer = (function() {
 			tempViewMatrix: mat4.create(),
 			tempPositions: new Float32Array(FLOAT_PER_VERTEX * VERTICES_PER_SPRITE),
 		};
+
+		this.spriteMap = {
+		};
+		this.nextIndex = 0;
+		this.recycledIndices = [];
+		this.indicesMap = [];
 
 		const fieldOfView = 45 * Math.PI / 180;   // in radians
 		const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
@@ -266,12 +273,53 @@ const SpriteRenderer = (function() {
 		return positions;
 	};
 
+	function ensureBuffer(renderer, size) {
+		if (size > renderer.spriteBufferSize) {
+//			console.log("size", renderer.spriteBufferSize, "->", size + SIZE_INCREASE);
+			allocateBuffer(renderer, size + SIZE_INCREASE);			
+		}
+	}
+
+	function getSpriteData(renderer, id) {
+		const { spriteMap } = renderer;
+		if (spriteMap[id]) {
+			return spriteMap[id];
+		}
+		const { recycledIndices, spriteBufferSize } = renderer;
+		if (recycledIndices.length) {
+			const recycledData = recycledIndices.pop();
+			spriteMap[id] = recycledData;
+			return recycledData;
+		}
+		const slotIndex = renderer.nextIndex++;
+
+		ensureBuffer(renderer, slotIndex + 1);
+
+		return spriteMap[id] = {
+			slotIndex,
+			spritePositions: new Float32Array(FLOAT_PER_VERTEX * VERTICES_PER_SPRITE),
+			spriteTextureCoordinates: new Float32Array(TEXTURE_FLOAT_PER_VERTEX * VERTICES_PER_SPRITE),
+			spriteIndexBuffer: new Float32Array(VERTICES_PER_SPRITE),
+			time: 0,
+		};
+	}
+
+	function cleanSpriteMap(renderer, now) {
+		const { spriteMap, recycledIndices } = renderer;
+		for(let s in spriteMap) {
+			const spriteData = spriteMap[s];
+			if (spriteData.time !== now) {
+				recycledIndices.push(spriteData);
+			}
+		}
+	}
+
 	Renderer.prototype.drawSprites = function(sprites, now, x, y, z) {
 		const { gl, programInfo } = this;
 		clearScene(gl, this);
 		setLocation(gl, programInfo, x, y, z, this.cachedData.location, this.tempVariables.tempViewMatrix);
 		setTime(gl, programInfo, now);
-		allocateBuffer(this, sprites.length);
+		ensureBuffer(this, sprites.length);
 
 		const textureFactory = gl.getTextureFactory();
 		let count = 0;
@@ -280,11 +328,12 @@ const SpriteRenderer = (function() {
 			const { name, label } = sprite;
 			const textureData = textureFactory.getTextureData(name, label, now);
 			if (textureData) {
-				const { x, y, z, type } = sprite;
-				addFrame(this, textureData, count, type, x, y, z);
+				const { x, y, z, type, id } = sprite;
+				addFrame(this, textureData, id, count, type, x, y, z, now);
 				count ++;
 			}
 		}
+		cleanSpriteMap(this, now);
 
 		draw(gl, count);
 	};
@@ -367,33 +416,54 @@ const SpriteRenderer = (function() {
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	}
 
-	function addFrame(renderer, texture, frameIndex, type, x, y, z) {
+	function floatArrayEqual(a, b) {
+		if (a.length !== b.length) return false;
+	  	for (let i=0; i < a.length; i++) {
+	    	if (a[i] !== b[i]) return false;
+	  	}
+	  	return true;
+	}
+
+	function addFrame(renderer, texture, id, frameIndex, type, x, y, z, now) {
 		const positions = getFramePositions(renderer, texture, type, x, y, z);
-		const { gl, programInfo, cachedData } = renderer;
-		const slotIndex = frameIndex;
+		const { gl, programInfo, cachedData, indicesMap } = renderer;
+		const spriteData = getSpriteData(renderer, id);
+		spriteData.time = now;
+		const { slotIndex, spritePositions, spriteTextureCoordinates, spriteIndexBuffer } = spriteData;
 
-		let slotIndices = cachedData.indices[slotIndex];
-		if (!slotIndices) {
-			slotIndices = INDEX_ARRAY_PER_SPRITE.map(value => value + slotIndex * VERTICES_PER_SPRITE);
-			cachedData.indices[slotIndex] = slotIndices;
+		if (indicesMap[frameIndex] !== slotIndex) {
+			let slotIndices = cachedData.indices[slotIndex];
+			if (!slotIndices) {
+				slotIndices = INDEX_ARRAY_PER_SPRITE.map(value => value + slotIndex * VERTICES_PER_SPRITE);
+				cachedData.indices[slotIndex] = slotIndices;
+			}
+			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.indexBuffer);
+			gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, frameIndex * slotIndices.length * Uint16Array.BYTES_PER_ELEMENT, slotIndices);
+			indicesMap[frameIndex] = slotIndex;
 		}
 
-		gl.bindBuffer(gl.ARRAY_BUFFER, renderer.positionBuffer);
-		gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * FLOAT_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT, positions);
-
-		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.indexBuffer);
-		gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, slotIndex * slotIndices.length * Uint16Array.BYTES_PER_ELEMENT, slotIndices);
-
-		gl.bindBuffer(gl.ARRAY_BUFFER, renderer.textureCoordBuffer);
-		gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * TEXTURE_FLOAT_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT, texture.coordinates);
-
-		const textureIndex = texture.indexBuffer[0];
-		if (textureIndex >= renderer.textureBuffer.length) {
-			renderer.textureBuffer = new Int32Array(textureIndex + 1).map((a, index) => index);
-			gl.uniform1iv(programInfo.uTextureLocation, renderer.textureBuffer);
+		if (!floatArrayEqual(positions, spritePositions)) {
+			gl.bindBuffer(gl.ARRAY_BUFFER, renderer.positionBuffer);
+			gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * FLOAT_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT, positions);
+			spritePositions.set(positions);
 		}
-	    gl.bindBuffer(gl.ARRAY_BUFFER, renderer.textureIndexBuffer);
-		gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * Float32Array.BYTES_PER_ELEMENT, texture.indexBuffer);
+
+		if (!floatArrayEqual(texture.coordinates, spriteTextureCoordinates)) {
+			gl.bindBuffer(gl.ARRAY_BUFFER, renderer.textureCoordBuffer);
+			gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * TEXTURE_FLOAT_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT, texture.coordinates);
+			spriteTextureCoordinates.set(texture.coordinates);
+		}
+
+		if (!floatArrayEqual(texture.indexBuffer, spriteIndexBuffer)) {
+			const textureIndex = texture.indexBuffer[0];
+			if (textureIndex >= renderer.textureBuffer.length) {
+				renderer.textureBuffer = new Int32Array(textureIndex + 1).map((a, index) => index);
+				gl.uniform1iv(programInfo.uTextureLocation, renderer.textureBuffer);
+			}
+		    gl.bindBuffer(gl.ARRAY_BUFFER, renderer.textureIndexBuffer);
+			gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * Float32Array.BYTES_PER_ELEMENT, texture.indexBuffer);
+			spriteIndexBuffer.set(texture.indexBuffer);
+		}
 	};
 
 	function draw(gl, count) {

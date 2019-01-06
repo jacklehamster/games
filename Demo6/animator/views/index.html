@@ -897,55 +897,34 @@ function main() {
       const selectedLabel = meta.animation.rows[Math.min(meta.animation.rows.length-1,Math.max(selectedIndex, 0))].label;
       scene.add(`${meta.name}.${selectedLabel}`, "sprite", 0, 0, 0);
     } else {
-
-      for(let z=Math.max(-4+Math.round(viewPosition.z), -35); z<=4; z++) {
-        const limit = Math.max(0, Math.min(5-z, 8));
-        for(let x=-limit; x<=limit; x++) {
-          const xx = x - Math.round(viewPosition.x);
-          const zz = z - Math.round(viewPosition.z);
-          if (xx === -1) {
-            scene.add("brick", "leftwall", xx, 0, zz);
-          }
-          if (xx === 1) {
-            scene.add("brick", "rightwall", xx, 0, zz);
-          }
-          if (zz === -1) {
-            scene.add("brick", "wall", xx, 0, zz);
-          }
-          scene.add("brick", "ceiling", xx, 1, zz);
-          scene.add("brick", "floor", xx,0, zz);
-
-          // switch((xx ^ 13 + zz ^ 17) % 13) {
-          //   case 0: case 1:
-          //   scene.add("hand", "sprite", xx, 0, zz);
-          //   break;
-          //   case 2: case 3:
-          //   scene.add("tentacle", "sprite", xx, 0, zz);
-          //   break;
-          //   case 5:
-          //   scene.add("brick", "wall", xx, 0, zz);
-          //   scene.add("brick", "leftwall", xx, 0, zz);
-          //   scene.add("brick", "rightwall", xx + 1, 0, zz);
-          //   scene.add("brick", "floor", xx, 0, zz);
-          //   scene.add("brick", "ceiling", xx, 2, zz);
-          //   case 12:
-          //   scene.add("eye", "sprite", xx, 0, zz);
-          //   break;
-          // }
-        }
-      }
-      scene.add("elephant", "floor", -.51, 0.01, -.12);
       scene.add("elephant", "sprite", 0, .43, 0);
       scene.add("oozie", "sprite", 0, 0, 1);
+      scene.setRule((scene, xx, yy, zz, now) => {
+          if (xx === -1) {
+            scene.add("brick", "leftwall", xx, 0, zz, "leftwall"+xx+","+zz, now);
+          }
+          if (xx === 1) {
+            scene.add("brick", "rightwall", xx, 0, zz, "rightwall"+xx+","+zz, now);
+          }
+          if (zz === -1) {
+            scene.add("brick", "wall", xx, 0, zz, "wall"+xx+","+zz, now);
+          }
+          scene.add("brick", "ceiling", xx, 1, zz, "ceiling"+xx+","+zz, now);
+          scene.add("brick", "floor", xx,0, zz, "floor"+xx+","+zz, now);
+
+      });
+      viewPosition.z = -20;
+      scene.applyRule(viewPosition, 0);
 //      scene.add("texture_0", "sprite", -3, .5, 0);
     }
   }
 
+
   // Draw the scene repeatedly
   function render(now) {
     const renderer = gl.getSpriteRenderer();
-    renderer.drawSprites(scene.getAllSprites(), now,
-      viewPosition.x, viewPosition.y, viewPosition.z);
+//    scene.applyRule(viewPosition, now);
+    renderer.drawSprites(scene.getSprites(now), now, viewPosition.x, viewPosition.y, viewPosition.z);
     requestAnimationFrame(render);
   }
   initScene();
