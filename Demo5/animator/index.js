@@ -9,8 +9,8 @@ const bodyParser = require("body-parser");
 
 const PORT = 3000;
 const home = os.homedir();
-const animationPath = `${home}/Documents/sprites/`;
-const initialFolder = '/Users/vincent/Google Drive/Project/Demo4/oozie';
+const animationPath = `${home}/Downloads/Project/sprites/`;
+const initialFolder = '/Users/vincent/Downloads/Project/Demo4/oozie';
 
 app.use(express.static(path.join(__dirname, 'views')));
 app.use(bodyParser.urlencoded({

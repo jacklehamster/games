@@ -1,0 +1,957 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.9.1/underscore-min.js"></script>
+
+<script src="js/gl-matrix.js"></script>
+<script src="js/md5.js"></script>
+<script src="js/pako.min.js"></script>
+<script src="js/image_meta.js"></script>
+<script src="js/texture_meta.js"></script>
+<script src="js/scene_manager.js"></script>
+<script src="js/sprite_renderer.js"></script>
+
+
+<style>
+.button {
+  margin: 1px;
+  padding: 2px;
+  background-color: lightblue;
+  border-style: outset;
+  border-radius: 10px;
+  border-size: 1px;
+  cursor: pointer;
+  color: darkblue;
+}
+.button:hover {
+  background-color: yellow;
+  color: black;
+  border-color: white;
+}
+.button:disabled {
+  background-color: white !important;
+  color: silver;
+  cursor: not-allowed;
+}
+.link {
+  color: #5555FF;
+  cursor: pointer;
+}
+.link:hover {
+  color: lightblue;
+  text-decoration: underline;
+}
+.sprite {
+  border-width: 2px;
+  border-style: solid;
+  border-color: lightblue;
+}
+.sprite:hover {
+  border-color: yellow;
+}
+#glCanvas {
+  cursor: grab;
+}
+</style>
+<body>
+  <div style="display: flex; flex-direction: row">
+    <canvas id="glCanvas" width="1200" height="1200" style="width: 600; height: 600"></canvas>
+    <div style="width: 100px;">
+      <button id="importButton" class="button" style="display:none; width: 100%"></button>
+      <div id="cover" style="position: fixed; width: 100vw; height: 100vh; background-color: rgba(20, 26, 36, 0.98); left: 0; top: 0; display:none"></div>
+      <div id="importOverlay" style="position: absolute; width: 100vw; left: 0; top: 0; display:none">
+        <div style="display: flex; flex-direction: row; margin: 20px; color: silver">
+          <button class="button" id="okImport" style="width: 80px; height: 30px; background-color: green;">IMPORT</button>
+          <button class="button" id="cancelImport" style="width: 80px; height: 30px; background-color: red;">CANCEL</button>      
+        </div>
+        <div id="dir" style="width: 800px; margin: 20px 50px"></div>
+      </div>
+
+      <div id="thumb" style="display: flex; flex-direction: column;">
+        <canvas id="spritesheet" style="width: 200px; height: 100px;" ></canvas>
+        <button id="saveButton" style="display:none" ></button>
+        <div id="noticeDiv" style="width: 200px; display:none" ></div>
+      </div>
+      <div id="sprites" style="width: 500px; display: flex; flex-wrap: wrap">
+      </div>
+    </div>
+  </div>
+  <div id="editor" style="display: flex; flex-direction: column;">
+  </div>
+  <pre>
+    <div id="metadata">
+    </div>
+  </pre>
+</body>
+
+
+
+<script>
+        let currentPath = '/Users/vincent/Google Drive/Project/Demo4';
+        let fileSelection = -1;
+        let meta = null;
+        let imgData = [];
+        let canvases = [];
+
+        const R = 0, G = 1, B = 2, A = 3;
+
+        function initialize() {
+          meta = {};
+          checkImportButton(false);
+          checkSpriteList(meta);   
+        }
+
+        function checkImportButton(enableImport) {
+          const importButton = document.getElementById('importButton');
+          const okImport = document.getElementById('okImport');
+          okImport.disabled = !enableImport;
+
+          if(importButton.getAttribute('initialized')!="initialized") {
+            importButton.setAttribute('initialized', 'initialized');
+            importButton.innerText = "Import..."
+            importButton.style.height = "25px";
+            importButton.classList.add("button");
+            importButton.style.display = "";
+            importButton.addEventListener('click', e => {
+              const importOverlay = document.getElementById('importOverlay');
+              importOverlay.style.display = "";
+              document.getElementById('cover').style.display = "";
+              fileSelection = -1;
+              fillDir(currentPath);
+            });
+
+            cancelImport.addEventListener('click', e => {
+              const importOverlay = document.getElementById('importOverlay');
+              importOverlay.style.display = "none";
+              document.getElementById('cover').style.display = "none";
+            });
+
+            okImport.addEventListener('click', e => {
+              importOverlay.style.display = "none";
+              document.getElementById('cover').style.display = "none";
+              if(fileSelection >= 0) {
+                compressCanvas(imgData.filter((data, index) => index == fileSelection));
+              } else {
+                compressCanvas(imgData);
+              }
+            });
+          }
+        }
+
+        function emptyRow(data, width, height, y) {
+          for(var i=0; i<width; i++) {
+            if(getPixel(data, i, y, width, A)) {
+              return false;
+            }
+          }
+          return true;
+        }
+
+        function emptyCol(data, width, height, x) {
+          for(var i=0; i<height; i++) {
+            if(getPixel(data, x, i, width, A)) {
+              return false;
+            }
+          }
+          return true;
+        }
+
+        function getCrop(context) {
+          const { width, height } = context.canvas;
+          const data = context.getImageData(0, 0, width, height).data;
+
+          let minX, minY, maxX, maxY;
+          for(minY=0; minY<height; minY++) {
+             if(!emptyRow(data, width, height, minY)) {
+                break;
+             }
+          }
+          for(minX=0; minX<width; minX++) {
+            if(!emptyCol(data, width, height, minX)) {
+              break;
+            }
+          }
+          for(maxY=height-1; maxY>=0; maxY--) {
+            if(!emptyRow(data, width, height, maxY)) {
+              break;
+            }
+          }
+          for(maxX=width-1; maxX>=0; maxX--) {
+            if(!emptyCol(data, width, height, maxX)) {
+              break;
+            }
+          }
+          return { minX, minY, maxX, maxY, };
+        }
+
+        function getPixel(data, x, y, width, rgbaOffset) {
+          var index = (x + y * width) * 4 + rgbaOffset;
+          return data[index];
+        }
+
+        const canvasCache = {};
+
+        function process(imgData, index, img) {
+          let canvas = document.createElement('canvas');
+          var data = imgData[index] = {
+            img,
+            crop: { 
+              minX: 0, minY: 0, 
+              maxX: img.naturalWidth-1, 
+              maxY: img.naturalHeight-1,
+            },
+            canvas,
+          };
+
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          canvas.getContext('2d').drawImage(img,0, 0, img.naturalWidth, img.naturalHeight);
+          data.crop = getCrop(canvas.getContext('2d'));
+          // hotspot is center of canvas
+          data.hotspot = {
+            x: (canvas.width/2) - data.crop.minX,
+            y: (canvas.height/2) - data.crop.minY,
+          };
+          canvas.width = data.crop.maxX - data.crop.minX + 1;
+          canvas.height = data.crop.maxY - data.crop.minY + 1;
+          canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+          canvas.getContext('2d').drawImage(img, -data.crop.minX, -data.crop.minY);
+          data.md5 = getMD5(canvas.getContext('2d'), data);
+          if(canvasCache[data.md5]) {
+            canvas = canvasCache[data.md5];
+          } else {
+            canvasCache[data.md5] = canvas;
+            canvas.setAttribute('md5', data.md5);
+            canvas.style.width = "50px";
+          }
+
+          checkImgData(imgData);
+        }
+
+        function getMD5(context, data) {
+          const { width, height } = context.canvas;
+          const { minX, minY, maxX, maxY } = data.crop;
+          const { x, y } = data.hotspot;
+          const imgData = context.getImageData(minX, minY, maxX-minX+1, maxY-minY+1).data;
+          return md5(imgData);
+        }
+
+        function getFit(canvases, rowCount) {
+          rowCount = Math.min(canvases.length, Math.max(1,rowCount));
+          let w = 0, h = 0;
+          for(var i=0; i<rowCount; i++) {
+            w += canvases[i].width;
+            h = Math.max(h, canvases[i].height);
+          }
+          let wrap = 0, maxH = 0;
+          for(var i=rowCount; i<canvases.length; i++) {
+            maxH = Math.max(canvases[i].height, maxH);
+            if(wrap + canvases[i].width > w) {
+              wrap = 0;
+              h += maxH;
+              maxH = 0;
+            }
+            wrap += canvases[i].width;
+            maxH = Math.max(canvases[i].height, maxH);
+            w = Math.max(wrap, w);
+          }
+          h += maxH;
+          return { width: w, height: h };
+        }
+
+        function checkImgData(imgData) {
+            checkImportButton(imgData.length > 0 && imgData.filter(a => a).length === imgCount);
+        }
+
+        function refreshCanvas(canvas, canvases) {
+          canvas.style.width = canvas.width/2 + "px";
+          canvas.style.height = canvas.height/2 + "px";
+          let x = 0, y = 0, maxH = 0;
+          const crops = {};
+          for(let i=0; i<canvases.length; i++) {
+            if(x + canvases[i] .width > canvas.width) {
+              x = 0; y += maxH;
+              maxH = 0;
+            }
+            canvas.getContext('2d').drawImage(canvases[i], x, y);
+            crops[canvases[i].getAttribute('md5')] = {
+                x, y, width: canvases[i].width, height: canvases[i].height,
+            };
+            x += canvases[i].width;
+            maxH = Math.max(canvases[i].height, maxH);
+          }
+
+          for(let i=0; i<imgData.length; i++) {
+            imgData[i].spritesheet = canvas;
+            imgData[i].spritesheetCrop = crops[imgData[i].md5];
+          }
+        }
+
+        function checkSpriteList(meta) {
+          const sprites = document.getElementById('sprites');
+          sprites.innerHTML = "";
+          const xhr = new XMLHttpRequest();
+          xhr.open("GET", "/api/list-sprites", true);
+          xhr.addEventListener('load', e => {
+            const xhr = e.currentTarget;
+            if (xhr.status == 200 && xhr.responseText) {
+              const { images } = JSON.parse(xhr.responseText);
+              images.forEach(src => {
+                const div = sprites.appendChild(document.createElement('div'));
+                div.style.margin = "2px";
+                div.style.padding = "2px";
+                div.style.width = "60px";
+                div.style.height = "60px";
+                Meta.loadImage(`${src}?${performance.now()}`, (img, meta) => {
+                  Meta.addImage(img);
+                  div.style.backgroundImage = `url('${img.src}')`;
+                  div.style.backgroundSize = "cover";//`${img.naturalWidth/2}px ${img.naturalHeight/2}px`;
+                  div.style.backgroundPosition = "center";
+                  div.style.cursor = "pointer";
+                  div.classList.add('sprite');
+                  div.addEventListener('click', e => useSpriteSheet(meta.name));
+                  checkSaveButton();
+                });
+              });
+            }
+          });
+          xhr.send();
+        }
+
+        function checkSaveButton() {
+          const saveButton = document.getElementById('saveButton');
+          const spriteData = Meta.getSpriteData(meta.name);
+
+          const isEnabled = meta && meta.name && (!spriteData.meta || meta.id !== spriteData.meta.id);
+
+          saveButton.disabled = !isEnabled;
+          if(saveButton.getAttribute('initialized')!="initialized") {
+            saveButton.setAttribute('initialized', 'initialized');
+            saveButton.innerText = "SAVE";
+            saveButton.style.height = "25px";
+            saveButton.classList.add("button");
+            saveButton.style.display = "";
+            saveButton.addEventListener('click', e => {
+                saveButton.disabled = true;
+                const noticeDiv = document.getElementById('noticeDiv');
+                noticeDiv.innerText = "";
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "/api/save", true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.addEventListener('load', e => {
+                  const xhr = e.currentTarget;
+                  if (xhr.status == 200 && xhr.responseText) {
+                    noticeDiv.style.display = "";
+                    const response = JSON.parse(xhr.responseText);
+                    if(response.error) {
+                        noticeDiv.style.color = "red";
+                        noticeDiv.innerText = response.error;
+                    } else if(response.success) {
+                        noticeDiv.style.color = "green";
+                        noticeDiv.innerText = response.success;
+                    }
+                    setTimeout(() => {
+                        noticeDiv.innerText = "";
+                    }, 5000);
+                    checkSpriteList(meta);
+                  }
+                });
+                xhr.send(JSON.stringify({
+                    name: meta.name,
+                    data: document.getElementById('spritesheet').toDataURL()
+                }));
+            });            
+          }
+        }
+
+        function useSpriteSheet(name) {
+          const sheet = Meta.getSpriteData(name);
+          if(!sheet) {
+            return;
+          }
+          const canvas = document.getElementById('spritesheet');
+          canvas.texture = null;          
+          canvas.width = sheet.canvas.width;
+          canvas.height = sheet.canvas.height;
+          canvas.style.width = (canvas.width/2)+"px";
+          canvas.style.height = (canvas.height/2)+"px";
+          canvas.style.maxWidth = "300px";
+          canvas.style.maxHeight = "300px";
+          canvas.style.border = "2px solid silver";
+          canvas.style.margin = "1px";
+          canvas.style.padding = "1px";
+          canvas.style.display = "";
+          canvas.getContext('2d').drawImage(sheet.canvas, 0, 0);
+
+          meta = JSON.parse(JSON.stringify(sheet.meta));
+
+          onMetaChange(meta, canvas);
+          generateEditor(meta, canvas);         
+        }
+
+        function compressCanvas(imgData) {
+          const hashes = {};
+          canvases = [];
+          for(var i=0; i<imgData.length; i++) {
+            if(!hashes[imgData[i].md5]) {
+              hashes[imgData[i].md5] = true;
+              canvases.push(canvasCache[imgData[i].md5]);
+            }
+          }
+
+          let fit = null;
+          for(var c=1; c<=canvases.length; c++) {
+            fit = getFit(canvases, c);
+            if (fit.width > fit.height) {
+              break;
+            }
+          }
+
+          const canvas = document.getElementById('spritesheet');
+          canvas.texture = null;          
+          canvas.width = fit.width;
+          canvas.height = fit.height;
+          canvas.style.width = `${canvas.width/2}px`;
+          canvas.style.height = `${canvas.height/2}px`;
+          canvas.style.maxWidth = "300px";
+          canvas.style.maxHeight = "300px";
+          canvas.style.border = "2px solid black";
+          canvas.style.margin = "1px";
+          canvas.style.padding = "1px";
+          canvas.style.display = "";
+
+          refreshCanvas(canvas, canvases);
+          meta = generateMetaData(imgData, canvas.width, canvas.height);
+
+          onMetaChange(meta, canvas);
+          generateEditor(meta, canvas);
+          Meta.addImage(canvas);
+        }
+
+        function drawMeta(meta, canvas) {
+          const json = JSON.stringify(meta);
+          const uint8array = pako.deflate(JSON.stringify(meta), { to: 'blob' });
+
+          const extraMargin = 1;
+          const extraBufferSize = 9;
+          const uint8clamped = new Uint8ClampedArray(
+            Math.ceil((uint8array.length + extraBufferSize) / (meta.canvas.width*3)) * meta.canvas.width*3
+          );
+
+          const extraHeight = Math.ceil(uint8clamped.length / 3 / meta.canvas.width);
+          const extra = [
+            Meta.META_TAG.charCodeAt(0),
+            Meta.META_TAG.charCodeAt(1),
+            Meta.META_TAG.charCodeAt(2),
+            Math.floor(uint8array.length / (255 * 255)) % 255,
+            Math.floor(uint8array.length / 255) % 255,
+            uint8array.length % 255,
+            Math.floor(extraHeight / (255 * 255)) % 255,
+            Math.floor(extraHeight / 255) % 255,
+            extraHeight % 255,
+          ];
+          uint8clamped.fill(255);
+          uint8clamped.set(uint8array);
+          uint8clamped.set(extra, uint8clamped.length-extra.length);
+
+          const expandedClamped = new Uint8ClampedArray(uint8clamped.length / 3 * 4);
+          for(let i=0; i<uint8clamped.length / 3; i++) {
+              expandedClamped[i * 4] = uint8clamped[i * 3];
+              expandedClamped[i * 4 + 1] = uint8clamped[i * 3 + 1];
+              expandedClamped[i * 4 + 2] = uint8clamped[i * 3 + 2];
+              expandedClamped[i * 4 + 3] = 255;
+          }
+
+          const tempData = canvas.getContext('2d').getImageData(0,0,meta.canvas.width, meta.canvas.height);
+
+          const extraImgData = new ImageData(expandedClamped, meta.canvas.width);
+          canvas.height = meta.canvas.height + extraHeight + extraMargin;
+          canvas.style.height = (canvas.height/2) + "px";
+          canvas.getContext('2d').putImageData(tempData,0,0);
+
+          canvas.getContext('2d').putImageData(extraImgData, 0, meta.canvas.height + extraMargin);
+        }
+
+        function displayMeta(meta, canvas) {
+          document.getElementById('metadata').innerText = JSON.stringify(meta, null, '  ');
+        }
+
+        function validateMeta(meta) {
+          for(let a in meta.animation.rows) {
+            if(!meta.animation.rows[a].range) {
+                meta.animation.rows[a].range = "";
+            }
+            if(!meta.animation.rows[a].frameRate) {
+                meta.animation.rows[a].frameRate = 60;
+            }
+            if(!meta.animation.rows[a].scale) {
+                meta.animation.rows[a].scale = 1;
+            }
+          }
+          delete meta.id;
+          meta.id = md5(JSON.stringify(meta));
+        }
+
+        function onMetaChange(meta, canvas) {
+            validateMeta(meta);
+            displayMeta(meta, canvas);
+            drawMeta(meta, canvas);
+            checkSaveButton();          
+        }
+
+        let selectedIndex = 0;
+
+        function generateEditor(meta, canvas) {
+          var editor = document.getElementById('editor');
+
+          function generateInput(div, property, defaultValue) {
+              var labelElement = div.appendChild(document.createElement('label'));
+              labelElement.for = property;
+              labelElement.innerText = property + ": ";
+              var input = div.appendChild(document.createElement('input'));
+              input.id = property;
+              input.value = meta[property] || defaultValue;
+              input.addEventListener("keyup", e => {
+                var input = e.currentTarget;
+                meta[property] = input.value;
+                onMetaChange(meta, canvas);
+              });          
+          }
+
+          editor.innerHTML = "";
+          editor.style.backgroundColor = "#ccddaa";
+          editor.style.width = document.getElementById('glCanvas').width/2 + "px";
+          {
+            var div = editor.appendChild(document.createElement('div'));
+            div.style.padding = "2px";
+
+            generateInput(div, "name", "");
+
+            var div = editor.appendChild(document.createElement('div'));
+            div.style.display = "flex";
+            div.style.flexDirection = "row";
+            div.style.padding = "2px";
+
+            var cell = div.appendChild(document.createElement('div'));
+            cell.style.width = "20px";
+
+            var cell = div.appendChild(document.createElement('div'));
+            cell.style.flex = 1;
+            cell.style.backgroundColor = "#ddeedd";
+            cell.innerText = "LABEL";
+            cell.style.margin = 0 
+
+            var cell = div.appendChild(document.createElement('div'));
+            cell.style.flex = 1;
+            cell.style.backgroundColor = "#ddeedd";
+            cell.innerText = "RANGE";
+
+            var cell = div.appendChild(document.createElement('div'));
+            cell.style.flex = 1;
+            cell.style.backgroundColor = "#ddeedd";
+            cell.innerText = "FRAMERATE";
+
+            var cell = div.appendChild(document.createElement('div'));
+            cell.style.flex = 1;
+            cell.style.backgroundColor = "#ddeedd";
+            cell.innerText = "SCALE";
+
+            var cell = div.appendChild(document.createElement('div'));
+            cell.style.flex = 1;
+            cell.style.backgroundColor = "#ddeedd";
+            cell.innerText = "EDIT";
+          }
+
+          meta.animation.rows.forEach((row, index) => {
+            var div = editor.appendChild(document.createElement('div'));
+            div.id = "container";
+            div.style.display = "flex";
+            div.style.flexDirection = "row";
+            div.style.padding = "2px";
+
+            var cell = div.appendChild(document.createElement('div'));
+            cell.style.width = "20px";
+            var radio = cell.appendChild(document.createElement('input'));
+            radio.type = "radio";
+            radio.name = "selection";
+            radio.value = index;
+            radio.checked = index == selectedIndex || selectedIndex<0 && index===0 || selectedIndex >= meta.animation.rows.length && index===0;
+            radio.addEventListener("change", e => {
+                selectedIndex = radio.value;
+                onMetaChange(meta, canvas);
+            });
+
+            var cell = div.appendChild(document.createElement('div'));
+            cell.style.flex = 1;
+            cell.style.padding = "0 1px";
+            if(row.locked) {
+              var label = cell.appendChild(document.createElement('div'));
+              label.innerText = row.label;
+            } else {
+              var input = cell.appendChild(document.createElement('input'));
+              input.value = row.label;
+              input.style.width = "100%";
+              input.addEventListener("keyup", e => {
+                  var input = e.currentTarget;
+                  meta.animation.rows[index].label = input.value;
+                  onMetaChange(meta, canvas);
+              });
+            }
+
+            var cell = div.appendChild(document.createElement('div'));
+            cell.style.flex = 1;
+            cell.style.padding = "0 1px";
+            if(row.locked) {
+              var label = cell.appendChild(document.createElement('div'));
+              label.innerText = row.range;
+            } else {
+              var input = cell.appendChild(document.createElement('input'));
+              input.value = row.range;
+              input.style.width = "100%";
+              input.addEventListener("keyup", e => {
+                  var input = e.currentTarget;
+                  meta.animation.rows[index].range = input.value;
+                  onMetaChange(meta, canvas);
+              });
+            }
+
+            var cell = div.appendChild(document.createElement('div'));
+            cell.style.flex = 1;
+            cell.style.padding = "0 1px";
+            if(row.locked) {
+              var label = cell.appendChild(document.createElement('div'));
+              label.innerText = row.frameRate;
+            } else {
+              var input = cell.appendChild(document.createElement('input'));
+              input.value = row.frameRate;
+              input.style.width = "100%";
+              input.addEventListener("keyup", e => {
+                  var input = e.currentTarget;
+                  meta.animation.rows[index].frameRate = input.value;
+                  onMetaChange(meta, canvas);
+              });
+            }
+
+            var cell = div.appendChild(document.createElement('div'));
+            cell.style.flex = 1;
+            cell.style.padding = "0 1px";
+            if(row.locked) {
+              var label = cell.appendChild(document.createElement('div'));
+              label.innerText = row.scale;
+            } else {
+              var input = cell.appendChild(document.createElement('input'));
+              input.value = row.scale;
+              input.style.width = "100%";
+              input.addEventListener("keyup", e => {
+                  var input = e.currentTarget;
+                  meta.animation.rows[index].scale = input.value;
+                  onMetaChange(meta, canvas);
+              });
+            }
+
+            var cell = div.appendChild(document.createElement('div'));
+            cell.style.flex = 1;
+            if (!row.locked) {
+              var button = cell.appendChild(document.createElement('button'));
+              button.style.borderRadius = "5px";
+              button.style.backgroundColor = "#FFDDDD";
+              button.innerText = "remove";
+              button.addEventListener("click", e => {
+                  meta.animation.rows.splice(index, 1);
+                  onMetaChange(meta, canvas);
+                  generateEditor(meta, canvas);
+              });
+            } 
+          });
+
+          {
+            var div = editor.appendChild(document.createElement('div'));
+            var button = div.appendChild(document.createElement('button'));
+            button.innerText = "ADD";
+            button.addEventListener("click", e => {
+                selectedIndex = meta.animation.rows.length;
+                meta.animation.rows.push({
+                    label: "animation" + selectedIndex,
+                    range: meta.animation.rows[0].range,
+                    frameRate: meta.animation.rows[0].frameRate,
+                    scale: meta.animation.rows[0].scale,
+                });
+                onMetaChange(meta, canvas);
+                generateEditor(meta, canvas);
+            });
+          }
+
+        }
+
+        let imgCount = 0;
+        function renderDirectory(obj) {
+          fileSelection = -1;
+          const { root } = obj;
+          imgData = [];
+          imgCount = obj.images.length;
+          const htmls = [];
+          {
+            const elems = root.split('/');
+            htmls.push('<div style="color: lightblue">');
+
+            htmls.push(
+              elems.map((elem, index) => {
+                  return index==0 ? `${elem}` : `<span class="link" style="margin: 1px;" onClick="fillDir('${elems.slice(0, index+1).join('/')}')">${elem}</span>`;
+              }).join("/")
+            );
+
+            htmls.push('</div>');
+          }
+
+          if (root) {
+            htmls.push(`<div class='button' onClick="fillDir('${root.split('/').slice(0,-1).join('/')}')">🔙</div>`);
+          }
+
+          for(let i=0; i<obj.folders.length; i++) {
+            const folder = obj.folders[i];
+            htmls.push(`<div class='button' onClick="fillDir('${folder}')">${folder.split("/").pop()}</div>`);
+          }
+
+          htmls.push("<br>");
+
+          for(let i=0; i<obj.images.length; i++) {
+            const src = `/img/local/${encodeURIComponent(obj.images[i])}`;
+            htmls.push(`<div id="thumb_${i}" index="${i}" style='display: inline-block; width: 50px; height: 50px; border: 2px ${i===fileSelection?'#FFFFFF':'#282828'} solid; background-image: none; background-size: 100% auto; background-repeat: no-repeat; cursor: pointer;' onMouseDown="selectFile('${i}')"></div>`);
+            const img = new Image();
+            img.src = src;
+            img.setAttribute('index', i);
+            img.addEventListener('load', e => {
+                const img = e.currentTarget;
+                process(imgData, parseInt(img.getAttribute('index')), img);
+                const div = document.getElementById('thumb_' + parseInt(img.getAttribute('index')));
+                div.style.backgroundImage = `url(${img.src})`;
+            });
+          }
+
+          return htmls.join("\n");
+        }
+
+        function selectFile(fileIndex) {
+          fileSelection = fileIndex;
+          for(let i=0; document.getElementById(`thumb_${i}`); i++) {
+            const div = document.getElementById(`thumb_${i}`);
+            if(div.getAttribute('index')===fileSelection) {
+              div.style.border = "2px #FFFFFF solid";
+            } else {
+              div.style.border = "2px #282828 solid";
+            }
+          }
+        }
+
+        function fillDir(root) {
+          checkImportButton(false);
+          currentPath = root;
+          const xhr = new XMLHttpRequest();
+          xhr.open("GET", `/api/animations?root=${root}`, true);
+          xhr.addEventListener('load', (e) => {
+            const xhr = e.currentTarget;
+            if (xhr.readyState === 4) {
+              if (xhr.status === 200) {
+                const obj = JSON.parse(xhr.responseText);
+                document.getElementById('dir').innerHTML = renderDirectory(obj);
+              } else {
+                console.error(xhr.statusText);
+              }
+            }
+          });
+          xhr.send();
+        }
+
+        function generateMetaData(imgData, width, height) {
+          console.log(imgData);
+          let freezeFrames = [];
+          for(var i=0; i<imgData.length; i++) {
+            const tag = JSON.stringify({
+              hotspot: imgData[i].hotspot,
+              crop: imgData[i].spritesheetCrop,
+            });
+            if (freezeFrames.length === 0 || tag !== freezeFrames[freezeFrames.length-1].tag) {
+              if(freezeFrames.length > 0) {
+                freezeFrames[freezeFrames.length-1].end = i-1;
+              }
+
+              freezeFrames.push({
+                tag: tag,
+                start: i,
+                hotspot: imgData[i].hotspot,
+                crop: imgData[i].spritesheetCrop,
+              });
+            }
+          }
+
+          freezeFrames = freezeFrames.map(o => {
+            return {
+              range: `${o.start}-${o.end||imgData.length-1}`,
+              hotspot: o.hotspot,
+              crop: o.crop,
+            };
+          });
+
+          return {
+            name: currentPath.split("/").pop(),
+            canvas: {
+              width, height,
+            },
+            animation: {
+              rows: [
+                {
+                  label: "default",
+                  range: "0-" + (imgData.length-1),
+                  frameRate: 60,
+                  scale: 1,
+                  locked: true,                
+                }
+              ],
+            },  
+            frames: freezeFrames,
+          };
+        }
+
+        initialize();
+</script>
+
+
+
+
+
+
+
+<script>
+  let gl;
+var cubeRotation = 0.0;
+
+main();
+
+//
+// Start here
+//
+function main() {
+  const canvas = document.querySelector('#glcanvas');
+  gl = canvas.getContext('webgl2');
+
+  // If we don't have a GL context, give up now
+
+  if (!gl) {
+    alert('Unable to initialize WebGL. Your browser or machine may not support it.');
+    return;
+  }
+
+  let viewPosition = { x: 0, y: 0, z: 0 };
+  let pointDown = { x: 0, y: 0 };
+  function onMouse(e) {
+    const { pageX, pageY } = e;
+    switch(e.type) {
+      case "mousemove":
+        if(e.buttons === 1) {
+          const dx = (pageX - pointDown.x) / 20;
+          const dy = (pageY - pointDown.y) / 20;
+          viewPosition.x += dx;
+          viewPosition.z += dy;
+          pointDown.x = pageX;
+          pointDown.y = pageY;
+        }
+        pointDown.x = pageX;
+        pointDown.y = pageY;
+        break;
+    }
+  }
+
+  const keyboard = {};
+  function onKey(e) {
+    keyboard[e.keyCode] = e.type === "keyup" ? 0 : 1;
+//    e.preventDefault();
+  }
+
+  function move(now) {
+    let dx = 0, dy = 0;
+    if (keyboard[38]) {
+      dy--;
+    }
+    if (keyboard[40]) {
+      dy++;
+    }
+    if (keyboard[37]) {
+      dx--;
+    }
+    if (keyboard[39]) {
+      dx++;
+    }
+    viewPosition.x -= dx / 20;
+//    viewPosition.y = -1 - Math.sin(now / 1000); 
+    viewPosition.z -= dy / 20;
+    requestAnimationFrame(move);
+  }
+  requestAnimationFrame(move);
+
+  document.addEventListener("mousemove", onMouse);
+  document.addEventListener("keydown", onKey);
+  document.addEventListener("keyup", onKey);
+
+  const scene = new SceneManager.Scene();
+
+  function initScene() {
+    scene.clear();
+    if(meta && meta.animation) {
+      const selectedLabel = meta.animation.rows[Math.min(meta.animation.rows.length-1,Math.max(selectedIndex, 0))].label;
+      scene.add(`${meta.name}.${selectedLabel}`, "sprite", 0, 0, 0);
+    } else {
+
+      for(let z=Math.max(-4+Math.round(viewPosition.z), -35); z<=4; z++) {
+        const limit = Math.max(0, Math.min(5-z, 8));
+        for(let x=-limit; x<=limit; x++) {
+          const xx = x - Math.round(viewPosition.x);
+          const zz = z - Math.round(viewPosition.z);
+          if (xx === -1) {
+            scene.add("brick", "leftwall", xx, 0, zz);
+          }
+          if (xx === 1) {
+            scene.add("brick", "rightwall", xx, 0, zz);
+          }
+          if (zz === -1 && x===0) {
+            scene.add("brick", "wall", xx, 0, zz);
+          }
+          scene.add("brick", "ceiling", xx, 1, zz);
+          scene.add("brick", "floor", xx,0, zz);
+
+          // switch((xx ^ 13 + zz ^ 17) % 13) {
+          //   case 0: case 1:
+          //   scene.add("hand", "sprite", xx, 0, zz);
+          //   break;
+          //   case 2: case 3:
+          //   scene.add("tentacle", "sprite", xx, 0, zz);
+          //   break;
+          //   case 5:
+          //   scene.add("brick", "wall", xx, 0, zz);
+          //   scene.add("brick", "leftwall", xx, 0, zz);
+          //   scene.add("brick", "rightwall", xx + 1, 0, zz);
+          //   scene.add("brick", "floor", xx, 0, zz);
+          //   scene.add("brick", "ceiling", xx, 2, zz);
+          //   case 12:
+          //   scene.add("eye", "sprite", xx, 0, zz);
+          //   break;
+          // }
+        }
+      }
+      scene.add("elephant", "floor", -.51, 0.01, -.12);
+      scene.add("elephant", "sprite", 0, .43, 0);
+      scene.add("oozie", "sprite", 0, 0, 1);
+//      scene.add("texture_0", "sprite", -3, .5, 0);
+    }
+  }
+
+  // Draw the scene repeatedly
+  function render(now) {
+    const renderer = gl.getSpriteRenderer();
+    renderer.drawSprites(scene.getAllSprites(), now,
+      viewPosition.x, viewPosition.y, viewPosition.z);
+    requestAnimationFrame(render);
+  }
+  initScene();
+  requestAnimationFrame(render);
+}
+
+
+
+</script>
