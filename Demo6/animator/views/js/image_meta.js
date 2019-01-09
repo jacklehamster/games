@@ -1,97 +1,11 @@
 const Meta = (function(document) {
   const META_TAG = "PNG";
 
-  const emptyAnimation = { frames: [], frameRate: 60 };
   const spriteData = {};
-
-  function getAnimationFrame(name, animationTag, now) {
-    if (!spriteData[name]) return {};
-    const spriteMetaData = spriteData[name].meta;
-    const animationData = getAnimationData(spriteMetaData, animationTag) || emptyAnimation;
-    const frame = ~~(now * animationData.frameRate / 1000);
-    return animationData.frames[frame % animationData.frames.length] || {};
-  }
-
-  const cachedAnimationData = {};
-  function getAnimationData(spriteMetaData, animationTag) {
-    if (cachedAnimationData[spriteMetaData.id] && cachedAnimationData[spriteMetaData.id][animationTag]) {
-      return cachedAnimationData[spriteMetaData.id][animationTag];
-    }
-
-    function findAnimationForFrame(f, animation, name, bigRect) {
-      const canvasWidth = spriteMetaData.canvas.width;
-      const canvasHeight = spriteMetaData.canvas.height;
-
-      for (let i=0; i<spriteMetaData.frames.length; i++) {
-        const frame = spriteMetaData.frames[i];
-        const range = frame.range.split("-");
-        const lowRange = range[0];
-        const highRange = range.length>=2 ? range[1] : lowRange;
-        if (lowRange <= f && f <= highRange) {
-            const { crop, hotspot } = frame;
-            return {
-              frameId: md5(JSON.stringify([spriteMetaData.id , crop ])),
-              crop,
-              hotspot,
-              scale: animation.scale,
-              bigRect,
-            };
-        }
-      }
-      return {};
-    }
-
-    function findTag(rows, tag, defaultSelection) {
-      for(let i=0; i<rows.length; i++) {
-        if(rows[i].label===tag) {
-          return i;
-        }
-      }
-      return defaultSelection;
-    }
-
-    const rows = spriteMetaData.animation.rows;
-    const selected = findTag(rows, animationTag, 0);
-    const animation = rows[selected];
-
-    const range = animation.range.split("-");
-    const lowRange = parseInt(range[0]);
-    const highRange = range.length>=2 ? parseInt(range[1]) : lowRange;
-    if (isNaN(lowRange) || isNaN(highRange) || highRange < lowRange) {
-      return {};
-    }
-    //  get dimension of a rectangle that can contain all animations
-    const bigRect = { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
-    for(let i=0; i<spriteMetaData.frames.length; i++) {
-      const { crop, hotspot } = spriteMetaData.frames[i];
-      bigRect.minX = Math.min(bigRect.minX, -hotspot.x);
-      bigRect.minY = Math.min(bigRect.minY, -hotspot.y);
-      bigRect.maxX = Math.max(bigRect.maxX, crop.width-hotspot.x-1);
-      bigRect.maxY = Math.max(bigRect.maxY, crop.height-hotspot.y-1);
-    }
-    bigRect.width = (bigRect.maxX - bigRect.minX) + 1;
-    bigRect.height = (bigRect.maxY - bigRect.minY) + 1;
-
-    const animationFrames = new Array(highRange - lowRange + 1);
-    for(let i=0; i<animationFrames.length; i++) {
-      const f = lowRange + i;
-      const frame = findAnimationForFrame(f, animation, spriteMetaData.name, bigRect);
-      animationFrames[i] = frame;
-    }
-//    console.log(spriteMetaData);
-//    console.log(animationFrames);
-    if (!cachedAnimationData[spriteMetaData.id]) {
-      cachedAnimationData[spriteMetaData.id] = {};
-    }
-
-    return cachedAnimationData[spriteMetaData.id][animationTag] = {
-      frameRate: animation.frameRate,
-      frames: animationFrames,
-    }
-  }
+  const EMPTY = {};
 
   function getSpriteData(name) {
-    return spriteData[name] || {};
+    return spriteData[name] || EMPTY;
   }
 
   function loadImage(src, callback) {
@@ -170,13 +84,55 @@ const Meta = (function(document) {
     return null;
   };
 
+  function drawMeta(meta, canvas) {
+    const json = JSON.stringify(meta);
+    const uint8array = pako.deflate(JSON.stringify(meta), { to: 'blob' });
+
+    const extraMargin = 1;
+    const extraBufferSize = 9;
+    const uint8clamped = new Uint8ClampedArray(
+      Math.ceil((uint8array.length + extraBufferSize) / (meta.canvas.width*3)) * meta.canvas.width*3
+    );
+
+    const extraHeight = Math.ceil(uint8clamped.length / 3 / meta.canvas.width);
+    const extra = [
+      Meta.META_TAG.charCodeAt(0),
+      Meta.META_TAG.charCodeAt(1),
+      Meta.META_TAG.charCodeAt(2),
+      Math.floor(uint8array.length / (255 * 255)) % 255,
+      Math.floor(uint8array.length / 255) % 255,
+      uint8array.length % 255,
+      Math.floor(extraHeight / (255 * 255)) % 255,
+      Math.floor(extraHeight / 255) % 255,
+      extraHeight % 255,
+    ];
+    uint8clamped.fill(255);
+    uint8clamped.set(uint8array);
+    uint8clamped.set(extra, uint8clamped.length-extra.length);
+
+    const expandedClamped = new Uint8ClampedArray(uint8clamped.length / 3 * 4);
+    for(let i=0; i<uint8clamped.length / 3; i++) {
+        expandedClamped[i * 4] = uint8clamped[i * 3];
+        expandedClamped[i * 4 + 1] = uint8clamped[i * 3 + 1];
+        expandedClamped[i * 4 + 2] = uint8clamped[i * 3 + 2];
+        expandedClamped[i * 4 + 3] = 255;
+    }
+
+    const tempData = canvas.getContext('2d').getImageData(0,0,meta.canvas.width, meta.canvas.height);
+
+    const extraImgData = new ImageData(expandedClamped, meta.canvas.width);
+    canvas.height = meta.canvas.height + extraHeight + extraMargin;
+    canvas.getContext('2d').putImageData(tempData,0,0);
+
+    canvas.getContext('2d').putImageData(extraImgData, 0, meta.canvas.height + extraMargin);
+  }  
 
   return {
-    getAnimationFrame,
     getSpriteData,
     loadImage,
     removeImage,
     addImage,
+    drawMeta,
     META_TAG,
   };
 })(document);

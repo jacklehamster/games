@@ -50,8 +50,8 @@
   cursor: grab;
 }
 </style>
-<body>
-  <div style="display: flex; flex-direction: row">
+<body style="background-color: black">
+  <div style="display: flex; flex-direction: row;">
     <canvas id="glCanvas" width="1200" height="1200" style="width: 600; height: 600"></canvas>
     <div style="width: 100px;">
       <button id="importButton" class="button" style="display:none; width: 100%"></button>
@@ -66,17 +66,18 @@
 
       <div id="thumb" style="display: flex; flex-direction: column;">
         <canvas id="spritesheet" style="width: 200px; height: 100px;" ></canvas>
+        <button id="playButton" style="display:none"></button>
         <button id="saveButton" style="display:none" ></button>
         <div id="noticeDiv" style="width: 200px; display:none" ></div>
       </div>
-      <div id="sprites" style="width: 500px; display: flex; flex-wrap: wrap">
+      <div id="sprites" style="width: 300px; display: flex; flex-wrap: wrap">
       </div>
     </div>
   </div>
   <div id="editor" style="display: flex; flex-direction: column;">
   </div>
   <pre>
-    <div id="metadata">
+    <div id="metadata" style="color: green">
     </div>
   </pre>
 </body>
@@ -260,9 +261,13 @@
             checkImportButton(imgData.length > 0 && imgData.filter(a => a).length === imgCount);
         }
 
-        function refreshCanvas(canvas, canvases) {
+        function fixSize(canvas) {
           canvas.style.width = canvas.width/2 + "px";
           canvas.style.height = canvas.height/2 + "px";
+        }
+
+        function refreshCanvas(canvas, canvases) {
+          fixSize(canvas);
           let x = 0, y = 0, maxH = 0;
           const crops = {};
           for(let i=0; i<canvases.length; i++) {
@@ -315,19 +320,44 @@
           xhr.send();
         }
 
+        function checkPlayButton() {
+            const playButton = document.getElementById('playButton');
+            const isEnabled = meta && meta.name;
+            playButton.disabled = !isEnabled;
+            playButton.style.display = isEnabled ? "" : "none";
+
+            if(playButton.getAttribute('initialized') != 'initialized') {
+              playButton.setAttribute('initialized', 'initialized');
+              playButton.innerText = "PLAY";
+              playButton.style.height = "25px";
+              playButton.classList.add("button");
+              playButton.addEventListener('click', e => {
+                  meta = {};
+                  initScene(scene);
+                  checkPlayButton();
+                  const canvas = document.getElementById('spritesheet');
+                  generateEditor(meta, canvas);         
+                  displayMeta(meta, canvas);
+                  checkPlayButton();
+                  checkSaveButton();
+              });                  
+            }
+        }
+
         function checkSaveButton() {
           const saveButton = document.getElementById('saveButton');
           const spriteData = Meta.getSpriteData(meta.name);
 
-          const isEnabled = meta && meta.name && (!spriteData.meta || meta.id !== spriteData.meta.id);
+          const isEnabled = meta && meta.name && (!spriteData.meta || meta.hash !== spriteData.meta.hash);
 
           saveButton.disabled = !isEnabled;
+
+          saveButton.style.display = meta.name ? "" : "none";
           if(saveButton.getAttribute('initialized')!="initialized") {
             saveButton.setAttribute('initialized', 'initialized');
             saveButton.innerText = "SAVE";
             saveButton.style.height = "25px";
             saveButton.classList.add("button");
-            saveButton.style.display = "";
             saveButton.addEventListener('click', e => {
                 saveButton.disabled = true;
                 const noticeDiv = document.getElementById('noticeDiv');
@@ -370,8 +400,7 @@
           canvas.texture = null;          
           canvas.width = sheet.canvas.width;
           canvas.height = sheet.canvas.height;
-          canvas.style.width = (canvas.width/2)+"px";
-          canvas.style.height = (canvas.height/2)+"px";
+          fixSize(canvas);
           canvas.style.maxWidth = "300px";
           canvas.style.maxHeight = "300px";
           canvas.style.border = "2px solid silver";
@@ -384,6 +413,7 @@
 
           onMetaChange(meta, canvas);
           generateEditor(meta, canvas);         
+          checkPlayButton();
         }
 
         function compressCanvas(imgData) {
@@ -408,8 +438,7 @@
           canvas.texture = null;          
           canvas.width = fit.width;
           canvas.height = fit.height;
-          canvas.style.width = `${canvas.width/2}px`;
-          canvas.style.height = `${canvas.height/2}px`;
+          fixSize(canvas);
           canvas.style.maxWidth = "300px";
           canvas.style.maxHeight = "300px";
           canvas.style.border = "2px solid black";
@@ -425,52 +454,31 @@
           Meta.addImage(canvas);
         }
 
-        function drawMeta(meta, canvas) {
-          const json = JSON.stringify(meta);
-          const uint8array = pako.deflate(JSON.stringify(meta), { to: 'blob' });
-
-          const extraMargin = 1;
-          const extraBufferSize = 9;
-          const uint8clamped = new Uint8ClampedArray(
-            Math.ceil((uint8array.length + extraBufferSize) / (meta.canvas.width*3)) * meta.canvas.width*3
-          );
-
-          const extraHeight = Math.ceil(uint8clamped.length / 3 / meta.canvas.width);
-          const extra = [
-            Meta.META_TAG.charCodeAt(0),
-            Meta.META_TAG.charCodeAt(1),
-            Meta.META_TAG.charCodeAt(2),
-            Math.floor(uint8array.length / (255 * 255)) % 255,
-            Math.floor(uint8array.length / 255) % 255,
-            uint8array.length % 255,
-            Math.floor(extraHeight / (255 * 255)) % 255,
-            Math.floor(extraHeight / 255) % 255,
-            extraHeight % 255,
-          ];
-          uint8clamped.fill(255);
-          uint8clamped.set(uint8array);
-          uint8clamped.set(extra, uint8clamped.length-extra.length);
-
-          const expandedClamped = new Uint8ClampedArray(uint8clamped.length / 3 * 4);
-          for(let i=0; i<uint8clamped.length / 3; i++) {
-              expandedClamped[i * 4] = uint8clamped[i * 3];
-              expandedClamped[i * 4 + 1] = uint8clamped[i * 3 + 1];
-              expandedClamped[i * 4 + 2] = uint8clamped[i * 3 + 2];
-              expandedClamped[i * 4 + 3] = 255;
-          }
-
-          const tempData = canvas.getContext('2d').getImageData(0,0,meta.canvas.width, meta.canvas.height);
-
-          const extraImgData = new ImageData(expandedClamped, meta.canvas.width);
-          canvas.height = meta.canvas.height + extraHeight + extraMargin;
-          canvas.style.height = (canvas.height/2) + "px";
-          canvas.getContext('2d').putImageData(tempData,0,0);
-
-          canvas.getContext('2d').putImageData(extraImgData, 0, meta.canvas.height + extraMargin);
+        function displayMeta(meta, canvas) {
+          document.getElementById('metadata').innerText = !meta.name ? '' :
+            JSON.stringify(meta, null, '  ');
         }
 
-        function displayMeta(meta, canvas) {
-          document.getElementById('metadata').innerText = JSON.stringify(meta, null, '  ');
+        function cleanObject(obj, validProperties) {
+          for(let p in obj) {
+            if(validProperties.indexOf(p) < 0) {
+              delete obj[p];
+            }
+          }
+        }
+
+        function sanitizeMeta(meta) {
+          cleanObject(meta, [ 'name', 'canvas', 'animation', 'frames', 'hash' ]);
+          cleanObject(meta.canvas, [ 'width', 'height' ]);
+          cleanObject(meta.animation, [ 'rows' ]);
+          meta.animation.rows.forEach(row => {
+            cleanObject(row, [ 'label', 'range', 'frameRate', 'locked' ]);
+          });
+          meta.frames.forEach(frame => {
+            cleanObject(frame, [ 'range', 'hotspot', 'crop' ]);
+            cleanObject(frame.hotspot, [ 'x', 'y' ]);
+            cleanObject(frame.crop, [ 'x', 'y', 'width', 'height' ]);
+          });
         }
 
         function validateMeta(meta) {
@@ -481,22 +489,23 @@
             if(!meta.animation.rows[a].frameRate) {
                 meta.animation.rows[a].frameRate = 60;
             }
-            if(!meta.animation.rows[a].scale) {
-                meta.animation.rows[a].scale = 1;
-            }
           }
-          delete meta.id;
-          meta.id = md5(JSON.stringify(meta));
+          delete meta.hash;
+          meta.hash = md5(JSON.stringify(meta));
         }
 
         function onMetaChange(meta, canvas) {
+            sanitizeMeta(meta);
             validateMeta(meta);
             displayMeta(meta, canvas);
-            drawMeta(meta, canvas);
-            checkSaveButton();          
+            Meta.drawMeta(meta, canvas);
+            fixSize(canvas);
+            checkSaveButton();    
+            initScene(scene);
         }
 
         let selectedIndex = 0;
+        let hasHotspot = false;
 
         function generateEditor(meta, canvas) {
           var editor = document.getElementById('editor');
@@ -518,6 +527,11 @@
           editor.innerHTML = "";
           editor.style.backgroundColor = "#ccddaa";
           editor.style.width = document.getElementById('glCanvas').width/2 + "px";
+
+          if(!meta.name) {
+            return;
+          }
+
           {
             var div = editor.appendChild(document.createElement('div'));
             div.style.padding = "2px";
@@ -547,11 +561,6 @@
             cell.style.flex = 1;
             cell.style.backgroundColor = "#ddeedd";
             cell.innerText = "FRAMERATE";
-
-            var cell = div.appendChild(document.createElement('div'));
-            cell.style.flex = 1;
-            cell.style.backgroundColor = "#ddeedd";
-            cell.innerText = "SCALE";
 
             var cell = div.appendChild(document.createElement('div'));
             cell.style.flex = 1;
@@ -631,23 +640,6 @@
 
             var cell = div.appendChild(document.createElement('div'));
             cell.style.flex = 1;
-            cell.style.padding = "0 1px";
-            if(row.locked) {
-              var label = cell.appendChild(document.createElement('div'));
-              label.innerText = row.scale;
-            } else {
-              var input = cell.appendChild(document.createElement('input'));
-              input.value = row.scale;
-              input.style.width = "100%";
-              input.addEventListener("keyup", e => {
-                  var input = e.currentTarget;
-                  meta.animation.rows[index].scale = input.value;
-                  onMetaChange(meta, canvas);
-              });
-            }
-
-            var cell = div.appendChild(document.createElement('div'));
-            cell.style.flex = 1;
             if (!row.locked) {
               var button = cell.appendChild(document.createElement('button'));
               button.style.borderRadius = "5px";
@@ -662,22 +654,30 @@
           });
 
           {
-            var div = editor.appendChild(document.createElement('div'));
-            var button = div.appendChild(document.createElement('button'));
-            button.innerText = "ADD";
-            button.addEventListener("click", e => {
-                selectedIndex = meta.animation.rows.length;
-                meta.animation.rows.push({
-                    label: "animation" + selectedIndex,
-                    range: meta.animation.rows[0].range,
-                    frameRate: meta.animation.rows[0].frameRate,
-                    scale: meta.animation.rows[0].scale,
-                });
-                onMetaChange(meta, canvas);
-                generateEditor(meta, canvas);
-            });
+            const div = editor.appendChild(document.createElement('div'));
+            {
+              const button = div.appendChild(document.createElement('button'));
+              button.innerText = "ADD";
+              button.addEventListener("click", e => {
+                  selectedIndex = meta.animation.rows.length;
+                  meta.animation.rows.push({
+                      label: "animation" + selectedIndex,
+                      range: meta.animation.rows[0].range,
+                      frameRate: meta.animation.rows[0].frameRate,
+                  });
+                  onMetaChange(meta, canvas);
+                  generateEditor(meta, canvas);
+              });
+            }
+            {
+              const button = div.appendChild(document.createElement('button'));
+              button.innerText = "HOTSPOT";
+              button.addEventListener("click", e => {
+                hasHotspot = !hasHotspot;
+                initScene(scene);
+              });
+            }
           }
-
         }
 
         let imgCount = 0;
@@ -800,13 +800,22 @@
                   label: "default",
                   range: "0-" + (imgData.length-1),
                   frameRate: 60,
-                  scale: 1,
                   locked: true,                
                 }
               ],
             },  
             frames: freezeFrames,
           };
+        }
+
+        function shiftHotspots(dx, dy) {
+          meta.frames.forEach(frame => {
+            frame.hotspot.x -= dx * 2; 
+            frame.hotspot.y -= dy * 2;
+          });
+          const canvas = document.getElementById('spritesheet');
+          onMetaChange(meta, canvas);          
+          Meta.addImage(canvas);
         }
 
         initialize();
@@ -819,8 +828,44 @@
 
 
 <script>
-  let gl;
-var cubeRotation = 0.0;
+
+  const scene = new SceneManager.Scene();
+
+  function initScene(scene) {
+    scene.clear();
+    if(meta && meta.animation) {
+      const selectedLabel = meta.animation.rows[Math.min(meta.animation.rows.length-1,Math.max(selectedIndex, 0))].label;
+      scene.add(`${meta.name}.${selectedLabel}`, "sprite", 0, 0, 0);
+      if(hasHotspot) {
+        scene.add('x.mark', "sprite", 0,0,0, null, "xmark");
+      }
+    } else {
+      scene.add("elephant", "sprite", 0, 0, 0);
+      scene.add("oozie", "sprite", 0, 0, 1, null, "oozie", .5);
+      scene.setOnReveal((scene, xx, zz, cell) => {
+        const tag = xx + "_" + zz;        
+        if (xx === -1 && zz % 7 !== 3) {
+          scene.add("brick", "leftwall", xx, 0, zz, cell, "leftwall" + tag);
+          scene.add("brick", "rightwall", xx - 1, 0, zz, cell, "rightwall" + tag);
+        }
+        if (xx === 1 && zz % 7 !== 4) {
+          scene.add("brick", "rightwall", xx, 0, zz, cell, "rightwall" + tag);
+          scene.add("brick", "leftwall", xx + 1, 0, zz, cell, "leftwall" + tag);
+        }
+        if (zz === -1 && xx % 11 !== 3) {
+          scene.add("brick", "wall", xx, 0, zz, cell, "wall" + tag);
+          scene.add("brick", "backwall", xx, 0, zz + 1, cell, "backwall" + tag);
+        }
+        scene.add("brick", "ceiling", xx, 1, zz, cell, "ceiling" + tag);
+        scene.add("brick", "floor", xx,0, zz, cell, "floor" + tag);
+        if(Math.abs(xx ^ zz) % 13 === 10) {
+          scene.add("tentacle", "sprite", xx, 0, zz, cell, "tentacle" + tag);
+        }
+      });
+    }
+  }
+
+
 
 main();
 
@@ -829,7 +874,7 @@ main();
 //
 function main() {
   const canvas = document.querySelector('#glcanvas');
-  gl = canvas.getContext('webgl2');
+  const gl = canvas.getContext('webgl2');
 
   // If we don't have a GL context, give up now
 
@@ -844,13 +889,15 @@ function main() {
     const { pageX, pageY } = e;
     switch(e.type) {
       case "mousemove":
-        if(e.buttons === 1) {
-          const dx = (pageX - pointDown.x) / 20;
-          const dy = (pageY - pointDown.y) / 20;
-          viewPosition.x += dx;
-          viewPosition.z += dy;
-          pointDown.x = pageX;
-          pointDown.y = pageY;
+        if(e.buttons === 1 && e.target.id==="glCanvas") {
+            const dx = (pageX - pointDown.x);
+            const dy = (pageY - pointDown.y);
+            if (hasHotspot && meta && meta.animation) {
+              shiftHotspots(dx, dy);
+            } else {
+              viewPosition.x -= dx / 20;
+              viewPosition.z -= dy / 20;
+            }
         }
         pointDown.x = pageX;
         pointDown.y = pageY;
@@ -860,10 +907,14 @@ function main() {
 
   const keyboard = {};
   function onKey(e) {
-    keyboard[e.keyCode] = e.type === "keyup" ? 0 : 1;
-//    e.preventDefault();
+    if (!meta || !meta.animation) {
+      keyboard[e.keyCode] = e.type === "keyup" ? 0 : 1;
+      e.preventDefault();
+    }
   }
 
+  const FLOAT_PRECISION = 1000000;
+  const mov = { x:0, y:0 };
   function move(now) {
     let dx = 0, dy = 0;
     if (keyboard[38]) {
@@ -878,9 +929,11 @@ function main() {
     if (keyboard[39]) {
       dx++;
     }
-    viewPosition.x -= dx / 20;
-//    viewPosition.y = -1 - Math.sin(now / 1000); 
-    viewPosition.z -= dy / 20;
+    mov.x = (mov.x + dx) * .75;
+    mov.y = (mov.y + dy) * .75;
+    viewPosition.x = Math.round((viewPosition.x + mov.x / 20) * FLOAT_PRECISION) / FLOAT_PRECISION;
+//    viewPosition.y = 1 + Math.sin(now / 1000); 
+    viewPosition.z = Math.round((viewPosition.z + mov.y / 20) * FLOAT_PRECISION) / FLOAT_PRECISION;
     requestAnimationFrame(move);
   }
   requestAnimationFrame(move);
@@ -889,45 +942,21 @@ function main() {
   document.addEventListener("keydown", onKey);
   document.addEventListener("keyup", onKey);
 
-  const scene = new SceneManager.Scene();
-
-  function initScene() {
-    scene.clear();
-    if(meta && meta.animation) {
-      const selectedLabel = meta.animation.rows[Math.min(meta.animation.rows.length-1,Math.max(selectedIndex, 0))].label;
-      scene.add(`${meta.name}.${selectedLabel}`, "sprite", 0, 0, 0);
-    } else {
-      scene.add("elephant", "sprite", 0, .43, 0);
-      scene.add("oozie", "sprite", 0, 0, 1);
-      scene.setRule((scene, xx, yy, zz, now) => {
-          if (xx === -1) {
-            scene.add("brick", "leftwall", xx, 0, zz, "leftwall"+xx+","+zz, now);
-          }
-          if (xx === 1) {
-            scene.add("brick", "rightwall", xx, 0, zz, "rightwall"+xx+","+zz, now);
-          }
-          if (zz === -1) {
-            scene.add("brick", "wall", xx, 0, zz, "wall"+xx+","+zz, now);
-          }
-          scene.add("brick", "ceiling", xx, 1, zz, "ceiling"+xx+","+zz, now);
-          scene.add("brick", "floor", xx,0, zz, "floor"+xx+","+zz, now);
-
-      });
-      viewPosition.z = -20;
-      scene.applyRule(viewPosition, 0);
-//      scene.add("texture_0", "sprite", -3, .5, 0);
-    }
-  }
 
 
   // Draw the scene repeatedly
+  const renderer = gl.getSpriteRenderer();
   function render(now) {
-    const renderer = gl.getSpriteRenderer();
-//    scene.applyRule(viewPosition, now);
-    renderer.drawSprites(scene.getSprites(now), now, viewPosition.x, viewPosition.y, viewPosition.z);
+    scene.refresh(viewPosition, now);
+    renderer.drawSprites(scene.getSprites(), now,
+      viewPosition.x, viewPosition.y, viewPosition.z);
     requestAnimationFrame(render);
+
+
+    // scene.add("oozie", "sprite", Math.random(), 0, 1 + Math.random(), null, "oozie", .5);
+
   }
-  initScene();
+  initScene(scene);
   requestAnimationFrame(render);
 }
 

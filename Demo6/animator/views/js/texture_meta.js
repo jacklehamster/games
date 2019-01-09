@@ -3,6 +3,7 @@ const TextureFactory = (function() {
 	const TEXTURE_CELL = 64;
 	const CELL_SIDE = TEXTURE_SIZE / TEXTURE_CELL;
 	const VERTICES_PER_SPRITE = 4;
+	const EMPTY = {};
 
 	function Factory(gl) {
 		if(!Meta) {
@@ -10,8 +11,10 @@ const TextureFactory = (function() {
 		}
 
 		this.gl = gl;
-		this.cachedFrameData = {};
-		this.cachedTextureData = {};
+		this.cache = {
+			cachedTextureData: {},
+			cachedAnimationData: {},
+		};
 		this.textures = [];
 		this.textureMap = [];
 		this.textureUnits = [
@@ -98,32 +101,37 @@ const TextureFactory = (function() {
 			texture.height = textureHeight;
 			gl.bindTexture(gl.TEXTURE_2D, texture);
 		  	gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, textureWidth, textureHeight, border, srcFormat, srcType, null);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);			
 		} else {
 			gl.bindTexture(gl.TEXTURE_2D, texture);			
 		}
-		const { x, y, width, height} = crop;
+		const { x, y, width, height } = crop;
 		const imageData = canvas.getContext('2d').getImageData(x, y, width, height);
 		gl.texSubImage2D(gl.TEXTURE_2D, level,
 			cellX * TEXTURE_CELL + offset.x,
 			cellY * TEXTURE_CELL + offset.y,
 			srcFormat, srcType, imageData);
+		gl.generateMipmap(gl.TEXTURE_2D);
 	};
 
 	function getTextureData(name, animationTag, now) {
-		const animationFrame = Meta.getAnimationFrame(name, animationTag, now);
+		const { meta, canvas } = Meta.getSpriteData(name);
+		if (!meta || !canvas) {
+			return null;
+		}
+		const { cachedAnimationData, cachedTextureData } = this.cache;
+		const animationFrame = getAnimationFrame(meta, animationTag, now, cachedAnimationData);
 		const { frameId } = animationFrame;
 		if(!frameId) {
 			return null;
 		}
 
-		if (this.cachedTextureData[animationTag] && this.cachedTextureData[animationTag][frameId]) {
-			return this.cachedTextureData[animationTag][frameId];
+		if (cachedTextureData[animationTag] && cachedTextureData[animationTag][frameId]) {
+			return cachedTextureData[animationTag][frameId];
 		}
 
-		const { crop, hotspot, scale, bigRect } = animationFrame;
+		const { crop, hotspot, bigRect } = animationFrame;
 		let fit = null, tex = 0;
 		const len = Math.min(this.textures.length, this.textureUnits.length);
 		const { width, height } = bigRect;
@@ -138,10 +146,6 @@ const TextureFactory = (function() {
 			return null;
 		}
 		const { cellX, cellY, cellWidth, cellHeight } = fit;
-		const { meta, canvas } = Meta.getSpriteData(name);
-		if (!meta) {
-			return null;
-		}
 
 		const offset = {
 			x: -bigRect.minX - hotspot.x,
@@ -169,16 +173,16 @@ const TextureFactory = (function() {
 		const vertexHotspotX = vertexWidth * textureHotSpotX / bigRect.width;
 		const vertexHotspotY = -vertexHeight * textureHotSpotY / bigRect.height;
 
-		const left = (0 - vertexHotspotX) * scale;
-		const right = (vertexWidth - vertexHotspotX) * scale;
-		const top = (-vertexHeight - vertexHotspotY) * scale;
-		const bottom = (0 - vertexHotspotY) * scale;
+		const left = (0 - vertexHotspotX);
+		const right = (vertexWidth - vertexHotspotX);
+		const top = (-vertexHeight - vertexHotspotY);
+		const bottom = (0 - vertexHotspotY);
 
-		if (!this.cachedTextureData[animationTag]) {
-			this.cachedTextureData[animationTag] = {};
+		if (!cachedTextureData[animationTag]) {
+			cachedTextureData[animationTag] = {};
 		}
 
-		return this.cachedTextureData[animationTag][frameId] = {
+		return cachedTextureData[animationTag][frameId] = {
 			positions: {
 				left, right, top, bottom,
 			},
@@ -186,6 +190,87 @@ const TextureFactory = (function() {
 			indexBuffer: new Float32Array(VERTICES_PER_SPRITE).fill(tex),
     	};
 	}
+
+	function getAnimationFrame(meta, animationTag, now, cachedAnimationData) {
+		const animationData = getAnimationData(meta, animationTag, cachedAnimationData) || emptyAnimation;
+		const frame = ~~(now * animationData.frameRate / 1000);
+		return animationData.frames[frame % animationData.frames.length] || EMPTY;
+	}
+
+	const emptyAnimation = { frames: [], frameRate: 60 };
+	function getAnimationData(meta, animationTag, cachedAnimationData) {
+		if (cachedAnimationData[meta.name] && cachedAnimationData[meta.name][animationTag]) {
+		  return cachedAnimationData[meta.name][animationTag];
+		}
+
+		function findAnimationForFrame(f, animation, name, bigRect) {
+		  const canvasWidth = meta.canvas.width;
+		  const canvasHeight = meta.canvas.height;
+
+		  for (let i=0; i<meta.frames.length; i++) {
+		    const frame = meta.frames[i];
+		    const range = frame.range.split("-");
+		    const lowRange = range[0];
+		    const highRange = range.length>=2 ? range[1] : lowRange;
+		    if (lowRange <= f && f <= highRange) {
+		        const { crop, hotspot } = frame;
+		        return {
+		          frameId: md5(JSON.stringify([meta.name , crop])),
+		          crop,
+		          hotspot,
+		          bigRect,
+		        };
+		    }
+		  }
+		  return {};
+		}
+
+		function findTag(rows, tag, defaultSelection) {
+		  for(let i=0; i<rows.length; i++) {
+		    if(rows[i].label===tag) {
+		      return i;
+		    }
+		  }
+		  return defaultSelection;
+		}
+
+		const rows = meta.animation.rows;
+		const selected = findTag(rows, animationTag, 0);
+		const animation = rows[selected];
+
+		const range = animation.range.split("-");
+		const lowRange = parseInt(range[0]);
+		const highRange = range.length>=2 ? parseInt(range[1]) : lowRange;
+		if (isNaN(lowRange) || isNaN(highRange) || highRange < lowRange) {
+		  return EMPTY;
+		}
+		//  get dimension of a rectangle that can contain all animations
+		const bigRect = { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
+		for(let i=0; i<meta.frames.length; i++) {
+		  const { crop, hotspot } = meta.frames[i];
+		  bigRect.minX = Math.min(bigRect.minX, -hotspot.x);
+		  bigRect.minY = Math.min(bigRect.minY, -hotspot.y);
+		  bigRect.maxX = Math.max(bigRect.maxX, crop.width-hotspot.x-1);
+		  bigRect.maxY = Math.max(bigRect.maxY, crop.height-hotspot.y-1);
+		}
+		bigRect.width = (bigRect.maxX - bigRect.minX) + 1;
+		bigRect.height = (bigRect.maxY - bigRect.minY) + 1;
+
+		const animationFrames = new Array(highRange - lowRange + 1);
+		for(let i=0; i<animationFrames.length; i++) {
+		  const f = lowRange + i;
+		  const frame = findAnimationForFrame(f, animation, meta.name, bigRect);
+		  animationFrames[i] = frame;
+		}
+		if (!cachedAnimationData[meta.name]) {
+		  cachedAnimationData[meta.name] = {};
+		}
+
+		return cachedAnimationData[meta.name][animationTag] = {
+		  frameRate: animation.frameRate,
+		  frames: animationFrames,
+		}
+	}	
 
 	WebGL2RenderingContext.prototype.getTextureFactory = function() {
 		if(!this.textureFactory) {

@@ -8,7 +8,6 @@ const SpriteRenderer = (function() {
 		attribute float aTextureIndex;
 		uniform mat4 uProjectionMatrix;
 		uniform mat4 uViewMatrix;
-		uniform float uTime;
 		varying highp vec2 vTextureCoord;
 		varying highp float zDist;
 		varying highp float textureIndex;
@@ -44,6 +43,7 @@ const SpriteRenderer = (function() {
 
 		uniform sampler2D uTexture[16];
 		uniform float uTime;
+		uniform vec4 uBackground;
 		varying highp vec2 vTextureCoord;
 		varying highp float zDist;
 		varying highp float textureIndex;
@@ -52,7 +52,8 @@ const SpriteRenderer = (function() {
 		  return fract(sin(dot(co.xy ,vec2(12.9898 + time,78.233 + time))) * 43758.5453);
 		}
 
-		vec4 reduceColor(vec4 color, vec2 co, float uTime) {
+		vec4 reduceColor(vec4 color, vec2 co, float amount) {
+			vec4 oldColor = color;
 			color.x += rand(co, uTime/1000.0) -.5;
 			color.y += rand(co, uTime/1000.0) -.5;
 			color.z += rand(co, uTime/1000.0) -.5;
@@ -69,11 +70,11 @@ const SpriteRenderer = (function() {
 					newColor = colors[i];
 				}
 			}
-			return newColor;
+			return mix(oldColor, newColor, amount);
 		}
 
 		vec4 darkenColor(vec4 color, float zDist) {
-			return mix(color, vec4(0.0, 0.0, 0.0, 1.0), vec4(zDist, zDist, zDist, 0.0));
+			return mix(color, uBackground, vec4(zDist, zDist, zDist, 0.0));
 		}
 
 		vec4 getTextureColor(float textureIndexFloat, vec2 vTextureCoord) {
@@ -115,10 +116,23 @@ const SpriteRenderer = (function() {
 			}
 		}
 
+		vec4 blur(vec4 color, vec2 vTextureCoord, float value) {
+			if (color.w > 0.0) {
+				vec2 vTex = vTextureCoord;
+				vTex.x = vTex.x + (rand(vTextureCoord, uTime + 0.0) - .5) / 100.0;
+				vTex.y = vTex.y + (rand(vTextureCoord, uTime + 1.0) - .5) / 100.0;
+				vec4 newColor = mix(color, getTextureColor(textureIndex, vTex), value);
+				newColor.w = color.w;
+				color = newColor;
+			}
+			return color;			
+		}
+
 		void main(void) {
 			vec4 color = getTextureColor(textureIndex, vTextureCoord);
-			color = darkenColor(color, zDist);
-//			color = reduceColor(color, vTextureCoord, uTime);
+			color = blur(color, vTextureCoord, min(1.0, (zDist * 1.5)));
+			color = darkenColor(color, zDist * .8);
+//			color = reduceColor(color, vTextureCoord, min(1.0, (zDist * 2.0)));
 			gl_FragColor = color;
 		}
 	`;
@@ -131,6 +145,9 @@ const SpriteRenderer = (function() {
 	const TEXTURE_FLOAT_PER_VERTEX = 2;	//	x,y
 	const VERTICES_PER_SPRITE = 4;		//	4 corners
 	const SIZE_INCREASE = 100;
+	const baseZ = -4;	
+
+	const CLEAN_FREQUENCY = .1;
 
 	function Renderer(gl) {
 		if(!TextureFactory) {
@@ -152,6 +169,7 @@ const SpriteRenderer = (function() {
 	      viewLocation: 		gl.getUniformLocation(shaderProgram, 'uViewMatrix'),
 	      uTextureLocation: 	gl.getUniformLocation(shaderProgram, 'uTexture'),
 	      timeLocation:         gl.getUniformLocation(shaderProgram, 'uTime'),
+	      backgroundLocation:   gl.getUniformLocation(shaderProgram, 'uBackground'),
 		};
 
 		this.positionBuffer = null;
@@ -177,6 +195,7 @@ const SpriteRenderer = (function() {
 		this.nextIndex = 0;
 		this.recycledIndices = [];
 		this.indicesMap = [];
+		this.backgroundColor = [ 0.0, 0.0, 0.0, 1.0 ];
 
 		const fieldOfView = 45 * Math.PI / 180;   // in radians
 		const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
@@ -187,95 +206,132 @@ const SpriteRenderer = (function() {
 		gl.uniformMatrix4fv(this.programInfo.projectionLocation, false, projectionMatrix);
 	}
 
-	function getFramePositions(renderer, texture, type, x, y, z) {
+	function getFramePositions(renderer, texture, type, x, y, z, scale) {
 		const positions = renderer.tempVariables.tempPositions;
-		const baseZ = -4;
 		if (type === 'sprite') {
 			const { left, right, top, bottom } = texture.positions;
-			positions[0] = left + x;
-			positions[1] = top + y;
-			positions[2] = baseZ + z;
-			positions[3] = right + x;
-			positions[4] = top + y;
-			positions[5] = baseZ + z;
-			positions[6] = right + x;
-			positions[7] = bottom + y;
-			positions[8] = baseZ + z;
-			positions[9] = left + x;
-			positions[10] = bottom + y;
-			positions[11] = baseZ + z;
+			positions[0] = left * scale;
+			positions[1] = top * scale;
+			positions[2] = baseZ;
+			positions[3] = right * scale;
+			positions[4] = top  * scale;
+			positions[5] = baseZ;
+			positions[6] = right * scale;
+			positions[7] = bottom * scale;
+			positions[8] = baseZ;
+			positions[9] = left * scale;
+			positions[10] = bottom * scale;
+			positions[11] = baseZ;
+
+			for(let i=0; i<positions.length; i+=3) {
+				positions[i] 	+= x;
+				positions[i+1] 	+= y;
+				positions[i+2] 	+= z;
+			}
+//			mat4.identity(viewMatrix);
+//			mat4.rotate(viewMatrix, viewMatrix, -y / 3, [ 1, 0, 0 ]);
+
 		} else if(type === "floor") {
-			positions[0] = 0 + x;
-			positions[1] = 0 + y;
-			positions[2] = baseZ + z;
-			positions[3] = 1 + x;
-			positions[4] = 0 + y;
-			positions[5] = 0 + baseZ + z;
-			positions[6] = 1 + x;
-			positions[7] = 0 + y;
-			positions[8] = -1 + baseZ + z;
-			positions[9] = 0 + x;
-			positions[10] = 0 + y;
-			positions[11] = -1 + baseZ + z;
+			positions[0] = 0;
+			positions[1] = 0;
+			positions[2] = baseZ;
+			positions[3] = 1;
+			positions[4] = 0;
+			positions[5] = 0 + baseZ;
+			positions[6] = 1;
+			positions[7] = 0;
+			positions[8] = -1 + baseZ;
+			positions[9] = 0;
+			positions[10] = 0;
+			positions[11] = -1 + baseZ;
+
+			for(let i=0; i<positions.length; i+=3) {
+				positions[i] 	+= x - .5;
+				positions[i+1] 	+= y;
+				positions[i+2] 	+= z - .5;
+			}
 		} else if(type === "ceiling") {
-			positions[0] = 0 + x;
-			positions[1] = 0 + y;
-			positions[2] = -1 + baseZ + z;
-			positions[3] = 1 + x;
-			positions[4] = 0 + y;
-			positions[5] = -1 + baseZ + z;
-			positions[6] = 1 + x;
-			positions[7] = 0 + y;
-			positions[8] = 0 + baseZ + z;
-			positions[9] = 0 + x;
-			positions[10] = 0 + y;
-			positions[11] = 0 + baseZ + z;
+			positions[0] = 0;
+			positions[1] = 0;
+			positions[2] = -1 + baseZ;
+			positions[3] = 1;
+			positions[4] = 0;
+			positions[5] = -1 + baseZ;
+			positions[6] = 1;
+			positions[7] = 0;
+			positions[8] = 0 + baseZ;
+			positions[9] = 0;
+			positions[10] = 0;
+			positions[11] = 0 + baseZ;
+
+			for(let i=0; i<positions.length; i+=3) {
+				positions[i] 	+= x - .5;
+				positions[i+1] 	+= y;
+				positions[i+2] 	+= z - .5;
+			}
 		} else if(type === "leftwall") {
-			positions[0] = 0 + x;
-			positions[1] = 0 + y;
-			positions[2] = 0 + baseZ + z;
-			positions[3] = 0 + x;
-			positions[4] = 0 + y;
-			positions[5] = -1 + baseZ + z;
-			positions[6] = 0 + x;
-			positions[7] = 1 + y;
-			positions[8] = -1 + baseZ + z;
-			positions[9] = 0 + x;
-			positions[10] = 1 + y;
-			positions[11] = 0 + baseZ + z;
+			positions[0] = 0;
+			positions[1] = 0;
+			positions[2] = 0 + baseZ;
+			positions[3] = 0;
+			positions[4] = 0;
+			positions[5] = -1 + baseZ;
+			positions[6] = 0;
+			positions[7] = 1;
+			positions[8] = -1 + baseZ;
+			positions[9] = 0;
+			positions[10] = 1;
+			positions[11] = 0 + baseZ;
+
+			for(let i=0; i<positions.length; i+=3) {
+				positions[i] 	+= x - .5;
+				positions[i+1] 	+= y;
+				positions[i+2] 	+= z - .5;
+			}
 		} else if(type === "rightwall") {
-			positions[0] = 0 + x;
-			positions[1] = 0 + y;
-			positions[2] = -1 + baseZ + z;
-			positions[3] = 0 + x;
-			positions[4] = 0 + y;
-			positions[5] = 0 + baseZ + z;
-			positions[6] = 0 + x;
-			positions[7] = 1 + y;
-			positions[8] = 0 + baseZ + z;
-			positions[9] = 0 + x;
-			positions[10] = 1 + y;
-			positions[11] = -1 + baseZ + z;
+			positions[0] = 0;
+			positions[1] = 0;
+			positions[2] = -1 + baseZ;
+			positions[3] = 0;
+			positions[4] = 0;
+			positions[5] = 0 + baseZ;
+			positions[6] = 0;
+			positions[7] = 1;
+			positions[8] = 0 + baseZ;
+			positions[9] = 0;
+			positions[10] = 1;
+			positions[11] = -1 + baseZ;
+
+			for(let i=0; i<positions.length; i+=3) {
+				positions[i] 	+= x - .5 + 1;
+				positions[i+1] 	+= y;
+				positions[i+2] 	+= z - .5;
+			}
 		} else if(type === "wall") {
-			positions[0] = 0 + x;
-			positions[1] = 0 + y;
-			positions[2] = -1 + baseZ + z;
-			positions[3] = 1 + x;
-			positions[4] = 0 + y;
-			positions[5] = -1 + baseZ + z;
-			positions[6] = 1 + x;
-			positions[7] = 1 + y;
-			positions[8] = -1 + baseZ + z;
-			positions[9] = 0 + x;
-			positions[10] = 1 + y;
-			positions[11] = -1 + baseZ + z;
+			positions[0] = 0;
+			positions[1] = 0;
+			positions[2] = -1 + baseZ;
+			positions[3] = 1;
+			positions[4] = 0;
+			positions[5] = -1 + baseZ;
+			positions[6] = 1;
+			positions[7] = 1;
+			positions[8] = -1 + baseZ;
+			positions[9] = 0;
+			positions[10] = 1;
+			positions[11] = -1 + baseZ;
+			
+			for(let i=0; i<positions.length; i+=3) {
+				positions[i] 	+= x - .5;
+				positions[i+1] 	+= y;
+				positions[i+2] 	+= z - .5;
+			}
 		}
 		return positions;
 	};
 
 	function ensureBuffer(renderer, size) {
 		if (size > renderer.spriteBufferSize) {
-//			console.log("size", renderer.spriteBufferSize, "->", size + SIZE_INCREASE);
 			allocateBuffer(renderer, size + SIZE_INCREASE);			
 		}
 	}
@@ -299,8 +355,9 @@ const SpriteRenderer = (function() {
 			slotIndex,
 			spritePositions: new Float32Array(FLOAT_PER_VERTEX * VERTICES_PER_SPRITE),
 			spriteTextureCoordinates: new Float32Array(TEXTURE_FLOAT_PER_VERTEX * VERTICES_PER_SPRITE),
-			spriteIndexBuffer: new Float32Array(VERTICES_PER_SPRITE),
+			spriteTextureIndex: -1,
 			time: 0,
+			deleted: false,
 		};
 	}
 
@@ -310,6 +367,7 @@ const SpriteRenderer = (function() {
 			const spriteData = spriteMap[s];
 			if (spriteData.time !== now) {
 				recycledIndices.push(spriteData);
+				delete spriteMap[s];
 			}
 		}
 	}
@@ -328,13 +386,14 @@ const SpriteRenderer = (function() {
 			const { name, label } = sprite;
 			const textureData = textureFactory.getTextureData(name, label, now);
 			if (textureData) {
-				const { x, y, z, type, id } = sprite;
-				addFrame(this, textureData, id, count, type, x, y, z, now);
+				const { x, y, z, type, id, scale } = sprite;
+				addFrame(this, textureData, id, count, type, x, y, z, scale, now);
 				count ++;
 			}
 		}
-		cleanSpriteMap(this, now);
-
+		if(Math.random()<CLEAN_FREQUENCY) {
+			cleanSpriteMap(this, now);
+		}
 		draw(gl, count);
 	};
 
@@ -342,11 +401,27 @@ const SpriteRenderer = (function() {
 		gl.uniform1f(programInfo.timeLocation, now);
 	}
 
+	Renderer.prototype.setBackgroundColor = function(color) {
+		const { gl, programInfo } = this;
+		this.backgroundColor = [
+			(color >> 16) % 256 / 256,
+			(color >> 8) % 256 / 256,
+			(color >> 0) % 256 / 256,
+			1.0,
+		];
+		gl.uniform4f(programInfo.backgroundLocation,
+			this.backgroundColor[0],
+			this.backgroundColor[1],
+			this.backgroundColor[2],
+			this.backgroundColor[3],
+		);
+	};
+
 	function setLocation(gl, programInfo, x, y, z, cachedLocation, viewMatrix) {
 		if (cachedLocation.x !== x || cachedLocation.y !== y || cachedLocation.z !== z) {
 			mat4.identity(viewMatrix);
-			mat4.rotate(viewMatrix, viewMatrix, -y / 3, [ 1, 0, 0 ]);
-			mat4.translate(viewMatrix, viewMatrix, [ x || 0, (y || 0) - .5, z || 0 ]);
+			mat4.rotate(viewMatrix, viewMatrix, y / 3, [ 1, 0, 0 ]);
+			mat4.translate(viewMatrix, viewMatrix, [ -x || 0, (-y || 0) - .5, -z || 0 ]);
 			gl.uniformMatrix4fv(programInfo.viewLocation, false, viewMatrix);
 			cachedLocation.x = x;
 			cachedLocation.y = y;
@@ -409,7 +484,7 @@ const SpriteRenderer = (function() {
 	}
 
 	function clearScene(gl, renderer) {
-		gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
+		gl.clearColor.apply(gl, renderer.backgroundColor);  // Clear to black, fully opaque
 		gl.clearDepth(1.0);                 // Clear everything
 		gl.enable(gl.DEPTH_TEST);           // Enable depth testing
 		gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
@@ -417,19 +492,19 @@ const SpriteRenderer = (function() {
 	}
 
 	function floatArrayEqual(a, b) {
-		if (a.length !== b.length) return false;
+//		if (a.length !== b.length) return false;
 	  	for (let i=0; i < a.length; i++) {
 	    	if (a[i] !== b[i]) return false;
 	  	}
 	  	return true;
 	}
 
-	function addFrame(renderer, texture, id, frameIndex, type, x, y, z, now) {
-		const positions = getFramePositions(renderer, texture, type, x, y, z);
+	function addFrame(renderer, texture, id, frameIndex, type, x, y, z, scale, now) {
+		const positions = getFramePositions(renderer, texture, type, x, y, z, scale);
 		const { gl, programInfo, cachedData, indicesMap } = renderer;
 		const spriteData = getSpriteData(renderer, id);
 		spriteData.time = now;
-		const { slotIndex, spritePositions, spriteTextureCoordinates, spriteIndexBuffer } = spriteData;
+		const { slotIndex, spritePositions, spriteTextureCoordinates, spriteTextureIndex } = spriteData;
 
 		if (indicesMap[frameIndex] !== slotIndex) {
 			let slotIndices = cachedData.indices[slotIndex];
@@ -454,15 +529,15 @@ const SpriteRenderer = (function() {
 			spriteTextureCoordinates.set(texture.coordinates);
 		}
 
-		if (!floatArrayEqual(texture.indexBuffer, spriteIndexBuffer)) {
-			const textureIndex = texture.indexBuffer[0];
+		const textureIndex = texture.indexBuffer[0];
+		if (textureIndex != spriteTextureIndex) {
 			if (textureIndex >= renderer.textureBuffer.length) {
 				renderer.textureBuffer = new Int32Array(textureIndex + 1).map((a, index) => index);
 				gl.uniform1iv(programInfo.uTextureLocation, renderer.textureBuffer);
 			}
 		    gl.bindBuffer(gl.ARRAY_BUFFER, renderer.textureIndexBuffer);
 			gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * Float32Array.BYTES_PER_ELEMENT, texture.indexBuffer);
-			spriteIndexBuffer.set(texture.indexBuffer);
+			spriteData.spriteTextureIndex = textureIndex;
 		}
 	};
 
