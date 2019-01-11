@@ -238,34 +238,32 @@ const TextureFactory = (function() {
 		const selected = findTag(rows, animationTag, 0);
 		const animation = rows[selected];
 
+		//  get dimension of a rectangle that can contain all animations
+		const bigRect = { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
+		for (let i=0; i<meta.frames.length; i++) {
+		  const { crop, hotspot } = meta.frames[i];
+		  bigRect.minX = Math.min(bigRect.minX, - hotspot.x);
+		  bigRect.minY = Math.min(bigRect.minY, - hotspot.y);
+		  bigRect.maxX = Math.max(bigRect.maxX, crop.width - hotspot.x - 1);
+		  bigRect.maxY = Math.max(bigRect.maxY, crop.height - hotspot.y - 1);
+		}
+		bigRect.width = (bigRect.maxX - bigRect.minX) + 1;
+		bigRect.height = (bigRect.maxY - bigRect.minY) + 1;
+
 		const range = animation.range.split("-");
 		const lowRange = parseInt(range[0]);
 		const highRange = range.length>=2 ? parseInt(range[1]) : lowRange;
 		if (isNaN(lowRange) || isNaN(highRange) || highRange < lowRange) {
 		  return EMPTY;
 		}
-		//  get dimension of a rectangle that can contain all animations
-		const bigRect = { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
-		for(let i=0; i<meta.frames.length; i++) {
-		  const { crop, hotspot } = meta.frames[i];
-		  bigRect.minX = Math.min(bigRect.minX, -hotspot.x);
-		  bigRect.minY = Math.min(bigRect.minY, -hotspot.y);
-		  bigRect.maxX = Math.max(bigRect.maxX, crop.width-hotspot.x-1);
-		  bigRect.maxY = Math.max(bigRect.maxY, crop.height-hotspot.y-1);
-		}
-		bigRect.width = (bigRect.maxX - bigRect.minX) + 1;
-		bigRect.height = (bigRect.maxY - bigRect.minY) + 1;
-
 		const animationFrames = new Array(highRange - lowRange + 1);
-		for(let i=0; i<animationFrames.length; i++) {
-		  const f = lowRange + i;
-		  const frame = findAnimationForFrame(f, animation, meta.name, bigRect);
+		for (let i=0; i<animationFrames.length; i++) {
+		  const frame = findAnimationForFrame(lowRange + i, animation, meta.name, bigRect);
 		  animationFrames[i] = frame;
 		}
 		if (!cachedAnimationData[meta.name]) {
 		  cachedAnimationData[meta.name] = {};
 		}
-
 		return cachedAnimationData[meta.name][animationTag] = {
 		  frameRate: animation.frameRate,
 		  frames: animationFrames,

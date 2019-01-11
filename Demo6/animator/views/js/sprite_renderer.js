@@ -121,7 +121,13 @@ const SpriteRenderer = (function() {
 				vec2 vTex = vTextureCoord;
 				vTex.x = vTex.x + (rand(vTextureCoord, uTime + 0.0) - .5) / 100.0;
 				vTex.y = vTex.y + (rand(vTextureCoord, uTime + 1.0) - .5) / 100.0;
-				vec4 newColor = mix(color, getTextureColor(textureIndex, vTex), value);
+				vec4 offsetColor = getTextureColor(textureIndex, vTex);
+				if (offsetColor.w == 0.0) {
+					offsetColor.x = uBackground.x;
+					offsetColor.y = uBackground.y;
+					offsetColor.z = uBackground.z;
+				}
+				vec4 newColor = mix(color, offsetColor, value);
 				newColor.w = color.w;
 				color = newColor;
 			}
@@ -133,6 +139,7 @@ const SpriteRenderer = (function() {
 			color = blur(color, vTextureCoord, min(1.0, (zDist * 1.5)));
 			color = darkenColor(color, zDist * .8);
 //			color = reduceColor(color, vTextureCoord, min(1.0, (zDist * 2.0)));
+//			color.w /= 2.0;
 			gl_FragColor = color;
 		}
 	`;
@@ -145,7 +152,7 @@ const SpriteRenderer = (function() {
 	const TEXTURE_FLOAT_PER_VERTEX = 2;	//	x,y
 	const VERTICES_PER_SPRITE = 4;		//	4 corners
 	const SIZE_INCREASE = 100;
-	const baseZ = -4;	
+	const baseZ = -1.5;	
 
 	const CLEAN_FREQUENCY = .1;
 
@@ -209,7 +216,10 @@ const SpriteRenderer = (function() {
 	function getFramePositions(renderer, texture, type, x, y, z, scale) {
 		const positions = renderer.tempVariables.tempPositions;
 		if (type === 'sprite') {
-			const { left, right, top, bottom } = texture.positions;
+			const left = texture.positions.left;
+			const right = texture.positions.right;
+			const top = texture.positions.top;
+			const bottom = texture.positions.bottom;
 			positions[0] = left * scale;
 			positions[1] = top * scale;
 			positions[2] = baseZ;
@@ -228,35 +238,13 @@ const SpriteRenderer = (function() {
 				positions[i+1] 	+= y;
 				positions[i+2] 	+= z;
 			}
-//			mat4.identity(viewMatrix);
-//			mat4.rotate(viewMatrix, viewMatrix, -y / 3, [ 1, 0, 0 ]);
-
 		} else if(type === "floor") {
 			positions[0] = 0;
 			positions[1] = 0;
-			positions[2] = baseZ;
+			positions[2] = 1 + baseZ;
 			positions[3] = 1;
 			positions[4] = 0;
-			positions[5] = 0 + baseZ;
-			positions[6] = 1;
-			positions[7] = 0;
-			positions[8] = -1 + baseZ;
-			positions[9] = 0;
-			positions[10] = 0;
-			positions[11] = -1 + baseZ;
-
-			for(let i=0; i<positions.length; i+=3) {
-				positions[i] 	+= x - .5;
-				positions[i+1] 	+= y;
-				positions[i+2] 	+= z - .5;
-			}
-		} else if(type === "ceiling") {
-			positions[0] = 0;
-			positions[1] = 0;
-			positions[2] = -1 + baseZ;
-			positions[3] = 1;
-			positions[4] = 0;
-			positions[5] = -1 + baseZ;
+			positions[5] = 1 + baseZ;
 			positions[6] = 1;
 			positions[7] = 0;
 			positions[8] = 0 + baseZ;
@@ -265,33 +253,33 @@ const SpriteRenderer = (function() {
 			positions[11] = 0 + baseZ;
 
 			for(let i=0; i<positions.length; i+=3) {
-				positions[i] 	+= x - .5;
+				positions[i] 	+= x;
 				positions[i+1] 	+= y;
-				positions[i+2] 	+= z - .5;
+				positions[i+2] 	+= z;
+			}
+		} else if(type === "ceiling") {
+			positions[0] = 0;
+			positions[1] = 1;
+			positions[2] = 0 + baseZ;
+			positions[3] = 1;
+			positions[4] = 1;
+			positions[5] = 0 + baseZ;
+			positions[6] = 1;
+			positions[7] = 1;
+			positions[8] = 1 + baseZ;
+			positions[9] = 0;
+			positions[10] = 1;
+			positions[11] = 1 + baseZ;
+
+			for(let i=0; i<positions.length; i+=3) {
+				positions[i] 	+= x;
+				positions[i+1] 	+= y;
+				positions[i+2] 	+= z;
 			}
 		} else if(type === "leftwall") {
 			positions[0] = 0;
 			positions[1] = 0;
-			positions[2] = 0 + baseZ;
-			positions[3] = 0;
-			positions[4] = 0;
-			positions[5] = -1 + baseZ;
-			positions[6] = 0;
-			positions[7] = 1;
-			positions[8] = -1 + baseZ;
-			positions[9] = 0;
-			positions[10] = 1;
-			positions[11] = 0 + baseZ;
-
-			for(let i=0; i<positions.length; i+=3) {
-				positions[i] 	+= x - .5;
-				positions[i+1] 	+= y;
-				positions[i+2] 	+= z - .5;
-			}
-		} else if(type === "rightwall") {
-			positions[0] = 0;
-			positions[1] = 0;
-			positions[2] = -1 + baseZ;
+			positions[2] = 1 + baseZ;
 			positions[3] = 0;
 			positions[4] = 0;
 			positions[5] = 0 + baseZ;
@@ -300,32 +288,70 @@ const SpriteRenderer = (function() {
 			positions[8] = 0 + baseZ;
 			positions[9] = 0;
 			positions[10] = 1;
-			positions[11] = -1 + baseZ;
+			positions[11] = 1 + baseZ;
 
 			for(let i=0; i<positions.length; i+=3) {
-				positions[i] 	+= x - .5 + 1;
+				positions[i] 	+= x;
 				positions[i+1] 	+= y;
-				positions[i+2] 	+= z - .5;
+				positions[i+2] 	+= z;
+			}
+		} else if(type === "rightwall") {
+			positions[0] = 1;
+			positions[1] = 0;
+			positions[2] = 0 + baseZ;
+			positions[3] = 1;
+			positions[4] = 0;
+			positions[5] = 1 + baseZ;
+			positions[6] = 1;
+			positions[7] = 1;
+			positions[8] = 1 + baseZ;
+			positions[9] = 1;
+			positions[10] = 1;
+			positions[11] = 0 + baseZ;
+
+			for(let i=0; i<positions.length; i+=3) {
+				positions[i] 	+= x;
+				positions[i+1] 	+= y;
+				positions[i+2] 	+= z;
 			}
 		} else if(type === "wall") {
 			positions[0] = 0;
 			positions[1] = 0;
-			positions[2] = -1 + baseZ;
+			positions[2] = 0 + baseZ;
 			positions[3] = 1;
 			positions[4] = 0;
-			positions[5] = -1 + baseZ;
+			positions[5] = 0 + baseZ;
 			positions[6] = 1;
 			positions[7] = 1;
-			positions[8] = -1 + baseZ;
+			positions[8] = 0 + baseZ;
 			positions[9] = 0;
 			positions[10] = 1;
-			positions[11] = -1 + baseZ;
+			positions[11] = 0 + baseZ;
 			
 			for(let i=0; i<positions.length; i+=3) {
-				positions[i] 	+= x - .5;
+				positions[i] 	+= x;
 				positions[i+1] 	+= y;
-				positions[i+2] 	+= z - .5;
+				positions[i+2] 	+= z;
 			}
+		} else if(type === "backwall") {
+			positions[0] = 1;
+			positions[1] = 0;
+			positions[2] = 0 + baseZ;
+			positions[3] = 0;
+			positions[4] = 0;
+			positions[5] = 0 + baseZ;
+			positions[6] = 0;
+			positions[7] = 1;
+			positions[8] = 0 + baseZ;
+			positions[9] = 1;
+			positions[10] = 1;
+			positions[11] = 0 + baseZ;
+			
+			for(let i=0; i<positions.length; i+=3) {
+				positions[i] 	+= x;
+				positions[i+1] 	+= y;
+				positions[i+2] 	+= z;
+			}			
 		}
 		return positions;
 	};
@@ -337,18 +363,16 @@ const SpriteRenderer = (function() {
 	}
 
 	function getSpriteData(renderer, id) {
-		const { spriteMap } = renderer;
+		const spriteMap = renderer.spriteMap;
 		if (spriteMap[id]) {
 			return spriteMap[id];
 		}
-		const { recycledIndices, spriteBufferSize } = renderer;
-		if (recycledIndices.length) {
-			const recycledData = recycledIndices.pop();
+		if (renderer.recycledIndices.length) {
+			const recycledData = renderer.recycledIndices.pop();
 			spriteMap[id] = recycledData;
 			return recycledData;
 		}
 		const slotIndex = renderer.nextIndex++;
-
 		ensureBuffer(renderer, slotIndex + 1);
 
 		return spriteMap[id] = {
@@ -372,19 +396,17 @@ const SpriteRenderer = (function() {
 		}
 	}
 
-	Renderer.prototype.drawSprites = function(sprites, now, x, y, z) {
-		const { gl, programInfo } = this;
+	Renderer.prototype.drawSprites = function(sprites, now) {
+		const gl = this.gl;
 		clearScene(gl, this);
-		setLocation(gl, programInfo, x, y, z, this.cachedData.location, this.tempVariables.tempViewMatrix);
-		setTime(gl, programInfo, now);
+		setTime(gl, this.programInfo, now);
 		ensureBuffer(this, sprites.length);
 
 		const textureFactory = gl.getTextureFactory();
 		let count = 0;
 		for(let i = 0; i < sprites.length; i++) {
 			const sprite = sprites[i];
-			const { name, label } = sprite;
-			const textureData = textureFactory.getTextureData(name, label, now);
+			const textureData = textureFactory.getTextureData(sprite.name, sprite.label, now);
 			if (textureData) {
 				const { x, y, z, type, id, scale } = sprite;
 				addFrame(this, textureData, id, count, type, x, y, z, scale, now);
@@ -417,8 +439,11 @@ const SpriteRenderer = (function() {
 		);
 	};
 
-	function setLocation(gl, programInfo, x, y, z, cachedLocation, viewMatrix) {
+	Renderer.prototype.setLocation = function(x, y, z) {
+		const cachedLocation = this.cachedData.location;
 		if (cachedLocation.x !== x || cachedLocation.y !== y || cachedLocation.z !== z) {
+			const { gl, programInfo, cachedData, tempVariables } = this;
+			const viewMatrix = tempVariables.tempViewMatrix;
 			mat4.identity(viewMatrix);
 			mat4.rotate(viewMatrix, viewMatrix, y / 3, [ 1, 0, 0 ]);
 			mat4.translate(viewMatrix, viewMatrix, [ -x || 0, (-y || 0) - .5, -z || 0 ]);
@@ -488,7 +513,7 @@ const SpriteRenderer = (function() {
 		gl.clearDepth(1.0);                 // Clear everything
 		gl.enable(gl.DEPTH_TEST);           // Enable depth testing
 		gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		// gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	}
 
 	function floatArrayEqual(a, b) {

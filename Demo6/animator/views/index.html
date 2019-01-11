@@ -5,6 +5,7 @@
 <script src="js/pako.min.js"></script>
 <script src="js/image_meta.js"></script>
 <script src="js/texture_meta.js"></script>
+<script src="js/recycler.js"></script>
 <script src="js/scene_manager.js"></script>
 <script src="js/sprite_renderer.js"></script>
 
@@ -835,32 +836,41 @@
     scene.clear();
     if(meta && meta.animation) {
       const selectedLabel = meta.animation.rows[Math.min(meta.animation.rows.length-1,Math.max(selectedIndex, 0))].label;
-      scene.add(`${meta.name}.${selectedLabel}`, "sprite", 0, 0, 0);
+      scene.cell(0, 0).addSprite(meta.name, selectedLabel);
       if(hasHotspot) {
-        scene.add('x.mark', "sprite", 0,0,0, null, "xmark");
+        scene.cell(0, 0).addSprite('x', 'mark', 'xmark', 0, 0, 0, .5);
       }
     } else {
-      scene.add("elephant", "sprite", 0, 0, 0);
-      scene.add("oozie", "sprite", 0, 0, 1, null, "oozie", .5);
-      scene.setOnReveal((scene, xx, zz, cell) => {
-        const tag = xx + "_" + zz;        
-        if (xx === -1 && zz % 7 !== 3) {
-          scene.add("brick", "leftwall", xx, 0, zz, cell, "leftwall" + tag);
-          scene.add("brick", "rightwall", xx - 1, 0, zz, cell, "rightwall" + tag);
-        }
-        if (xx === 1 && zz % 7 !== 4) {
-          scene.add("brick", "rightwall", xx, 0, zz, cell, "rightwall" + tag);
-          scene.add("brick", "leftwall", xx + 1, 0, zz, cell, "leftwall" + tag);
-        }
-        if (zz === -1 && xx % 11 !== 3) {
-          scene.add("brick", "wall", xx, 0, zz, cell, "wall" + tag);
-          scene.add("brick", "backwall", xx, 0, zz + 1, cell, "backwall" + tag);
-        }
-        scene.add("brick", "ceiling", xx, 1, zz, cell, "ceiling" + tag);
-        scene.add("brick", "floor", xx,0, zz, cell, "floor" + tag);
-        if(Math.abs(xx ^ zz) % 13 === 10) {
-          scene.add("tentacle", "sprite", xx, 0, zz, cell, "tentacle" + tag);
-        }
+      scene.onReveal(true, cell => {
+          cell.addWall('brick', null, 'ceiling', 'ceiling'+cell.tag);
+          cell.addWall('brick', null, 'floor', 'floor'+cell.tag);
+      });
+      scene.onReveal((x,z)=>x===-1 && z%7!==3, cell => {
+          cell.addWall('brick', null, 'leftwall', 'leftwall'+cell.tag);
+      });
+      scene.onReveal((x,z)=>x===-2 && z%7!==3, cell => {
+          cell.addWall('brick', null, 'rightwall', 'rightwall'+cell.tag);
+      });
+      scene.onReveal((x,z)=>x===1 && z%7!==4, cell => {
+          cell.addWall('brick', null, 'rightwall', 'rightwall'+cell.tag);
+      });
+      scene.onReveal((x,z)=>x===2 && z%7!==4, cell => {
+          cell.addWall('brick', null, 'leftwall', 'leftwall'+cell.tag);
+      });
+      scene.onReveal((x,z)=>x%11!== 3 && z===-1, cell => {
+          cell.addWall('brick', null, 'wall', 'wall'+cell.tag);
+      });
+      scene.onReveal((x,z)=>x%11!== 3 && z===-2, cell => {
+          cell.addWall('brick', null, 'backwall', 'backwall'+cell.tag);
+      });
+      scene.onReveal((x,z)=> Math.abs(x ^ z) % 13 === 10, cell => {
+          cell.addSprite('tentacle', null, 'tentacle' + cell.tag);
+      });
+      scene.onReveal((x,z)=>x===0&&z===0, cell => {
+          cell.addSprite('elephant');
+      });
+      scene.onReveal((x,z)=>x===0&&z===1, cell => {
+          cell.addSprite('oozie', null, 'oozie', 0, 0, 0, .5);
       });
     }
   }
@@ -883,7 +893,7 @@ function main() {
     return;
   }
 
-  let viewPosition = { x: 0, y: 0, z: 0 };
+  let viewPosition = { x: 0.5, y: 0, z: 3 };
   let pointDown = { x: 0, y: 0 };
   function onMouse(e) {
     const { pageX, pageY } = e;
@@ -895,8 +905,8 @@ function main() {
             if (hasHotspot && meta && meta.animation) {
               shiftHotspots(dx, dy);
             } else {
-              viewPosition.x -= dx / 20;
-              viewPosition.z -= dy / 20;
+              mov.x -= dx;
+              mov.z -= dy;
             }
         }
         pointDown.x = pageX;
@@ -905,35 +915,57 @@ function main() {
     }
   }
 
-  const keyboard = {};
+  const KEY_LEFT = 37;
+  const KEY_RIGHT = 39;
+  const KEY_UP = 38;
+  const KEY_DOWN = 40;
+  const keyboard = [];
   function onKey(e) {
     if (!meta || !meta.animation) {
-      keyboard[e.keyCode] = e.type === "keyup" ? 0 : 1;
-      e.preventDefault();
+      switch(e.keyCode) {
+        case KEY_LEFT: case KEY_RIGHT: case KEY_UP: case KEY_DOWN:
+          keyboard[e.keyCode] = e.type === "keyup" ? 0 : 1;
+          e.preventDefault();
+          break;
+      }
     }
   }
 
   const FLOAT_PRECISION = 1000000;
-  const mov = { x:0, y:0 };
+  const SLOWDOWN = .75;
+  const SPEED_FACTOR = .02;
+  const MOVE_MULTIPLIER = 2;
+  const mov = { x: 0, z: 0 };
   function move(now) {
     let dx = 0, dy = 0;
-    if (keyboard[38]) {
+    if (keyboard[KEY_UP]) {
       dy--;
     }
-    if (keyboard[40]) {
+    if (keyboard[KEY_DOWN]) {
       dy++;
     }
-    if (keyboard[37]) {
+    if (keyboard[KEY_LEFT]) {
       dx--;
     }
-    if (keyboard[39]) {
+    if (keyboard[KEY_RIGHT]) {
       dx++;
     }
-    mov.x = (mov.x + dx) * .75;
-    mov.y = (mov.y + dy) * .75;
-    viewPosition.x = Math.round((viewPosition.x + mov.x / 20) * FLOAT_PRECISION) / FLOAT_PRECISION;
-//    viewPosition.y = 1 + Math.sin(now / 1000); 
-    viewPosition.z = Math.round((viewPosition.z + mov.y / 20) * FLOAT_PRECISION) / FLOAT_PRECISION;
+    mov.x = (mov.x + dx * MOVE_MULTIPLIER) * SLOWDOWN;
+    mov.z = (mov.z + dy * MOVE_MULTIPLIER) * SLOWDOWN;
+    const { x, z } = viewPosition;
+    const xDest = x + mov.x * SPEED_FACTOR;
+    const zDest = z + mov.z * SPEED_FACTOR;
+    if(scene.canGo(x, z, xDest, zDest)) {
+      viewPosition.x = xDest;
+      viewPosition.z = zDest;
+    } else if(scene.canGo(x, z, x, zDest)) {
+      viewPosition.z = zDest;
+    } else if(scene.canGo(x, z, xDest, z)) {
+      viewPosition.x = xDest;
+    }
+    if(!meta || !meta.animation) {
+      scene.addSprite("x", "mark", viewPosition.x, 0, viewPosition.z, "xmark", .05);
+    }
     requestAnimationFrame(move);
   }
   requestAnimationFrame(move);
@@ -948,15 +980,12 @@ function main() {
   const renderer = gl.getSpriteRenderer();
   function render(now) {
     scene.refresh(viewPosition, now);
-    renderer.drawSprites(scene.getSprites(), now,
-      viewPosition.x, viewPosition.y, viewPosition.z);
+    renderer.setLocation(viewPosition.x, viewPosition.y, viewPosition.z);
+    renderer.drawSprites(scene.getSprites(), now);
     requestAnimationFrame(render);
-
-
-    // scene.add("oozie", "sprite", Math.random(), 0, 1 + Math.random(), null, "oozie", .5);
-
   }
   initScene(scene);
+//  renderer.setBackgroundColor(0xFFCCFF);
   requestAnimationFrame(render);
 }
 
