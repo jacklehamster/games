@@ -869,8 +869,8 @@ function main() {
     return;
   }
 
-  const viewPosition = View.Camera.create(.5, 0, 2.5, 0).setAutoTilt(true);
-  let pointDown = { x: 0, y: 0 };
+  const viewPosition = View.Camera.create(.5, 0, 2.5).setAutoTilt(true).setScene(scene);
+  const pointDown = { x: 0, y: 0 };
   function onMouse(e) {
     const { pageX, pageY } = e;
     switch(e.type) {
@@ -955,8 +955,9 @@ function main() {
   // Draw the scene repeatedly
   const renderer = gl.getSpriteRenderer();
   function render(now) {
-    scene.refresh(viewPosition, now);
+    updateMove();
     refreshCamera(viewPosition);
+    scene.refresh(viewPosition, now);
     renderer.drawSprites(scene.getSprites(), viewPosition, now);
     requestAnimationFrame(render);
   }
@@ -970,21 +971,24 @@ function main() {
 </script>
 
 <script>
-// const video = document.createElement('video');
-// let lastTime = 0, videoPlaying = false;
-// function refreshVideo() {
-//     if(lastTime !== video.currentTime) {
-//       if(gl.getTextureFactory().getTextureData("elephant",null,0)) {
-//         gl.getTextureFactory().getTextureData("elephant",null,0).update(video, 0, 0, video.videoWidth, video.videoHeight);
-//       }
-//       lastTime = video.currentTime;
-//     }
-//     requestAnimationFrame(refreshVideo);
-// }
+const video = document.createElement('video');
+let lastTime = 0, videoPlaying = false;
+function refreshVideo() {
+    if(lastTime !== video.currentTime) {
+      if(gl.getTextureFactory().getTextureData("video")) {
+        gl.getTextureFactory().getTextureData("video").update(video, 0, 0, video.videoWidth, video.videoHeight);
+
+      }
+      lastTime = video.currentTime;
+    }
+    requestAnimationFrame(refreshVideo);
+}
 
 // function setupVideo(url) {
 //   video.loop = true;
+//   video.muted = true;
 //   video.addEventListener('playing', function() {
+//     gl.getTextureFactory().createTextureData('video', video.videoWidth, video.videoHeight);
 //     requestAnimationFrame(refreshVideo);
 //   }, true);
 
@@ -992,7 +996,7 @@ function main() {
 //   }, true);
 //   video.src = url;
 // }
-// setupVideo("doubleking.mp4")
+// setupVideo("fragglerock.mp4")
 
 // document.addEventListener("keydown", e => {
 //   if(!videoPlaying) {

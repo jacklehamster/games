@@ -16,12 +16,10 @@ const View = (function() {
 		this.mov = {
 			dx: 0, dy: 0, dz: 0, rot: 0,
 		};
+		this.scene = null;
 	});
 
-	Camera.prototype.setAutoTilt = function(value) {
-		this.autoTilt = value;
-		return this;
-	};
+	Utils.createAccessors(Camera, ['scene', 'autoTilt']);
 
 	Camera.prototype.getTilt = function() {
 		return this.autoTilt ? this.position[1] / 2 : this.tilt;
@@ -38,19 +36,20 @@ const View = (function() {
 	}
 
 	Camera.prototype.move = function(dx, dy, dz) {
-		this.mov.dx = dx;
-		this.mov.dy = dy;
-		this.mov.dz = dz;
+		this.mov.dx += dx;
+		this.mov.dy += dy;
+		this.mov.dz += dz;
 	};
 
 	Camera.prototype.rotate = function(rot) {
-		this.mov.rot = rot;
+		this.mov.rot += rot;
 	};
 
 	Camera.prototype.step = function() {
 		const { dx, dy, dz, rot } = this.mov;
 	    if (rot) {
 	      this.turnMotion = (this.turnMotion + rot * ROTATION_SPEED) * SLOWDOWN;
+		  this.mov.rot = 0;
 	    } else if(this.turnMotion) {
 	      const closestRotation = this.turnMotion > 0 
 	        ? Math.ceil(this.turn / ROTATION_STEP) * ROTATION_STEP
@@ -66,19 +65,21 @@ const View = (function() {
 	    const cos = Math.cos(this.turn);
 	    const rdx = (cos * dx - sin * dz) * MOVE_MULTIPLIER;
 	    const rdz = (sin * dx + cos * dz) * MOVE_MULTIPLIER;
-
 	    this.motion[0] = (this.motion[0] + rdx) * SLOWDOWN;
 	    this.motion[2] = (this.motion[2] + rdz) * SLOWDOWN;
+		this.mov.dx = 0;
+		this.mov.dy = 0;
+		this.mov.dz = 0;
 
 	    const [ x, y, z ] = this.position;
 	    const xDest = x + this.motion[0] * SPEED_FACTOR;
 	    const zDest = z + this.motion[2] * SPEED_FACTOR;
-	    if(scene.canGo(x, z, xDest, zDest)) {
+	    if(!this.scene || this.scene.canGo(x, z, xDest, zDest)) {
 	      this.position[0] = xDest;
 	      this.position[2] = zDest;
-	    } else if(scene.canGo(x, z, x, zDest)) {
+	    } else if(this.scene.canGo(x, z, x, zDest)) {
 	      this.position[2] = zDest;
-	    } else if(scene.canGo(x, z, xDest, z)) {
+	    } else if(this.scene.canGo(x, z, xDest, z)) {
 	      this.position[0] = xDest;
 	    }
 

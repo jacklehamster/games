@@ -29,7 +29,7 @@ const Utils = (function() {
 	}
 
 	function camelCase(property) {
-		return property.charAt(0).toUpperCase() + property.slice('1');
+		return property.charAt(0).toUpperCase() + property.slice(1);
 	}
 
 	function createAccessors(classObj, properties) {
@@ -37,6 +37,10 @@ const Utils = (function() {
 			classObj.prototype[`set${camelCase(property)}`] = function(value) {
 				this[property] = value;
 				return this;
+			};
+
+			classObj.prototype[`get${camelCase(property)}`] = function() {
+				return this[property];
 			};
 		});
 	}

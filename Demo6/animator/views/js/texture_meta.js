@@ -16,6 +16,7 @@ const TextureFactory = (function() {
 			cachedTextureData: {},
 			cachedAnimationData: {},
 		};
+		this.createdTextureData = {};
 		this.textures = [];
 		this.textureSlots = [];
 		this.textureUnits = [
@@ -145,7 +146,7 @@ const TextureFactory = (function() {
 		gl.generateMipmap(gl.TEXTURE_2D);
 	};
 
-	function allocateTextureData(factory, frameId, x, y, width, height) {
+	function allocateTextureData(factory, x, y, width, height) {
 		let fit = null, tex = 0;
 		const len = Math.min(factory.textures.length, factory.textureUnits.length);
 		for(tex = 0; tex <= len; tex++) {
@@ -180,7 +181,20 @@ const TextureFactory = (function() {
         return TextureData.create(positions, textureCoordinates, tex, fit, factory);
 	}
 
+	Factory.prototype.createTextureData = function(name, width, height) {
+		const { createdTextureData } = this;
+		createdTextureData[name];
+		if (createdTextureData[name] && !createdTextureData[name].recycled) {
+			createdTextureData[name].recycle();
+		}
+		return createdTextureData[name] = allocateTextureData(this, -width/2, -height, width, height);
+	};
+
 	Factory.prototype.getTextureData = function(name, animationTag, now) {
+		const { createdTextureData } = this;
+		if(createdTextureData[name]) {
+			return createdTextureData[name];
+		}
 		const { meta, canvas } = Meta.getSpriteData(name);
 		if (!meta || !canvas) {
 			return null;
@@ -200,7 +214,7 @@ const TextureFactory = (function() {
 		}
 
 		const bigRect = animationFrame.bigRect;
-		const textureData = allocateTextureData(this, frameId, bigRect.x, bigRect.y, bigRect.width, bigRect.height);
+		const textureData = allocateTextureData(this, bigRect.x, bigRect.y, bigRect.width, bigRect.height);
 
 		const { crop, hotspot } = animationFrame;
 		const imageData = canvas.getContext('2d').getImageData(crop.x, crop.y, crop.width, crop.height);

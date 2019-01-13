@@ -17,7 +17,7 @@ const SpriteRenderer = (function() {
 			vTextureCoord = aTextureCoord;
 			textureIndex = aTextureIndex;
 			zDist = position.z / 50.0 + abs(position.x / 30.0);
-//			position.y -= (position.z * position.z + position.x * position.x) / 50.0;
+			position.y -= (position.z * position.z + position.x * position.x) / 1000.0;
 			gl_Position = position;
 		}
 	`;
@@ -147,7 +147,7 @@ const SpriteRenderer = (function() {
 			color = blur(color, vTextureCoord, min(1.0, (zDist * 1.5)));
 //			color = darkenColor(color, zDist * .8);
 //			color = reduceColor(color, vTextureCoord, min(1.0, (zDist * 2.0)));
-			color = alterHueSatLum(color, vec3(1.0, max(0.0, 1.0 - zDist * .2), max(0.0, 1.0 - zDist)));
+			color = alterHueSatLum(color, vec3(1.0, max(0.0, 1.0 - zDist * .2), max(0.0, 1.0 - zDist * 2.0)));
 
 			gl_FragColor = color;
 		}
@@ -294,10 +294,11 @@ const SpriteRenderer = (function() {
 					positions[10] = 1;
 					positions[11] = 1;
 
-					for(let i=0; i<positions.length; i+=3) {
-						const vertexPosition = new Float32Array(positions.buffer, i * Float32Array.BYTES_PER_ELEMENT, 3);
-						vec3.add(vertexPosition, vertexPosition, position);
-						vertexPosition[2] += baseZ;
+					for(let i=0; i<positions.length; i++) {
+						positions[i] += position[i % 3];
+						if(i % 3 === 2) {
+							positions[i] += baseZ;
+						}
 					}
 				}
 				break;
@@ -317,10 +318,11 @@ const SpriteRenderer = (function() {
 					positions[10] = 1;
 					positions[11] = 0;
 
-					for(let i=0; i<positions.length; i+=3) {
-						const vertexPosition = new Float32Array(positions.buffer, i * Float32Array.BYTES_PER_ELEMENT, 3);
-						vec3.add(vertexPosition, vertexPosition, position);
-						vertexPosition[2] += baseZ;
+					for(let i=0; i<positions.length; i++) {
+						positions[i] += position[i % 3];
+						if(i % 3 === 2) {
+							positions[i] += baseZ;
+						}
 					}
 				}
 				break;
@@ -340,10 +342,11 @@ const SpriteRenderer = (function() {
 					positions[10] = 1;
 					positions[11] = 0;
 					
-					for(let i=0; i<positions.length; i+=3) {
-						const vertexPosition = new Float32Array(positions.buffer, i * Float32Array.BYTES_PER_ELEMENT, 3);
-						vec3.add(vertexPosition, vertexPosition, position);
-						vertexPosition[2] += baseZ;
+					for(let i=0; i<positions.length; i++) {
+						positions[i] += position[i % 3];
+						if(i % 3 === 2) {
+							positions[i] += baseZ;
+						}
 					}
 				}
 				break;
@@ -363,10 +366,11 @@ const SpriteRenderer = (function() {
 					positions[10] = 1;
 					positions[11] = 0;
 					
-					for(let i=0; i<positions.length; i+=3) {
-						const vertexPosition = new Float32Array(positions.buffer, i * Float32Array.BYTES_PER_ELEMENT, 3);
-						vec3.add(vertexPosition, vertexPosition, position);
-						vertexPosition[2] += baseZ;
+					for(let i=0; i<positions.length; i++) {
+						positions[i] += position[i % 3];
+						if(i % 3 === 2) {
+							positions[i] += baseZ;
+						}
 					}
 				}
 				break;
@@ -553,7 +557,6 @@ const SpriteRenderer = (function() {
 		const positions = getFramePositions(renderer, texture, sprite);
 		const { gl, programInfo, cachedData, indicesMap } = renderer;
 		const spriteData = getSpriteData(renderer, sprite.id);
-		spriteData.time = now;
 		const { slotIndex, spritePositions, spriteTextureCoordinates, spriteTextureIndex } = spriteData;
 
 		if (indicesMap[frameIndex] !== slotIndex) {
