@@ -21,20 +21,23 @@
 			//	sprite is not valid
 		}
  */
-function Recycler() {
-}
+const Recycler = (function() {
+	function wrap(classObj, initFunction) {
+		const bin = [];
+		classObj.create = function() {
+			const obj = bin.length ? bin.pop() : new classObj();
+			initFunction.apply(obj, arguments);
+			obj.recycled = false;
+			return obj;
+		};	
 
-Recycler.wrap = function(classObj, initFunction) {
-	const bin = [];
-	classObj.create = function() {
-		const obj = bin.length ? bin.pop() : new classObj();
-		initFunction.apply(obj, arguments);
-		obj.recycled = false;
-		return obj;
-	};	
+		classObj.prototype.recycle = function() {
+			bin.push(this);
+			this.recycled = true;
+		};
+	}
 
-	classObj.prototype.recycle = function() {
-		bin.push(this);
-		this.recycled = true;
+	return {
+		wrap,
 	};
-}
+})();

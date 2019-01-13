@@ -5,6 +5,7 @@
 <script src="js/pako.min.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/recycler.js"></script>
+<script src="js/view_manager.js"></script>
 <script src="js/scene_manager.js"></script>
 <script src="js/sprite_renderer.js"></script>
 <script src="js/image_meta.js"></script>
@@ -841,7 +842,7 @@
           cell.setSprite('tentacle', null, null, 0, 0, 0, 1, .5);
       });
       scene.onReveal((x,z)=>x===0&&z===0, cell => {
-          cell.setSprite('card0001', null, 'elephant', 0, 0, 0, 1, .9);
+          cell.setSprite('elephant', null, 'elephant', 0, 0, 0, 1, .9);
       });
       scene.onReveal((x,z)=>x===0&&z===1, cell => {
           cell.setSprite('oozie', null, 'oozie', 0, 0, 0, .5);
@@ -868,7 +869,7 @@ function main() {
     return;
   }
 
-  let viewPosition = { x: 0.5, y: 0, z: 3, rotation: 0 };
+  const viewPosition = View.Camera.create(.5, 0, 2.5, 0).setAutoTilt(true);
   let pointDown = { x: 0, y: 0 };
   function onMouse(e) {
     const { pageX, pageY } = e;
@@ -880,13 +881,7 @@ function main() {
             if (hasHotspot && meta && meta.animation) {
               shiftHotspots(dx, dy);
             } else {
-              const sin = Math.sin(viewPosition.rotation);
-              const cos = Math.cos(viewPosition.rotation);
-              const rdx = (cos * dx - sin * dy) * MOVE_MULTIPLIER * 2;
-              const rdz = (sin * dx + cos * dy) * MOVE_MULTIPLIER * 2;
-
-              mov.x = (mov.x + rdx) * SLOWDOWN;
-              mov.z = (mov.z + rdz) * SLOWDOWN;              
+              viewPosition.move(dx, 0, dy);
             }
         }
         pointDown.x = pageX;
@@ -913,26 +908,20 @@ function main() {
         case KEY_W: case KEY_S: case KEY_A: case KEY_D:
         case KEY_Q: case KEY_E:
           keyboard[e.keyCode] = e.type === "keyup" ? 0 : 1;
+          updateMove();
           e.preventDefault();
           break;
       }
     }
   }
 
-  const FLOAT_PRECISION = 1000000;
-  const SLOWDOWN = .75;
-  const SPEED_FACTOR = .02;
-  const MOVE_MULTIPLIER = 2;
-  const mov = { x: 0, z: 0, rotation: 0 };
-  const ROTATION_STEP = Math.PI / 4;
-  const ROTATION_SPEED = .02;
-  function move(now) {
-    let dx = 0, dy = 0, rot = 0;
+  function updateMove() {
+    let dx = 0, dz = 0, rot = 0;
     if (keyboard[KEY_UP] || keyboard[KEY_W]) {
-      dy--;
+      dz--;
     }
     if (keyboard[KEY_DOWN] || keyboard[KEY_S]) {
-      dy++;
+      dz++;
     }
     if (keyboard[KEY_LEFT] || keyboard[KEY_A]) {
       dx--;
@@ -946,63 +935,29 @@ function main() {
     if (keyboard[KEY_E]) {
       rot ++;
     }
-
-    if (rot) {
-      mov.rotation = (mov.rotation + rot * ROTATION_SPEED) * SLOWDOWN;
-    } else if(mov.rotation) {
-      const closestRotation = mov.rotation > 0 
-        ? Math.ceil(viewPosition.rotation / ROTATION_STEP) * ROTATION_STEP
-        : Math.floor(viewPosition.rotation / ROTATION_STEP) * ROTATION_STEP;
-      mov.rotation = (closestRotation - viewPosition.rotation) * .25;
-      if(Math.abs(mov.rotation) < .001) {
-        viewPosition.rotation = closestRotation;
-        mov.rotation = 0;
-      }
-    }
-
-    const sin = Math.sin(viewPosition.rotation);
-    const cos = Math.cos(viewPosition.rotation);
-    const rdx = (cos * dx - sin * dy) * MOVE_MULTIPLIER;
-    const rdz = (sin * dx + cos * dy) * MOVE_MULTIPLIER;
-
-    mov.x = (mov.x + rdx) * SLOWDOWN;
-    mov.z = (mov.z + rdz) * SLOWDOWN;
-
-    const { x, z } = viewPosition;
-    const xDest = x + mov.x * SPEED_FACTOR;
-    const zDest = z + mov.z * SPEED_FACTOR;
-    if(scene.canGo(x, z, xDest, zDest)) {
-      viewPosition.x = xDest;
-      viewPosition.z = zDest;
-    } else if(scene.canGo(x, z, x, zDest)) {
-      viewPosition.z = zDest;
-    } else if(scene.canGo(x, z, xDest, z)) {
-      viewPosition.x = xDest;
-    }
-
-    if (mov.rotation) {
-      viewPosition.rotation += mov.rotation;
-    }
-    if(!meta || !meta.animation) {
-      scene.setSprite("x", "mark", "xmark", viewPosition.x, 0, viewPosition.z, .05);
-//      scene.setSprite("xmark", "oozie", null, viewPosition.x, 0, viewPosition.z, .5);
-    }
-    requestAnimationFrame(move);
+    viewPosition.move(dx, 0, dz);
+    viewPosition.rotate(rot);
   }
-  requestAnimationFrame(move);
 
   document.addEventListener("mousemove", onMouse);
   document.addEventListener("keydown", onKey);
   document.addEventListener("keyup", onKey);
 
 
+  function refreshCamera(camera) {
+    camera.step();
+    if(!meta || !meta.animation) {
+      const [ x, y, z ] = camera.position;
+      scene.setSprite("x", "mark", "xmark", x, 0, z, .05);
+    }    
+  }
 
   // Draw the scene repeatedly
   const renderer = gl.getSpriteRenderer();
   function render(now) {
     scene.refresh(viewPosition, now);
-    renderer.setLocation(viewPosition.x, viewPosition.y, viewPosition.z, viewPosition.rotation);
-    renderer.drawSprites(scene.getSprites(), now);
+    refreshCamera(viewPosition);
+    renderer.drawSprites(scene.getSprites(), viewPosition, now);
     requestAnimationFrame(render);
   }
   initScene(scene);

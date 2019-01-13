@@ -34,9 +34,7 @@ const SceneManager = (function() {
 		this.label = label || null;
 		this.type = 'sprite';
 		this.order = 1;
-		this.x = x;
-		this.y = y;
-		this.z = z;
+		this.position = vec3.fromValues(x, y, z);
 		this.cell = cell || null;
 		this.scale = scale || 1;
 		scene.sprites[this.id] = this;
@@ -51,9 +49,7 @@ const SceneManager = (function() {
 		this.label = label || null;
 		this.type = type;
 		this.order = 0;
-		this.x = x;
-		this.y = y;
-		this.z = z;
+		this.position = vec3.fromValues(x, y, z);
 		this.cell = cell || null;
 		this.scale = scale || 1;
 		checkWall(type, this.cell, x, z);
@@ -83,47 +79,14 @@ const SceneManager = (function() {
 		scene.spritesUpdated = true;
 	});
 
-	// Barrier.prototype.init = function(x0, z0, x1, z1) {
-	// 	this.x0 = Math.min(x0, x1);
-	// 	this.x1 = Math.max(x0, x1);
-	// 	this.z0 = Math.min(z0, z1);
-	// 	this.z1 = Math.max(z0, z1);
-	// };
-
 	Barrier.prototype.blocks = function(x, z) {
 		return this.x0 <= x && x <= this.x1 && this.z0 <= z && z <= this.z1;
 	};
-
-	// Surface.prototype.init = function(name, label, id, points, cell) {
-	// 	const scene = cell.scene;
-	// 	this.id = id;
-	// 	this.name = name;
-	// 	this.label = label || null;
-	// 	this.type = 'surface';
-	// 	this.points = points;
-	// 	this.cell = cell || null;
-	// 	this.order = 0;
-	// 	scene.sprites[this.id] = this;
-	// 	scene.spritesUpdated = true;
-	// };
 
 	function Coverage(condition, action) {		
 		this.condition = condition;
 		this.action = action;
 	}
-
-	// Cell.prototype.init = function(x, z, scene) {
-	// 	this.x = x;
-	// 	this.z = z;
-	// 	this.scene = scene;
-	// 	this.wallX = [false, false, false];
-	// 	this.wallZ = [false, false, false];
-	// 	this.tag = x + "," + z;
-	// 	this.recycled = false;
-	// 	this.barriers = {};
-	// 	this.revealed = false;
-	// 	return this;
-	// };
 
 	Cell.prototype.setSprite = function(name, label, id, offsetX, offsetY, offsetZ, scale, blockSize) {
 		if (!id) {
@@ -142,32 +105,34 @@ const SceneManager = (function() {
 		this.barriers[id] = Barrier.create(this.x + x0, this.z + z0, this.x + x1, this.z + z1);
 	};
 
-	// Sprite.prototype.init = function(id, name, label, x, y, z, cell, scale, scene) {
-	// 	this.id = id;
-	// 	this.name = name;
-	// 	this.label = label || null;
-	// 	this.type = 'sprite';
-	// 	this.order = 1;
-	// 	this.x = x;
-	// 	this.y = y;
-	// 	this.z = z;
-	// 	this.cell = cell || null;
-	// 	this.scale = scale || 1;
-	// 	scene.sprites[this.id] = this;
-	// 	scene.spritesUpdated = true;
-	// 	return this;
-	// }
-
 	Utils.createAccessors(Sprite, ['name', 'label', 'x', 'y', 'z', 'cell', 'scale']);
 
 	Cell.prototype.setWall = function(type, name, label, id, offsetX, offsetY, offsetZ, scale) {
 		if (!id) {
 			id = this.tag + type;
 		}
+
+		const x = (offsetX || 0), y = (offsetY || 0), z = (offsetZ || 0);
+		if (type === 'floor') {
+			return this.setSurface(name, label, id,
+				{ x,      y, z: z+1},
+				{ x: x+1, y, z: z+1},
+				{ x: x+1, y, z},
+				{ x,   	  y, z},
+			);
+		} else if(type === 'ceiling') {
+			return this.setSurface(name, label, id,
+				{ x,      y: y+1, z},
+				{ x: x+1, y: y+1, z},
+				{ x: x+1, y: y+1, z: z+1},
+				{ x,   	  y: y+1, z: z+1},
+			);
+		}
+
 		return Wall.create(id, name, label,
-			this.x + (offsetX || 0),
-			(offsetY || 0),
-			this.z + (offsetZ || 0),
+			this.x + x,
+			y,
+			this.z + z,
 			this, scale, type);
 	};
 
@@ -178,6 +143,7 @@ const SceneManager = (function() {
 		const points = [botleft, botright, topright, topleft];
 		for(let p=0; p < points.length; p++) {
 			points[p].x += this.x;
+			points[p].y = (points[p].y || 0);
 			points[p].z += this.z;
 		}
 		return Surface.create(name, label, id, points, this);
@@ -195,24 +161,6 @@ const SceneManager = (function() {
 	Cell.prototype.getNeighbor = function(offsetX, offsetZ) {
 		return this.scene.cell(this.x + offsetX, this.z + offsetZ);
 	};
-
-	// Wall.prototype.init = function(id, name, label, x, y, z, cell, scale, type) {
-	// 	const scene = cell.scene;
-	// 	this.id = id;
-	// 	this.name = name;
-	// 	this.label = label || null;
-	// 	this.type = type;
-	// 	this.order = 0;
-	// 	this.x = x;
-	// 	this.y = y;
-	// 	this.z = z;
-	// 	this.cell = cell || null;
-	// 	this.scale = scale || 1;
-	// 	checkWall(type, this.cell, x, z);
-	// 	scene.sprites[this.id] = this;
-	// 	scene.spritesUpdated = true;
-	// 	return this;
-	// };
 
 	Scene.prototype.clear = function() {
 		this.nextID = 0;
@@ -266,10 +214,12 @@ const SceneManager = (function() {
 		return true;
 	};
 
+	window. aaa = {};
 	Scene.prototype.setSprite = function(name, label, id, x, y, z, scale, cell, blockSize) {
 		if (!id) {
 			id = name;
 		}
+
 		let sprite = this.sprites[id];
 		if(!sprite) {
 			sprite = Sprite.create(id, name, label, x, y, z, cell, scale, this);
@@ -277,10 +227,8 @@ const SceneManager = (function() {
 			sprite.name = name;
 			sprite.label = label;
 			const newCell = cell || null;
-			if (sprite.x !== x || sprite.y !== y || sprite.z !== z || sprite.cell !== cell) {
-				sprite.x = x;
-				sprite.y = y;
-				sprite.z = z;
+			if (sprite.position[0] !== x || sprite.position[1] !== y || sprite.position[2] !== z || sprite.cell !== cell) {
+				vec3.set(sprite.position, x, y, z);
 				sprite.cell = cell || null;
 				this.spritesUpdated = true;
 			}
@@ -289,6 +237,11 @@ const SceneManager = (function() {
 		if (sprite.cell && blockSize) {
 			sprite.cell.setBarrier(id + 'barrier',.5 - blockSize/2,.5 - blockSize/2,.5 + blockSize/2,.5 + blockSize/2);
 		}
+
+		if(!aaa[id]) {
+			aaa[id] = sprite;
+		}
+
 		return sprite;
 	};
 
@@ -331,7 +284,10 @@ const SceneManager = (function() {
 		if(a.order !== b.order) {
 			return a.order - b.order;
 		}
-		return a.z - b.z;
+		if (a.position && b.position) {
+			return a.position[2] - b.position[2];
+		}
+		return 0;
 	}
 
     function getCell(scene, x, z) {
@@ -361,10 +317,10 @@ const SceneManager = (function() {
 		return spriteList;
 	};
 
-	Scene.prototype.refresh = function(viewPosition, now) {
+	Scene.prototype.refresh = function(camera, now) {
 		const { revealMap, sprites, cellCoverage, cachedPosition } = this;
-		const roundZ = Math.floor(viewPosition.z);
-		const roundX = Math.floor(viewPosition.x);
+		const roundZ = Math.floor(camera.position[2]);
+		const roundX = Math.floor(camera.position[0]);
 		if(cachedPosition.x !== roundX || cachedPosition.z !== roundZ) {
 			cachedPosition.x = roundX;
 			cachedPosition.z = roundZ;

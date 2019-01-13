@@ -40,7 +40,7 @@ const Utils = (function() {
 			};
 		});
 	}
-	
+
 	return {
 		getCrop,
 		createAccessors,
