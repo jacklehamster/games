@@ -122,24 +122,49 @@ const SpriteRenderer = (function() {
 				vTex.x = vTex.x + (rand(vTextureCoord, uTime + 0.0) - .5) / 100.0;
 				vTex.y = vTex.y + (rand(vTextureCoord, uTime + 1.0) - .5) / 100.0;
 				vec4 offsetColor = getTextureColor(textureIndex, vTex);
-				if (offsetColor.w == 0.0) {
-					offsetColor.x = uBackground.x;
-					offsetColor.y = uBackground.y;
-					offsetColor.z = uBackground.z;
+				if (offsetColor.a == 0.0) {
+					offsetColor.rgb = uBackground.rgb;
 				}
-				vec4 newColor = mix(color, offsetColor, value);
-				newColor.w = color.w;
-				color = newColor;
+				color.rgb = mix(color, offsetColor, value).rgb;
 			}
 			return color;			
+		}
+
+		vec3 rgb2hsv(vec3 c)
+		{
+		    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+		    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+		    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+
+		    float d = q.x - min(q.w, q.y);
+		    float e = 1.0e-10;
+		    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+		}
+
+		vec3 hsv2rgb(vec3 c)
+		{
+		    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+		    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+		    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+		}
+
+		vec4 alterHueSatLum(vec4 color, vec3 vHSV) {
+		    vec3 fragRGB = color.rgb;
+		    vec3 fragHSV = rgb2hsv(fragRGB).xyz;
+		    fragHSV.x += vHSV.x;
+		    fragHSV.yz *= vHSV.yz;
+		    fragHSV.xyz = mod(fragHSV.xyz, 1.0);
+		    fragRGB = hsv2rgb(fragHSV);
+		    return vec4(fragRGB, color.a);
 		}
 
 		void main(void) {
 			vec4 color = getTextureColor(textureIndex, vTextureCoord);
 			color = blur(color, vTextureCoord, min(1.0, (zDist * 1.5)));
-			color = darkenColor(color, zDist * .8);
+//			color = darkenColor(color, zDist * .8);
 //			color = reduceColor(color, vTextureCoord, min(1.0, (zDist * 2.0)));
-//			color.w /= 2.0;
+			color = alterHueSatLum(color, vec3(1.0, max(0.0, 1.0 - zDist * .2), max(0.0, 1.0 - zDist)));
+
 			gl_FragColor = color;
 		}
 	`;
@@ -152,7 +177,10 @@ const SpriteRenderer = (function() {
 	const TEXTURE_FLOAT_PER_VERTEX = 2;	//	x,y
 	const VERTICES_PER_SPRITE = 4;		//	4 corners
 	const SIZE_INCREASE = 100;
+	const IDENTITY_VEC3 = vec3.create();
+	const SCALE_VEC3 = vec3.fromValues(1,1,1);
 	const baseZ = -1.5;	
+	const Y_ROTATION_ORIGIN = vec3.fromValues(0,0,baseZ);
 
 	const CLEAN_FREQUENCY = .1;
 
@@ -193,8 +221,10 @@ const SpriteRenderer = (function() {
 		};
 
 		this.tempVariables = {
-			tempViewMatrix: mat4.create(),
+			rotationQuat: quat.create(),
+			viewMatrix: mat4.create(),
 			tempPositions: new Float32Array(FLOAT_PER_VERTEX * VERTICES_PER_SPRITE),
+			translateVector: vec3.create(),
 		};
 
 		this.spriteMap = {
@@ -213,145 +243,191 @@ const SpriteRenderer = (function() {
 		gl.uniformMatrix4fv(this.programInfo.projectionLocation, false, projectionMatrix);
 	}
 
-	function getFramePositions(renderer, texture, type, x, y, z, scale) {
+	function getFramePositions(renderer, texture, sprite) {
 		const positions = renderer.tempVariables.tempPositions;
-		if (type === 'sprite') {
-			const left = texture.positions.left;
-			const right = texture.positions.right;
-			const top = texture.positions.top;
-			const bottom = texture.positions.bottom;
-			positions[0] = left * scale;
-			positions[1] = top * scale;
-			positions[2] = baseZ;
-			positions[3] = right * scale;
-			positions[4] = top  * scale;
-			positions[5] = baseZ;
-			positions[6] = right * scale;
-			positions[7] = bottom * scale;
-			positions[8] = baseZ;
-			positions[9] = left * scale;
-			positions[10] = bottom * scale;
-			positions[11] = baseZ;
+		switch(sprite.type) {
+			case 'surface':
+				{
+					const { points } = sprite;
+					positions[0] = points[0].x;
+					positions[1] = points[0].y;
+					positions[2] = points[0].z + baseZ;
+					positions[3] = points[1].x;
+					positions[4] = points[1].y;
+					positions[5] = points[1].z + baseZ;
+					positions[6] = points[2].x;
+					positions[7] = points[2].y;
+					positions[8] = points[2].z + baseZ;
+					positions[9] = points[3].x;
+					positions[10] = points[3].y;
+					positions[11] = points[3].z + baseZ;
+				}
+				break;
+			case 'sprite':
+				{
+					const { x, y, z, scale } = sprite;
+					const left = texture.positions.left;
+					const right = texture.positions.right;
+					const top = texture.positions.top;
+					const bottom = texture.positions.bottom;
+					positions[0] = left * scale;
+					positions[1] = top * scale;
+					positions[2] = baseZ;
+					positions[3] = right * scale;
+					positions[4] = top  * scale;
+					positions[5] = baseZ;
+					positions[6] = right * scale;
+					positions[7] = bottom * scale;
+					positions[8] = baseZ;
+					positions[9] = left * scale;
+					positions[10] = bottom * scale;
+					positions[11] = baseZ;
 
-			for(let i=0; i<positions.length; i+=3) {
-				positions[i] 	+= x;
-				positions[i+1] 	+= y;
-				positions[i+2] 	+= z;
-			}
-		} else if(type === "floor") {
-			positions[0] = 0;
-			positions[1] = 0;
-			positions[2] = 1 + baseZ;
-			positions[3] = 1;
-			positions[4] = 0;
-			positions[5] = 1 + baseZ;
-			positions[6] = 1;
-			positions[7] = 0;
-			positions[8] = 0 + baseZ;
-			positions[9] = 0;
-			positions[10] = 0;
-			positions[11] = 0 + baseZ;
+					for(let i=0; i<positions.length; i+=3) {
+						positions[i] 	+= x;
+						positions[i+1] 	+= y;
+						positions[i+2] 	+= z;
+					}
+				}
+				break;
+			case 'floor':
+				{
+					const { x, y, z } = sprite;
+					positions[0] = 0;
+					positions[1] = 0;
+					positions[2] = 1 + baseZ;
+					positions[3] = 1;
+					positions[4] = 0;
+					positions[5] = 1 + baseZ;
+					positions[6] = 1;
+					positions[7] = 0;
+					positions[8] = 0 + baseZ;
+					positions[9] = 0;
+					positions[10] = 0;
+					positions[11] = 0 + baseZ;
 
-			for(let i=0; i<positions.length; i+=3) {
-				positions[i] 	+= x;
-				positions[i+1] 	+= y;
-				positions[i+2] 	+= z;
-			}
-		} else if(type === "ceiling") {
-			positions[0] = 0;
-			positions[1] = 1;
-			positions[2] = 0 + baseZ;
-			positions[3] = 1;
-			positions[4] = 1;
-			positions[5] = 0 + baseZ;
-			positions[6] = 1;
-			positions[7] = 1;
-			positions[8] = 1 + baseZ;
-			positions[9] = 0;
-			positions[10] = 1;
-			positions[11] = 1 + baseZ;
+					for(let i=0; i<positions.length; i+=3) {
+						positions[i] 	+= x;
+						positions[i+1] 	+= y;
+						positions[i+2] 	+= z;
+					}
+				}
+				break;
+			case 'ceiling':
+				{
+					const { x, y, z } = sprite;
+					positions[0] = 0;
+					positions[1] = 1;
+					positions[2] = 0 + baseZ;
+					positions[3] = 1;
+					positions[4] = 1;
+					positions[5] = 0 + baseZ;
+					positions[6] = 1;
+					positions[7] = 1;
+					positions[8] = 1 + baseZ;
+					positions[9] = 0;
+					positions[10] = 1;
+					positions[11] = 1 + baseZ;
 
-			for(let i=0; i<positions.length; i+=3) {
-				positions[i] 	+= x;
-				positions[i+1] 	+= y;
-				positions[i+2] 	+= z;
-			}
-		} else if(type === "leftwall") {
-			positions[0] = 0;
-			positions[1] = 0;
-			positions[2] = 1 + baseZ;
-			positions[3] = 0;
-			positions[4] = 0;
-			positions[5] = 0 + baseZ;
-			positions[6] = 0;
-			positions[7] = 1;
-			positions[8] = 0 + baseZ;
-			positions[9] = 0;
-			positions[10] = 1;
-			positions[11] = 1 + baseZ;
+					for(let i=0; i<positions.length; i+=3) {
+						positions[i] 	+= x;
+						positions[i+1] 	+= y;
+						positions[i+2] 	+= z;
+					}
+				}
+				break;
+			case 'leftwall':
+				{
+					const { x, y, z } = sprite;
+					positions[0] = 0;
+					positions[1] = 0;
+					positions[2] = 1 + baseZ;
+					positions[3] = 0;
+					positions[4] = 0;
+					positions[5] = 0 + baseZ;
+					positions[6] = 0;
+					positions[7] = 1;
+					positions[8] = 0 + baseZ;
+					positions[9] = 0;
+					positions[10] = 1;
+					positions[11] = 1 + baseZ;
 
-			for(let i=0; i<positions.length; i+=3) {
-				positions[i] 	+= x;
-				positions[i+1] 	+= y;
-				positions[i+2] 	+= z;
-			}
-		} else if(type === "rightwall") {
-			positions[0] = 1;
-			positions[1] = 0;
-			positions[2] = 0 + baseZ;
-			positions[3] = 1;
-			positions[4] = 0;
-			positions[5] = 1 + baseZ;
-			positions[6] = 1;
-			positions[7] = 1;
-			positions[8] = 1 + baseZ;
-			positions[9] = 1;
-			positions[10] = 1;
-			positions[11] = 0 + baseZ;
+					for(let i=0; i<positions.length; i+=3) {
+						positions[i] 	+= x;
+						positions[i+1] 	+= y;
+						positions[i+2] 	+= z;
+					}
+				}
+				break;
+			case 'rightwall':
+				{
+					const { x, y, z } = sprite;
+					positions[0] = 1;
+					positions[1] = 0;
+					positions[2] = 0 + baseZ;
+					positions[3] = 1;
+					positions[4] = 0;
+					positions[5] = 1 + baseZ;
+					positions[6] = 1;
+					positions[7] = 1;
+					positions[8] = 1 + baseZ;
+					positions[9] = 1;
+					positions[10] = 1;
+					positions[11] = 0 + baseZ;
 
-			for(let i=0; i<positions.length; i+=3) {
-				positions[i] 	+= x;
-				positions[i+1] 	+= y;
-				positions[i+2] 	+= z;
-			}
-		} else if(type === "wall") {
-			positions[0] = 0;
-			positions[1] = 0;
-			positions[2] = 0 + baseZ;
-			positions[3] = 1;
-			positions[4] = 0;
-			positions[5] = 0 + baseZ;
-			positions[6] = 1;
-			positions[7] = 1;
-			positions[8] = 0 + baseZ;
-			positions[9] = 0;
-			positions[10] = 1;
-			positions[11] = 0 + baseZ;
-			
-			for(let i=0; i<positions.length; i+=3) {
-				positions[i] 	+= x;
-				positions[i+1] 	+= y;
-				positions[i+2] 	+= z;
-			}
-		} else if(type === "backwall") {
-			positions[0] = 1;
-			positions[1] = 0;
-			positions[2] = 0 + baseZ;
-			positions[3] = 0;
-			positions[4] = 0;
-			positions[5] = 0 + baseZ;
-			positions[6] = 0;
-			positions[7] = 1;
-			positions[8] = 0 + baseZ;
-			positions[9] = 1;
-			positions[10] = 1;
-			positions[11] = 0 + baseZ;
-			
-			for(let i=0; i<positions.length; i+=3) {
-				positions[i] 	+= x;
-				positions[i+1] 	+= y;
-				positions[i+2] 	+= z;
-			}			
+					for(let i=0; i<positions.length; i+=3) {
+						positions[i] 	+= x;
+						positions[i+1] 	+= y;
+						positions[i+2] 	+= z;
+					}
+				}
+				break;
+			case 'wall':
+				{
+					const { x, y, z } = sprite;
+					positions[0] = 0;
+					positions[1] = 0;
+					positions[2] = 0 + baseZ;
+					positions[3] = 1;
+					positions[4] = 0;
+					positions[5] = 0 + baseZ;
+					positions[6] = 1;
+					positions[7] = 1;
+					positions[8] = 0 + baseZ;
+					positions[9] = 0;
+					positions[10] = 1;
+					positions[11] = 0 + baseZ;
+					
+					for(let i=0; i<positions.length; i+=3) {
+						positions[i] 	+= x;
+						positions[i+1] 	+= y;
+						positions[i+2] 	+= z;
+					}
+				}
+				break;
+			case 'backwall':
+				{
+					const { x, y, z } = sprite;
+					positions[0] = 1;
+					positions[1] = 0;
+					positions[2] = 0 + baseZ;
+					positions[3] = 0;
+					positions[4] = 0;
+					positions[5] = 0 + baseZ;
+					positions[6] = 0;
+					positions[7] = 1;
+					positions[8] = 0 + baseZ;
+					positions[9] = 1;
+					positions[10] = 1;
+					positions[11] = 0 + baseZ;
+					
+					for(let i=0; i<positions.length; i+=3) {
+						positions[i] 	+= x;
+						positions[i+1] 	+= y;
+						positions[i+2] 	+= z;
+					}			
+				}
+				break;
 		}
 		return positions;
 	};
@@ -408,8 +484,7 @@ const SpriteRenderer = (function() {
 			const sprite = sprites[i];
 			const textureData = textureFactory.getTextureData(sprite.name, sprite.label, now);
 			if (textureData) {
-				const { x, y, z, type, id, scale } = sprite;
-				addFrame(this, textureData, id, count, type, x, y, z, scale, now);
+				addFrame(this, textureData, count, sprite, now);
 				count ++;
 			}
 		}
@@ -439,18 +514,19 @@ const SpriteRenderer = (function() {
 		);
 	};
 
-	Renderer.prototype.setLocation = function(x, y, z) {
+	Renderer.prototype.setLocation = function(x, y, z, rotation) {
 		const cachedLocation = this.cachedData.location;
-		if (cachedLocation.x !== x || cachedLocation.y !== y || cachedLocation.z !== z) {
+		if (cachedLocation.x !== x || cachedLocation.y !== y || cachedLocation.z !== z || cachedLocation.rotation !== rotation) {
 			const { gl, programInfo, cachedData, tempVariables } = this;
-			const viewMatrix = tempVariables.tempViewMatrix;
-			mat4.identity(viewMatrix);
-			mat4.rotate(viewMatrix, viewMatrix, y / 3, [ 1, 0, 0 ]);
-			mat4.translate(viewMatrix, viewMatrix, [ -x || 0, (-y || 0) - .5, -z || 0 ]);
+			const { viewMatrix, rotationQuat, translateVector } = tempVariables;
+			quat.rotateY(rotationQuat, quat.rotateX(rotationQuat, quat.identity(rotationQuat), y / 2), rotation);
+			mat4.fromRotationTranslationScaleOrigin(viewMatrix, rotationQuat, IDENTITY_VEC3, SCALE_VEC3, Y_ROTATION_ORIGIN);
+			mat4.translate(viewMatrix, viewMatrix, vec3.set(translateVector, -x, -y - .5, -z));
 			gl.uniformMatrix4fv(programInfo.viewLocation, false, viewMatrix);
 			cachedLocation.x = x;
 			cachedLocation.y = y;
 			cachedLocation.z = z;
+			cachedLocation.rotation = rotation;
 		}
 	}
 
@@ -517,17 +593,16 @@ const SpriteRenderer = (function() {
 	}
 
 	function floatArrayEqual(a, b) {
-//		if (a.length !== b.length) return false;
 	  	for (let i=0; i < a.length; i++) {
 	    	if (a[i] !== b[i]) return false;
 	  	}
 	  	return true;
 	}
 
-	function addFrame(renderer, texture, id, frameIndex, type, x, y, z, scale, now) {
-		const positions = getFramePositions(renderer, texture, type, x, y, z, scale);
+	function addFrame(renderer, texture, frameIndex, sprite, now) {
+		const positions = getFramePositions(renderer, texture, sprite);
 		const { gl, programInfo, cachedData, indicesMap } = renderer;
-		const spriteData = getSpriteData(renderer, id);
+		const spriteData = getSpriteData(renderer, sprite.id);
 		spriteData.time = now;
 		const { slotIndex, spritePositions, spriteTextureCoordinates, spriteTextureIndex } = spriteData;
 

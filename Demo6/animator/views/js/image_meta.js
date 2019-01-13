@@ -4,6 +4,43 @@ const Meta = (function(document) {
   const spriteData = {};
   const EMPTY = {};
 
+  function singleFrameMeta(name, canvas) {
+    const { minX, minY, maxX, maxY } = Utils.getCrop(canvas);
+    return {
+      name,
+      canvas: {
+        width: canvas.width,
+        height: canvas.height,
+      },
+      animation: {
+        rows: [
+          {
+            label: 'default',
+            range: '0-0',
+            frameRate: 60,
+            scale: 1,
+            locked: true,
+          }
+        ],
+      },
+      frames: [
+        {
+          range: "0-0",
+          hotspot: {
+            x: (minX + maxX) / 2,
+            y: maxY,
+          },
+          crop: {
+            x: minX,
+            y: minY,
+            width: (maxX - minX) + 1,
+            height: (maxY - minY) + 1,
+          },
+        }
+      ],
+    };
+  }
+
   function getSpriteData(name) {
     return spriteData[name] || EMPTY;
   }
@@ -11,6 +48,7 @@ const Meta = (function(document) {
   function loadImage(src, callback) {
     const img = new Image();
     img.src = src;
+    img.crossOrigin = "";
     img.addEventListener('load', e => {
       const img = e.currentTarget;
       const { canvas, meta } = addImage(img);
@@ -23,7 +61,10 @@ const Meta = (function(document) {
       canvas.width = img.naturalWidth || img.width;
       canvas.height = img.naturalHeight || img.height;
       canvas.getContext('2d').drawImage(img, 0, 0);
-      const meta = getMetaData(canvas);
+      let meta = getMetaData(canvas);
+      if(!meta) {
+        meta = singleFrameMeta(img.src.split('/').pop().split(".")[0], canvas);
+      }
       spriteData[meta.name] = {
         meta,
         canvas,
@@ -122,8 +163,7 @@ const Meta = (function(document) {
 
     const extraImgData = new ImageData(expandedClamped, meta.canvas.width);
     canvas.height = meta.canvas.height + extraHeight + extraMargin;
-    canvas.getContext('2d').putImageData(tempData,0,0);
-
+    canvas.getContext('2d').putImageData(tempData, 0, 0);
     canvas.getContext('2d').putImageData(extraImgData, 0, meta.canvas.height + extraMargin);
   }  
 

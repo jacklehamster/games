@@ -3,11 +3,12 @@
 <script src="js/gl-matrix.js"></script>
 <script src="js/md5.js"></script>
 <script src="js/pako.min.js"></script>
-<script src="js/image_meta.js"></script>
-<script src="js/texture_meta.js"></script>
+<script src="js/utils.js"></script>
 <script src="js/recycler.js"></script>
 <script src="js/scene_manager.js"></script>
 <script src="js/sprite_renderer.js"></script>
+<script src="js/image_meta.js"></script>
+<script src="js/texture_meta.js"></script>
 
 
 <style>
@@ -155,34 +156,6 @@
           return true;
         }
 
-        function getCrop(context) {
-          const { width, height } = context.canvas;
-          const data = context.getImageData(0, 0, width, height).data;
-
-          let minX, minY, maxX, maxY;
-          for(minY=0; minY<height; minY++) {
-             if(!emptyRow(data, width, height, minY)) {
-                break;
-             }
-          }
-          for(minX=0; minX<width; minX++) {
-            if(!emptyCol(data, width, height, minX)) {
-              break;
-            }
-          }
-          for(maxY=height-1; maxY>=0; maxY--) {
-            if(!emptyRow(data, width, height, maxY)) {
-              break;
-            }
-          }
-          for(maxX=width-1; maxX>=0; maxX--) {
-            if(!emptyCol(data, width, height, maxX)) {
-              break;
-            }
-          }
-          return { minX, minY, maxX, maxY, };
-        }
-
         function getPixel(data, x, y, width, rgbaOffset) {
           var index = (x + y * width) * 4 + rgbaOffset;
           return data[index];
@@ -205,7 +178,7 @@
           canvas.width = img.naturalWidth;
           canvas.height = img.naturalHeight;
           canvas.getContext('2d').drawImage(img,0, 0, img.naturalWidth, img.naturalHeight);
-          data.crop = getCrop(canvas.getContext('2d'));
+          data.crop = Utils.getCrop(canvas);
           // hotspot is center of canvas
           data.hotspot = {
             x: (canvas.width/2) - data.crop.minX,
@@ -761,7 +734,6 @@
         }
 
         function generateMetaData(imgData, width, height) {
-          console.log(imgData);
           let freezeFrames = [];
           for(var i=0; i<imgData.length; i++) {
             const tag = JSON.stringify({
@@ -811,8 +783,8 @@
 
         function shiftHotspots(dx, dy) {
           meta.frames.forEach(frame => {
-            frame.hotspot.x -= dx * 2; 
-            frame.hotspot.y -= dy * 2;
+            frame.hotspot.x += dx * 2; 
+            frame.hotspot.y += dy * 2;
           });
           const canvas = document.getElementById('spritesheet');
           onMetaChange(meta, canvas);          
@@ -836,41 +808,43 @@
     scene.clear();
     if(meta && meta.animation) {
       const selectedLabel = meta.animation.rows[Math.min(meta.animation.rows.length-1,Math.max(selectedIndex, 0))].label;
-      scene.cell(0, 0).addSprite(meta.name, selectedLabel);
-      if(hasHotspot) {
-        scene.cell(0, 0).addSprite('x', 'mark', 'xmark', 0, 0, 0, .5);
-      }
+      scene.onReveal((x,z)=>x===0 && z===0, cell => {
+        cell.setSprite(meta.name, selectedLabel);
+        if(hasHotspot) {
+          cell.setSprite('x', 'mark', 'xmark', 0, 0, 0, .2);
+        }
+      });
     } else {
       scene.onReveal(true, cell => {
-          cell.addWall('brick', null, 'ceiling', 'ceiling'+cell.tag);
-          cell.addWall('brick', null, 'floor', 'floor'+cell.tag);
+          cell.setWall('ceiling', 'eye');
+          cell.setWall('floor', 'brick');
       });
       scene.onReveal((x,z)=>x===-1 && z%7!==3, cell => {
-          cell.addWall('brick', null, 'leftwall', 'leftwall'+cell.tag);
+          cell.setWall('leftwall', 'brick');
       });
       scene.onReveal((x,z)=>x===-2 && z%7!==3, cell => {
-          cell.addWall('brick', null, 'rightwall', 'rightwall'+cell.tag);
+          cell.setWall('rightwall', 'brick');
       });
       scene.onReveal((x,z)=>x===1 && z%7!==4, cell => {
-          cell.addWall('brick', null, 'rightwall', 'rightwall'+cell.tag);
+          cell.setWall('rightwall', 'brick');
       });
       scene.onReveal((x,z)=>x===2 && z%7!==4, cell => {
-          cell.addWall('brick', null, 'leftwall', 'leftwall'+cell.tag);
+          cell.setWall('leftwall', 'brick');
       });
       scene.onReveal((x,z)=>x%11!== 3 && z===-1, cell => {
-          cell.addWall('brick', null, 'wall', 'wall'+cell.tag);
+          cell.setWall('wall', 'brick');
       });
       scene.onReveal((x,z)=>x%11!== 3 && z===-2, cell => {
-          cell.addWall('brick', null, 'backwall', 'backwall'+cell.tag);
+          cell.setWall('backwall', 'brick');
       });
       scene.onReveal((x,z)=> Math.abs(x ^ z) % 13 === 10, cell => {
-          cell.addSprite('tentacle', null, 'tentacle' + cell.tag);
+          cell.setSprite('tentacle', null, null, 0, 0, 0, 1, .5);
       });
       scene.onReveal((x,z)=>x===0&&z===0, cell => {
-          cell.addSprite('elephant');
+          cell.setSprite('card0001', null, 'elephant', 0, 0, 0, 1, .9);
       });
       scene.onReveal((x,z)=>x===0&&z===1, cell => {
-          cell.addSprite('oozie', null, 'oozie', 0, 0, 0, .5);
+          cell.setSprite('oozie', null, 'oozie', 0, 0, 0, .5);
       });
     }
   }
@@ -885,6 +859,7 @@ main();
 function main() {
   const canvas = document.querySelector('#glcanvas');
   const gl = canvas.getContext('webgl2');
+  window.gl = gl;
 
   // If we don't have a GL context, give up now
 
@@ -893,20 +868,25 @@ function main() {
     return;
   }
 
-  let viewPosition = { x: 0.5, y: 0, z: 3 };
+  let viewPosition = { x: 0.5, y: 0, z: 3, rotation: 0 };
   let pointDown = { x: 0, y: 0 };
   function onMouse(e) {
     const { pageX, pageY } = e;
     switch(e.type) {
       case "mousemove":
         if(e.buttons === 1 && e.target.id==="glCanvas") {
-            const dx = (pageX - pointDown.x);
-            const dy = (pageY - pointDown.y);
+            const dx = - (pageX - pointDown.x);
+            const dy = - (pageY - pointDown.y);
             if (hasHotspot && meta && meta.animation) {
               shiftHotspots(dx, dy);
             } else {
-              mov.x -= dx;
-              mov.z -= dy;
+              const sin = Math.sin(viewPosition.rotation);
+              const cos = Math.cos(viewPosition.rotation);
+              const rdx = (cos * dx - sin * dy) * MOVE_MULTIPLIER * 2;
+              const rdz = (sin * dx + cos * dy) * MOVE_MULTIPLIER * 2;
+
+              mov.x = (mov.x + rdx) * SLOWDOWN;
+              mov.z = (mov.z + rdz) * SLOWDOWN;              
             }
         }
         pointDown.x = pageX;
@@ -918,12 +898,20 @@ function main() {
   const KEY_LEFT = 37;
   const KEY_RIGHT = 39;
   const KEY_UP = 38;
+  const KEY_W = 87;
   const KEY_DOWN = 40;
+  const KEY_S = 83;
+  const KEY_A = 65;
+  const KEY_D = 68;
+  const KEY_Q = 81;
+  const KEY_E = 69;
   const keyboard = [];
   function onKey(e) {
     if (!meta || !meta.animation) {
       switch(e.keyCode) {
         case KEY_LEFT: case KEY_RIGHT: case KEY_UP: case KEY_DOWN:
+        case KEY_W: case KEY_S: case KEY_A: case KEY_D:
+        case KEY_Q: case KEY_E:
           keyboard[e.keyCode] = e.type === "keyup" ? 0 : 1;
           e.preventDefault();
           break;
@@ -935,23 +923,51 @@ function main() {
   const SLOWDOWN = .75;
   const SPEED_FACTOR = .02;
   const MOVE_MULTIPLIER = 2;
-  const mov = { x: 0, z: 0 };
+  const mov = { x: 0, z: 0, rotation: 0 };
+  const ROTATION_STEP = Math.PI / 4;
+  const ROTATION_SPEED = .02;
   function move(now) {
-    let dx = 0, dy = 0;
-    if (keyboard[KEY_UP]) {
+    let dx = 0, dy = 0, rot = 0;
+    if (keyboard[KEY_UP] || keyboard[KEY_W]) {
       dy--;
     }
-    if (keyboard[KEY_DOWN]) {
+    if (keyboard[KEY_DOWN] || keyboard[KEY_S]) {
       dy++;
     }
-    if (keyboard[KEY_LEFT]) {
+    if (keyboard[KEY_LEFT] || keyboard[KEY_A]) {
       dx--;
     }
-    if (keyboard[KEY_RIGHT]) {
+    if (keyboard[KEY_RIGHT] || keyboard[KEY_D]) {
       dx++;
     }
-    mov.x = (mov.x + dx * MOVE_MULTIPLIER) * SLOWDOWN;
-    mov.z = (mov.z + dy * MOVE_MULTIPLIER) * SLOWDOWN;
+    if (keyboard[KEY_Q]) {
+      rot --;
+    }
+    if (keyboard[KEY_E]) {
+      rot ++;
+    }
+
+    if (rot) {
+      mov.rotation = (mov.rotation + rot * ROTATION_SPEED) * SLOWDOWN;
+    } else if(mov.rotation) {
+      const closestRotation = mov.rotation > 0 
+        ? Math.ceil(viewPosition.rotation / ROTATION_STEP) * ROTATION_STEP
+        : Math.floor(viewPosition.rotation / ROTATION_STEP) * ROTATION_STEP;
+      mov.rotation = (closestRotation - viewPosition.rotation) * .25;
+      if(Math.abs(mov.rotation) < .001) {
+        viewPosition.rotation = closestRotation;
+        mov.rotation = 0;
+      }
+    }
+
+    const sin = Math.sin(viewPosition.rotation);
+    const cos = Math.cos(viewPosition.rotation);
+    const rdx = (cos * dx - sin * dy) * MOVE_MULTIPLIER;
+    const rdz = (sin * dx + cos * dy) * MOVE_MULTIPLIER;
+
+    mov.x = (mov.x + rdx) * SLOWDOWN;
+    mov.z = (mov.z + rdz) * SLOWDOWN;
+
     const { x, z } = viewPosition;
     const xDest = x + mov.x * SPEED_FACTOR;
     const zDest = z + mov.z * SPEED_FACTOR;
@@ -963,8 +979,13 @@ function main() {
     } else if(scene.canGo(x, z, xDest, z)) {
       viewPosition.x = xDest;
     }
+
+    if (mov.rotation) {
+      viewPosition.rotation += mov.rotation;
+    }
     if(!meta || !meta.animation) {
-      scene.addSprite("x", "mark", viewPosition.x, 0, viewPosition.z, "xmark", .05);
+      scene.setSprite("x", "mark", "xmark", viewPosition.x, 0, viewPosition.z, .05);
+//      scene.setSprite("xmark", "oozie", null, viewPosition.x, 0, viewPosition.z, .5);
     }
     requestAnimationFrame(move);
   }
@@ -980,7 +1001,7 @@ function main() {
   const renderer = gl.getSpriteRenderer();
   function render(now) {
     scene.refresh(viewPosition, now);
-    renderer.setLocation(viewPosition.x, viewPosition.y, viewPosition.z);
+    renderer.setLocation(viewPosition.x, viewPosition.y, viewPosition.z, viewPosition.rotation);
     renderer.drawSprites(scene.getSprites(), now);
     requestAnimationFrame(render);
   }
@@ -990,5 +1011,48 @@ function main() {
 }
 
 
+
+</script>
+
+<script>
+// const video = document.createElement('video');
+// let lastTime = 0, videoPlaying = false;
+// function refreshVideo() {
+//     if(lastTime !== video.currentTime) {
+//       if(gl.getTextureFactory().getTextureData("elephant",null,0)) {
+//         gl.getTextureFactory().getTextureData("elephant",null,0).update(video, 0, 0, video.videoWidth, video.videoHeight);
+//       }
+//       lastTime = video.currentTime;
+//     }
+//     requestAnimationFrame(refreshVideo);
+// }
+
+// function setupVideo(url) {
+//   video.loop = true;
+//   video.addEventListener('playing', function() {
+//     requestAnimationFrame(refreshVideo);
+//   }, true);
+
+//   video.addEventListener('timeupdate', function() {
+//   }, true);
+//   video.src = url;
+// }
+// setupVideo("doubleking.mp4")
+
+// document.addEventListener("keydown", e => {
+//   if(!videoPlaying) {
+//     video.play();
+//     videoPlaying = true;
+//   }
+// });
+// document.addEventListener("mousedown", e => {
+//   if(!videoPlaying) {
+//     video.play();
+//     videoPlaying = true;
+//   }
+// });
+
+
+Meta.loadImage("card0001.png", console.log);
 
 </script>
