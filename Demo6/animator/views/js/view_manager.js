@@ -16,10 +16,9 @@ const View = (function() {
 		this.mov = {
 			dx: 0, dy: 0, dz: 0, rot: 0,
 		};
-		this.scene = null;
 	});
 
-	Utils.createAccessors(Camera, ['scene', 'autoTilt']);
+	Utils.createAccessors(Camera, ['autoTilt']);
 
 	Camera.prototype.getTilt = function() {
 		return this.autoTilt ? this.position[1] / 2 : this.tilt;
@@ -45,7 +44,7 @@ const View = (function() {
 		this.mov.rot += rot;
 	};
 
-	Camera.prototype.step = function() {
+	Camera.prototype.step = function(scene) {
 		const { dx, dy, dz, rot } = this.mov;
 	    if (rot) {
 	      this.turnMotion = (this.turnMotion + rot * ROTATION_SPEED) * SLOWDOWN;
@@ -74,12 +73,12 @@ const View = (function() {
 	    const [ x, y, z ] = this.position;
 	    const xDest = x + this.motion[0] * SPEED_FACTOR;
 	    const zDest = z + this.motion[2] * SPEED_FACTOR;
-	    if(!this.scene || this.scene.canGo(x, z, xDest, zDest)) {
+	    if(!scene || scene.canGo(x, z, xDest, zDest)) {
 	      this.position[0] = xDest;
 	      this.position[2] = zDest;
-	    } else if(this.scene.canGo(x, z, x, zDest)) {
+	    } else if(scene.canGo(x, z, x, zDest)) {
 	      this.position[2] = zDest;
-	    } else if(this.scene.canGo(x, z, xDest, z)) {
+	    } else if(scene.canGo(x, z, xDest, z)) {
 	      this.position[0] = xDest;
 	    }
 

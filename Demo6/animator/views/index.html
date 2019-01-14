@@ -869,7 +869,7 @@ function main() {
     return;
   }
 
-  const viewPosition = View.Camera.create(.5, 0, 2.5).setAutoTilt(true).setScene(scene);
+  const viewPosition = View.Camera.create(.5, 0, 2.5).setAutoTilt(true);
   const pointDown = { x: 0, y: 0 };
   function onMouse(e) {
     const { pageX, pageY } = e;
@@ -945,7 +945,7 @@ function main() {
 
 
   function refreshCamera(camera) {
-    camera.step();
+    camera.step(scene);
     if(!meta || !meta.animation) {
       const [ x, y, z ] = camera.position;
       scene.setSprite("x", "mark", "xmark", x, 0, z, .05);
