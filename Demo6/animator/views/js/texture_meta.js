@@ -73,6 +73,27 @@ const TextureFactory = (function() {
 		);
 	};
 
+	TextureData.prototype.attachVideo = function(video) {
+		this.video = video;
+		const textureData = this;
+		let lastTime = -1;
+		function refreshVideo() {
+		    if(textureData.video) {
+		    	const { video } = textureData;
+			    if(lastTime !== video.currentTime) {
+			      	textureData.update(video, 0, 0);
+					lastTime = video.currentTime;
+				}
+			    requestAnimationFrame(refreshVideo);
+		    }
+		}
+	    requestAnimationFrame(refreshVideo);
+	};
+
+	TextureData.prototype.detachVideo = function() {
+		this.video = null;
+	};
+
 	function doesFit(slot, cellX, cellY, cellWidth, cellHeight) {
 		if (!slot) return true;
 		for (let yy=0; yy<cellHeight; yy++) {

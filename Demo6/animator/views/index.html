@@ -944,7 +944,7 @@ function main() {
   document.addEventListener("keyup", onKey);
 
 
-  function refreshCamera(camera) {
+  function refreshCamera(camera, scene) {
     camera.step(scene);
     if(!meta || !meta.animation) {
       const [ x, y, z ] = camera.position;
@@ -956,7 +956,7 @@ function main() {
   const renderer = gl.getSpriteRenderer();
   function render(now) {
     updateMove();
-    refreshCamera(viewPosition);
+    refreshCamera(viewPosition, scene);
     scene.refresh(viewPosition, now);
     renderer.drawSprites(scene.getSprites(), viewPosition, now);
     requestAnimationFrame(render);
@@ -971,25 +971,15 @@ function main() {
 </script>
 
 <script>
-const video = document.createElement('video');
-let lastTime = 0, videoPlaying = false;
-function refreshVideo() {
-    if(lastTime !== video.currentTime) {
-      if(gl.getTextureFactory().getTextureData("video")) {
-        gl.getTextureFactory().getTextureData("video").update(video, 0, 0);
-
-      }
-      lastTime = video.currentTime;
-    }
-    requestAnimationFrame(refreshVideo);
-}
+// const video = document.createElement('video');
+// let videoPlaying = false;
 
 // function setupVideo(url) {
 //   video.loop = true;
 //   video.muted = true;
 //   video.addEventListener('playing', function() {
-//     gl.getTextureFactory().createTextureData('video', video.videoWidth, video.videoHeight);
-//     requestAnimationFrame(refreshVideo);
+//     gl.getTextureFactory().createTextureData('video', video.videoWidth, video.videoHeight)
+//       .attachVideo(video);
 //   }, true);
 
 //   video.addEventListener('timeupdate', function() {
