@@ -65,13 +65,11 @@ const TextureFactory = (function() {
 		this.recycle();
 	};
 
-	TextureData.prototype.update = function(source, offsetX, offsetY, width, height) {
+	TextureData.prototype.update = function(source, offsetX, offsetY) {
 		const { cellX, cellY, cellWidth, cellHeight } = this.fit;
 		updateTexture(this.factory, source, this.index,
 			cellX * TEXTURE_CELL + (offsetX || 0),
-			cellY * TEXTURE_CELL + (offsetY || 0),
-			Math.min(width || source.width, cellWidth * TEXTURE_CELL - (offsetX || 0)),
-			Math.min(height || source.height, cellHeight * TEXTURE_CELL - (offsetY || 0))
+			cellY * TEXTURE_CELL + (offsetY || 0)
 		);
 	};
 
@@ -122,7 +120,7 @@ const TextureFactory = (function() {
 		}
 	}
 
-	function updateTexture(factory, source, texIndex, textureX, textureY, width, height) {
+	function updateTexture(factory, source, texIndex, textureX, textureY) {
 		const gl = factory.gl;
 		let texture = factory.textures[texIndex];
 		const level = 0;
@@ -142,7 +140,7 @@ const TextureFactory = (function() {
 		} else {
 			gl.bindTexture(gl.TEXTURE_2D, texture);			
 		}
-		gl.texSubImage2D(gl.TEXTURE_2D, level, textureX, textureY, width, height, srcFormat, srcType, source);
+		gl.texSubImage2D(gl.TEXTURE_2D, level, textureX, textureY, srcFormat, srcType, source);
 		gl.generateMipmap(gl.TEXTURE_2D);
 	};
 
@@ -311,7 +309,7 @@ const TextureFactory = (function() {
 		}
 	}	
 
-	WebGL2RenderingContext.prototype.getTextureFactory = function() {
+	WebGLRenderingContext.prototype.getTextureFactory = function() {
 		if(!this.textureFactory) {
 			this.textureFactory = new TextureFactory.Factory(this);
 		}

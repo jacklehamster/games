@@ -859,7 +859,7 @@ main();
 //
 function main() {
   const canvas = document.querySelector('#glcanvas');
-  const gl = canvas.getContext('webgl2');
+  const gl = canvas.getContext('webgl');
   window.gl = gl;
 
   // If we don't have a GL context, give up now
@@ -976,7 +976,7 @@ let lastTime = 0, videoPlaying = false;
 function refreshVideo() {
     if(lastTime !== video.currentTime) {
       if(gl.getTextureFactory().getTextureData("video")) {
-        gl.getTextureFactory().getTextureData("video").update(video, 0, 0, video.videoWidth, video.videoHeight);
+        gl.getTextureFactory().getTextureData("video").update(video, 0, 0);
 
       }
       lastTime = video.currentTime;
