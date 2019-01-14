@@ -165,6 +165,7 @@ const SpriteRenderer = (function() {
 	const SCALE_VEC3 = vec3.fromValues(1,1,1);
 	const baseZ = -1.5;	
 	const Y_ROTATION_ORIGIN = vec3.fromValues(0,0,baseZ);
+	const IDENTITY_QUAT = quat.identity(quat.create());
 
 	const CLEAN_FREQUENCY = .1;
 
@@ -199,17 +200,17 @@ const SpriteRenderer = (function() {
 
 		this.spriteBufferSize = 0;
 		this.camera = View.Camera.create();
-		setCamera(this, View.Camera.create());
+		this.cameraQuat = quat.create();
 
 		this.cachedData = {
 			indices: [],
 		};
 
 		this.tempVariables = {
-			rotationQuat: quat.create(),
 			viewMatrix: mat4.create(),
 			tempPositions: new Float32Array(FLOAT_PER_VERTEX * VERTICES_PER_SPRITE),
 			translateVector: vec3.create(),
+			array: [],
 		};
 
 		this.spriteMap = {
@@ -226,6 +227,15 @@ const SpriteRenderer = (function() {
 		const projectionMatrix = mat4.create();
 		mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
 		gl.uniformMatrix4fv(this.programInfo.projectionLocation, false, projectionMatrix);
+
+		setCamera(this, View.Camera.create(), true);
+	}
+
+	function spriteTransform(out, a, array) {
+		const [ cameraQuat, position ] = array;
+		vec3.transformQuat(out, a, cameraQuat);
+		vec3.add(out, a, position);
+		out[2] += baseZ;
 	}
 
 	function getFramePositions(renderer, texture, sprite) {
@@ -250,7 +260,6 @@ const SpriteRenderer = (function() {
 				break;
 			case 'sprite':
 				{
-					const { turn, tilt } = renderer.camera;
 					const { position, scale } = sprite;
 					const left = texture.positions.left;
 					const right = texture.positions.right;
@@ -269,61 +278,44 @@ const SpriteRenderer = (function() {
 					positions[10] = bottom * scale;
 					positions[11] = 0;
 
-					for(let i=0; i<positions.length; i+=3) {
-						const vertexPosition = new Float32Array(positions.buffer, i * Float32Array.BYTES_PER_ELEMENT, 3);
-						vec3.rotateY(vertexPosition, vertexPosition, ZERO_VEC3, -turn);
-						vec3.rotateX(vertexPosition, vertexPosition, ZERO_VEC3, -tilt);
-						vec3.add(vertexPosition, vertexPosition, position);
-						vertexPosition[2] += baseZ;
-					}
+					const array = renderer.tempVariables.array;
+					array[0] = renderer.cameraQuat;
+					array[1] = position;
+					vec3.forEach(positions, 0, 0, 0, spriteTransform, array);
 				}
 				break;
 			case 'leftwall':
 				{
-					const { position } = sprite;
 					positions[0] = 0;
 					positions[1] = 0;
-					positions[2] = 1;
+					positions[2] = 1 + baseZ;
 					positions[3] = 0;
 					positions[4] = 0;
-					positions[5] = 0;
+					positions[5] = 0 + baseZ;
 					positions[6] = 0;
 					positions[7] = 1;
-					positions[8] = 0;
+					positions[8] = 0 + baseZ;
 					positions[9] = 0;
 					positions[10] = 1;
-					positions[11] = 1;
-
-					for(let i=0; i<positions.length; i++) {
-						positions[i] += position[i % 3];
-						if(i % 3 === 2) {
-							positions[i] += baseZ;
-						}
-					}
+					positions[11] = 1 + baseZ;
+					vec3.forEach(positions, 0, 0, 0, vec3.add, sprite.position);
 				}
 				break;
 			case 'rightwall':
 				{
-					const { position } = sprite;
 					positions[0] = 1;
 					positions[1] = 0;
-					positions[2] = 0;
+					positions[2] = 0 + baseZ;
 					positions[3] = 1;
 					positions[4] = 0;
-					positions[5] = 1;
+					positions[5] = 1 + baseZ;
 					positions[6] = 1;
 					positions[7] = 1;
-					positions[8] = 1;
+					positions[8] = 1 + baseZ;
 					positions[9] = 1;
 					positions[10] = 1;
-					positions[11] = 0;
-
-					for(let i=0; i<positions.length; i++) {
-						positions[i] += position[i % 3];
-						if(i % 3 === 2) {
-							positions[i] += baseZ;
-						}
-					}
+					positions[11] = 0 + baseZ;
+					vec3.forEach(positions, 0, 0, 0, vec3.add, sprite.position);
 				}
 				break;
 			case 'wall':
@@ -331,23 +323,17 @@ const SpriteRenderer = (function() {
 					const { position } = sprite;
 					positions[0] = 0;
 					positions[1] = 0;
-					positions[2] = 0;
+					positions[2] = 0 + baseZ;
 					positions[3] = 1;
 					positions[4] = 0;
-					positions[5] = 0;
+					positions[5] = 0 + baseZ;
 					positions[6] = 1;
 					positions[7] = 1;
-					positions[8] = 0;
+					positions[8] = 0 + baseZ;
 					positions[9] = 0;
 					positions[10] = 1;
-					positions[11] = 0;
-					
-					for(let i=0; i<positions.length; i++) {
-						positions[i] += position[i % 3];
-						if(i % 3 === 2) {
-							positions[i] += baseZ;
-						}
-					}
+					positions[11] = 0 + baseZ;
+					vec3.forEach(positions, 0, 0, 0, vec3.add, sprite.position);
 				}
 				break;
 			case 'backwall':
@@ -355,23 +341,17 @@ const SpriteRenderer = (function() {
 					const { position } = sprite;
 					positions[0] = 1;
 					positions[1] = 0;
-					positions[2] = 0;
+					positions[2] = 0 + baseZ;
 					positions[3] = 0;
 					positions[4] = 0;
-					positions[5] = 0;
+					positions[5] = 0 + baseZ;
 					positions[6] = 0;
 					positions[7] = 1;
-					positions[8] = 0;
+					positions[8] = 0 + baseZ;
 					positions[9] = 1;
 					positions[10] = 1;
-					positions[11] = 0;
-					
-					for(let i=0; i<positions.length; i++) {
-						positions[i] += position[i % 3];
-						if(i % 3 === 2) {
-							positions[i] += baseZ;
-						}
-					}
+					positions[11] = 0 + baseZ;
+					vec3.forEach(positions, 0, 0, 0, vec3.add, sprite.position);
 				}
 				break;
 		}
@@ -465,15 +445,17 @@ const SpriteRenderer = (function() {
 		);
 	};
 
-	function setCamera(renderer, camera) {
-		if (!renderer.camera.equals(camera)) {
-			const [ x, y, z ] = camera.position;
+	function setCamera(renderer, camera, forceRefresh) {
+		if (!renderer.camera.equals(camera) || forceRefresh) {
+			const { gl, programInfo, cachedData, tempVariables, cameraQuat } = renderer;
+			const { viewMatrix, translateVector } = tempVariables;
 			const turn = camera.turn;
 			const tilt = camera.getTilt();
-			const { gl, programInfo, cachedData, tempVariables } = renderer;
-			const { viewMatrix, rotationQuat, translateVector } = tempVariables;
-			quat.rotateY(rotationQuat, quat.rotateX(rotationQuat, quat.identity(rotationQuat), tilt), turn);
-			mat4.fromRotationTranslationScaleOrigin(viewMatrix, rotationQuat, ZERO_VEC3, SCALE_VEC3, Y_ROTATION_ORIGIN);
+			quat.rotateY(cameraQuat, quat.rotateX(cameraQuat, IDENTITY_QUAT, tilt), turn);
+			mat4.fromRotationTranslationScaleOrigin(viewMatrix, cameraQuat, ZERO_VEC3, SCALE_VEC3, Y_ROTATION_ORIGIN);			
+			quat.conjugate(cameraQuat, cameraQuat);	//	conjugate for sprites
+
+			const [ x, y, z ] = camera.position;
 			mat4.translate(viewMatrix, viewMatrix, vec3.set(translateVector, -x, -y - .5, -z));
 			gl.uniformMatrix4fv(programInfo.viewLocation, false, viewMatrix);
 			vec3.set(renderer.camera.position, x, y, z);
@@ -554,7 +536,6 @@ const SpriteRenderer = (function() {
 	}
 
 	function addFrame(renderer, texture, frameIndex, sprite, now) {
-		const positions = getFramePositions(renderer, texture, sprite);
 		const { gl, programInfo, cachedData, indicesMap } = renderer;
 		const spriteData = getSpriteData(renderer, sprite.id);
 		const { slotIndex, spritePositions, spriteTextureCoordinates, spriteTextureIndex } = spriteData;
@@ -570,6 +551,7 @@ const SpriteRenderer = (function() {
 			indicesMap[frameIndex] = slotIndex;
 		}
 
+		const positions = getFramePositions(renderer, texture, sprite);
 		if (!floatArrayEqual(positions, spritePositions)) {
 			gl.bindBuffer(gl.ARRAY_BUFFER, renderer.positionBuffer);
 			gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * FLOAT_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT, positions);
