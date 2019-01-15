@@ -152,14 +152,14 @@ const Meta = (function(document) {
     uint8clamped.set(extra, uint8clamped.length-extra.length);
 
     const expandedClamped = new Uint8ClampedArray(uint8clamped.length / 3 * 4);
-    for(let i=0; i<uint8clamped.length / 3; i++) {
+    for(let i = 0; i < uint8clamped.length / 3; i++) {
         expandedClamped[i * 4] = uint8clamped[i * 3];
         expandedClamped[i * 4 + 1] = uint8clamped[i * 3 + 1];
         expandedClamped[i * 4 + 2] = uint8clamped[i * 3 + 2];
         expandedClamped[i * 4 + 3] = 255;
     }
 
-    const tempData = canvas.getContext('2d').getImageData(0,0,meta.canvas.width, meta.canvas.height);
+    const tempData = canvas.getContext('2d').getImageData(0, 0, meta.canvas.width, meta.canvas.height);
 
     const extraImgData = new ImageData(expandedClamped, meta.canvas.width);
     canvas.height = meta.canvas.height + extraHeight + extraMargin;

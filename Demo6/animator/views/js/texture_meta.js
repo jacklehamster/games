@@ -211,7 +211,7 @@ const TextureFactory = (function() {
 
 	Factory.prototype.getTextureData = function(name, animationTag, now) {
 		const { createdTextureData } = this;
-		if(createdTextureData[name]) {
+		if (createdTextureData[name]) {
 			return createdTextureData[name];
 		}
 		const { meta, canvas } = Meta.getSpriteData(name);
@@ -223,7 +223,7 @@ const TextureFactory = (function() {
 		}
 		const { cachedAnimationData, cachedTextureData } = this.cache;
 		const animationFrame = getAnimationFrame(meta, animationTag, now, cachedAnimationData);
-		const { frameId } = animationFrame;
+		const frameId = animationFrame.frameId;
 		if(!frameId) {
 			return null;
 		}

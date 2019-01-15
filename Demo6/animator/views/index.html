@@ -860,16 +860,13 @@ main();
 function main() {
   const canvas = document.querySelector('#glcanvas');
   const gl = canvas.getContext('webgl');
-  window.gl = gl;
-
-  // If we don't have a GL context, give up now
 
   if (!gl) {
     alert('Unable to initialize WebGL. Your browser or machine may not support it.');
     return;
   }
 
-  const viewPosition = View.Camera.create(.5, 0, 2.5).setAutoTilt(true);
+  const viewPosition = View.Camera.create(.5, 0, 4).setAutoTilt(true);
   const pointDown = { x: 0, y: 0 };
   function onMouse(e) {
     const { pageX, pageY } = e;
@@ -948,7 +945,7 @@ function main() {
     camera.step(scene);
     if(!meta || !meta.animation) {
       const [ x, y, z ] = camera.position;
-      scene.setSprite("x", "mark", "xmark", x, 0, z, .05);
+      scene.setSprite("x", "mark", "xmark", x, 0, z - 1.5, .05);
     }    
   }
 

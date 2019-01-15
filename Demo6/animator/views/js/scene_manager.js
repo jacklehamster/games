@@ -344,7 +344,7 @@ const SceneManager = (function() {
 		if(cachedPosition.x !== roundX || cachedPosition.z !== roundZ) {
 			cachedPosition.x = roundX;
 			cachedPosition.z = roundZ;
-			for(let z = -35; z <= 5; z++) {
+			for(let z = -30; z <= 5; z++) {
 				const zz = z + roundZ;
 				const limit = Math.max(1, Math.min(5 - z, 8));
 				for(let x = -limit; x <= limit; x++) {

@@ -147,7 +147,7 @@ const SpriteRenderer = (function() {
 			color = blur(color, vTextureCoord, min(1.0, (zDist * 1.5)));
 //			color = darkenColor(color, zDist * .8);
 //			color = reduceColor(color, vTextureCoord, min(1.0, (zDist * 2.0)));
-			color = alterHueSatLum(color, vec3(1.0, max(0.0, 1.0 - zDist * .2), max(0.0, 1.0 - zDist * 2.0)));
+			color = alterHueSatLum(color, vec3(1.0, max(0.0, 1.0 - zDist * .2), max(0.0, 1.0 - zDist * 1.5)));
 
 			gl_FragColor = color;
 		}
@@ -163,8 +163,7 @@ const SpriteRenderer = (function() {
 	const SIZE_INCREASE = 500;
 	const ZERO_VEC3 = vec3.create();
 	const SCALE_VEC3 = vec3.fromValues(1,1,1);
-	const baseZ = -1.5;	
-	const BASEZ_VEC3 = vec3.fromValues(0,0,baseZ);
+	const BASEZ_VEC3 = vec3.fromValues(0,0,-1.5);
 	const IDENTITY_QUAT = quat.identity(quat.create());
 
 	const CLEAN_FREQUENCY = .1;
@@ -235,7 +234,7 @@ const SpriteRenderer = (function() {
 		for(let i=0; i<positions.length; i+=3) {
 			positions[i] += translateVector[0];
 			positions[i+1] += translateVector[1];
-			positions[i+2] += translateVector[2] + baseZ;
+			positions[i+2] += translateVector[2];
 		}
 	}
 
@@ -243,7 +242,7 @@ const SpriteRenderer = (function() {
 		for(let i=0; i<positions.length; i+=3) {
 			positions[i] = points[i];
 			positions[i+1] = points[i+1];
-			positions[i+2] = points[i+2] + baseZ;
+			positions[i+2] = points[i+2];
 		}		
 	}
 
