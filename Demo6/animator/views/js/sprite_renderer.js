@@ -164,7 +164,7 @@ const SpriteRenderer = (function() {
 	const ZERO_VEC3 = vec3.create();
 	const SCALE_VEC3 = vec3.fromValues(1,1,1);
 	const baseZ = -1.5;	
-	const Y_ROTATION_ORIGIN = vec3.fromValues(0,0,baseZ);
+	const BASEZ_VEC3 = vec3.fromValues(0,0,baseZ);
 	const IDENTITY_QUAT = quat.identity(quat.create());
 
 	const CLEAN_FREQUENCY = .1;
@@ -210,7 +210,6 @@ const SpriteRenderer = (function() {
 			viewMatrix: mat4.create(),
 			tempPositions: new Float32Array(FLOAT_PER_VERTEX * VERTICES_PER_SPRITE),
 			translateVector: vec3.create(),
-			array: [],
 		};
 
 		this.spriteMap = {
@@ -231,11 +230,21 @@ const SpriteRenderer = (function() {
 		setCamera(this, View.Camera.create(), true);
 	}
 
-	function spriteTransform(out, a, array) {
-		const [ cameraQuat, position ] = array;
-		vec3.transformQuat(out, a, cameraQuat);
-		vec3.add(out, a, position);
-		out[2] += baseZ;
+	function transformPosition(renderer, positions, cameraQuat, translateVector) {
+		vec3.forEach(positions, 0, 0, 0, vec3.transformQuat, cameraQuat);
+		for(let i=0; i<positions.length; i+=3) {
+			positions[i] += translateVector[0];
+			positions[i+1] += translateVector[1];
+			positions[i+2] += translateVector[2] + baseZ;
+		}
+	}
+
+	function copyPositions(positions, points) {
+		for(let i=0; i<positions.length; i+=3) {
+			positions[i] = points[i];
+			positions[i+1] = points[i+1];
+			positions[i+2] = points[i+2] + baseZ;
+		}		
 	}
 
 	function getFramePositions(renderer, texture, sprite) {
@@ -243,115 +252,28 @@ const SpriteRenderer = (function() {
 		switch(sprite.type) {
 			case 'surface':
 				{
-					const { points } = sprite;
-					positions[0] = points[0].x;
-					positions[1] = points[0].y;
-					positions[2] = points[0].z + baseZ;
-					positions[3] = points[1].x;
-					positions[4] = points[1].y;
-					positions[5] = points[1].z + baseZ;
-					positions[6] = points[2].x;
-					positions[7] = points[2].y;
-					positions[8] = points[2].z + baseZ;
-					positions[9] = points[3].x;
-					positions[10] = points[3].y;
-					positions[11] = points[3].z + baseZ;
+					copyPositions(positions, sprite.points);
 				}
 				break;
 			case 'sprite':
 				{
-					const { position, scale } = sprite;
-					const left = texture.positions.left;
-					const right = texture.positions.right;
-					const top = texture.positions.top;
-					const bottom = texture.positions.bottom;
-					positions[0] = left * scale;
-					positions[1] = top * scale;
+					const left = texture.positions.left * sprite.scale;
+					const right = texture.positions.right * sprite.scale;
+					const top = texture.positions.top * sprite.scale;
+					const bottom = texture.positions.bottom * sprite.scale;
+					positions[0] = left;
+					positions[1] = top;
 					positions[2] = 0;
-					positions[3] = right * scale;
-					positions[4] = top  * scale;
+					positions[3] = right;
+					positions[4] = top;
 					positions[5] = 0;
-					positions[6] = right * scale;
-					positions[7] = bottom * scale;
+					positions[6] = right;
+					positions[7] = bottom;
 					positions[8] = 0;
-					positions[9] = left * scale;
-					positions[10] = bottom * scale;
+					positions[9] = left;
+					positions[10] = bottom;
 					positions[11] = 0;
-
-					const array = renderer.tempVariables.array;
-					array[0] = renderer.cameraQuat;
-					array[1] = position;
-					vec3.forEach(positions, 0, 0, 0, spriteTransform, array);
-				}
-				break;
-			case 'leftwall':
-				{
-					positions[0] = 0;
-					positions[1] = 0;
-					positions[2] = 1 + baseZ;
-					positions[3] = 0;
-					positions[4] = 0;
-					positions[5] = 0 + baseZ;
-					positions[6] = 0;
-					positions[7] = 1;
-					positions[8] = 0 + baseZ;
-					positions[9] = 0;
-					positions[10] = 1;
-					positions[11] = 1 + baseZ;
-					vec3.forEach(positions, 0, 0, 0, vec3.add, sprite.position);
-				}
-				break;
-			case 'rightwall':
-				{
-					positions[0] = 1;
-					positions[1] = 0;
-					positions[2] = 0 + baseZ;
-					positions[3] = 1;
-					positions[4] = 0;
-					positions[5] = 1 + baseZ;
-					positions[6] = 1;
-					positions[7] = 1;
-					positions[8] = 1 + baseZ;
-					positions[9] = 1;
-					positions[10] = 1;
-					positions[11] = 0 + baseZ;
-					vec3.forEach(positions, 0, 0, 0, vec3.add, sprite.position);
-				}
-				break;
-			case 'wall':
-				{
-					const { position } = sprite;
-					positions[0] = 0;
-					positions[1] = 0;
-					positions[2] = 0 + baseZ;
-					positions[3] = 1;
-					positions[4] = 0;
-					positions[5] = 0 + baseZ;
-					positions[6] = 1;
-					positions[7] = 1;
-					positions[8] = 0 + baseZ;
-					positions[9] = 0;
-					positions[10] = 1;
-					positions[11] = 0 + baseZ;
-					vec3.forEach(positions, 0, 0, 0, vec3.add, sprite.position);
-				}
-				break;
-			case 'backwall':
-				{
-					const { position } = sprite;
-					positions[0] = 1;
-					positions[1] = 0;
-					positions[2] = 0 + baseZ;
-					positions[3] = 0;
-					positions[4] = 0;
-					positions[5] = 0 + baseZ;
-					positions[6] = 0;
-					positions[7] = 1;
-					positions[8] = 0 + baseZ;
-					positions[9] = 1;
-					positions[10] = 1;
-					positions[11] = 0 + baseZ;
-					vec3.forEach(positions, 0, 0, 0, vec3.add, sprite.position);
+					transformPosition(renderer, positions, renderer.cameraQuat, sprite.position);
 				}
 				break;
 		}
@@ -451,7 +373,7 @@ const SpriteRenderer = (function() {
 			const turn = camera.turn;
 			const tilt = camera.getTilt();
 			quat.rotateY(cameraQuat, quat.rotateX(cameraQuat, IDENTITY_QUAT, tilt), turn);
-			mat4.fromRotationTranslationScaleOrigin(viewMatrix, cameraQuat, ZERO_VEC3, SCALE_VEC3, Y_ROTATION_ORIGIN);			
+			mat4.fromRotationTranslationScaleOrigin(viewMatrix, cameraQuat, ZERO_VEC3, SCALE_VEC3, BASEZ_VEC3);			
 			quat.conjugate(cameraQuat, cameraQuat);	//	conjugate for sprites
 
 			const [ x, y, z ] = camera.position;

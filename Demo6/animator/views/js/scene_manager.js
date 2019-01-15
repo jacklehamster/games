@@ -41,22 +41,6 @@ const SceneManager = (function() {
 		scene.spritesUpdated = true;
 	});
 
-	function Wall() {}
-	Recycler.wrap(Wall, function(id, name, label, x, y, z, cell, scale, type) {
-		const scene = cell.scene;
-		this.id = id;
-		this.name = name;
-		this.label = label || null;
-		this.type = type;
-		this.order = 0;
-		this.position = vec3.fromValues(x, y, z);
-		this.cell = cell || null;
-		this.scale = scale || 1;
-		checkWall(type, this.cell, x, z);
-		scene.sprites[this.id] = this;
-		scene.spritesUpdated = true;
-	});
-
 	function Barrier() {}
 	Recycler.wrap(Barrier, function(x0, z0, x1, z1) {
 		this.x0 = Math.min(x0, x1);
@@ -72,7 +56,15 @@ const SceneManager = (function() {
 		this.name = name;
 		this.label = label || null;
 		this.type = 'surface';
-		this.points = points;
+		const array = [];
+		for(let p=0; p<points.length; p++) {
+			const point = points[p];
+			for(let i=0; i<point.length; i++) {
+				array.push(point[i]);
+			}
+		}
+		this.points = new Float32Array(array);
+//		this.points = points.map(array => vec3.fromValues(array[0], array[1], array[2]));
 		this.cell = cell || null;
 		this.order = 0;
 		scene.sprites[this.id] = this;
@@ -113,27 +105,55 @@ const SceneManager = (function() {
 		}
 
 		const x = (offsetX || 0), y = (offsetY || 0), z = (offsetZ || 0);
+		let surface = null;
 		if (type === 'floor') {
-			return this.setSurface(name, label, id,
-				{ x,      y, z: z+1},
-				{ x: x+1, y, z: z+1},
-				{ x: x+1, y, z},
-				{ x,   	  y, z},
+			surface = this.setSurface(name, label, id,
+				[ x,   y, z+1 ],
+				[ x+1, y, z+1 ],
+				[ x+1, y, z   ],
+				[ x,   y, z   ]
 			);
 		} else if(type === 'ceiling') {
-			return this.setSurface(name, label, id,
-				{ x,      y: y+1, z},
-				{ x: x+1, y: y+1, z},
-				{ x: x+1, y: y+1, z: z+1},
-				{ x,   	  y: y+1, z: z+1},
+			surface = this.setSurface(name, label, id,
+				[ x,   y+1, z],
+				[ x+1, y+1, z],
+				[ x+1, y+1, z+1],
+				[ x,   y+1, z+1]
 			);
+		} else if(type === 'leftwall') {
+			checkWall(type, this, x, z);
+			surface = this.setSurface(name, label, id,
+				[ x, y,   z+1],
+				[ x, y,   z],
+				[ x, y+1, z],
+				[ x, y+1, z+1]
+			);			
+		} else if(type === 'rightwall') {
+			checkWall(type, this, x, z);
+			surface = this.setSurface(name, label, id,
+				[ x+1, y,   z],
+				[ x+1, y,   z+1],
+				[ x+1, y+1, z+1],
+				[ x+1, y+1, z]
+			);			
+		} else if(type === 'wall') {
+			checkWall(type, this, x, z);
+			surface = this.setSurface(name, label, id,
+				[ x,   y,   z],
+				[ x+1, y,   z],
+				[ x+1, y+1, z],
+				[ x,   y+1, z]
+			);			
+		} else if(type === 'backwall') {
+			checkWall(type, this, x, z);
+			surface = this.setSurface(name, label, id,
+				[ x+1, y,   z],
+				[ x,   y,   z],
+				[ x,   y+1, z],
+				[ x+1, y+1, z]
+			);			
 		}
-
-		return Wall.create(id, name, label,
-			this.x + x,
-			y,
-			this.z + z,
-			this, scale, type);
+		return surface;
 	};
 
 	Cell.prototype.setSurface = function(name, label, id, botleft, botright, topright, topleft) {
@@ -142,9 +162,9 @@ const SceneManager = (function() {
 		}
 		const points = [botleft, botright, topright, topleft];
 		for(let p=0; p < points.length; p++) {
-			points[p].x += this.x;
-			points[p].y = (points[p].y || 0);
-			points[p].z += this.z;
+			points[p][0] += this.x;
+			points[p][1] = (points[p][1] || 0);
+			points[p][2] += this.z;
 		}
 		return Surface.create(name, label, id, points, this);
 	};
