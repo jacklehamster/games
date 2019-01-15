@@ -5,6 +5,7 @@ const TextureFactory = (function() {
 	const VERTICES_PER_SPRITE = 4;
 	const EMPTY = {};
 	const DEFAULT = 'default';
+	const EMPTY_ANIMATION = { frames: [], frameRate: 60 };
 
 	function Factory(gl) {
 		if(!Meta) {
@@ -105,8 +106,7 @@ const TextureFactory = (function() {
 	}
 
 	function getFit(textureSlots, textureIndex, width, height) {
-		const cellWidth = Math.ceil(width / TEXTURE_CELL),
-			cellHeight = Math.ceil(height / TEXTURE_CELL);
+		const cellWidth = Math.ceil(width / TEXTURE_CELL), cellHeight = Math.ceil(height / TEXTURE_CELL);
 		const slot = textureSlots[textureIndex];
 		for (let cellY=0; cellY<CELL_SIDE - cellHeight + 1; cellY++) {
 			for (let cellX=0; cellX<CELL_SIDE - cellWidth + 1; cellX++) {
@@ -249,12 +249,11 @@ const TextureFactory = (function() {
 	};
 
 	function getAnimationFrame(meta, animationTag, now, cachedAnimationData) {
-		const animationData = getAnimationData(meta, animationTag, cachedAnimationData) || emptyAnimation;
+		const animationData = getAnimationData(meta, animationTag, cachedAnimationData) || EMPTY_ANIMATION;
 		const frame = ~~(now * animationData.frameRate / 1000);
 		return animationData.frames[frame % animationData.frames.length] || EMPTY;
 	}
 
-	const emptyAnimation = { frames: [], frameRate: 60 };
 	function getAnimationData(meta, animationTag, cachedAnimationData) {
 		const metaName = meta.name;
 		if (cachedAnimationData[metaName] && cachedAnimationData[metaName][animationTag]) {

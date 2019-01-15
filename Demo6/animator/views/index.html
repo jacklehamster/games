@@ -912,7 +912,7 @@ function main() {
     }
   }
 
-  function updateMove() {
+  function updateMove(camera) {
     let dx = 0, dz = 0, rot = 0;
     if (keyboard[KEY_UP] || keyboard[KEY_W]) {
       dz--;
@@ -932,8 +932,8 @@ function main() {
     if (keyboard[KEY_E]) {
       rot ++;
     }
-    viewPosition.move(dx, 0, dz);
-    viewPosition.rotate(rot);
+    camera.move(dx, 0, dz);
+    camera.rotate(rot);
   }
 
   document.addEventListener("mousemove", onMouse);
@@ -952,7 +952,7 @@ function main() {
   // Draw the scene repeatedly
   const renderer = gl.getSpriteRenderer();
   function render(now) {
-    updateMove();
+    updateMove(viewPosition);
     refreshCamera(viewPosition, scene);
     scene.refresh(viewPosition, now);
     renderer.drawSprites(scene.getSprites(), viewPosition, now);
