@@ -10,6 +10,7 @@
 <script src="js/sprite_renderer.js"></script>
 <script src="js/image_meta.js"></script>
 <script src="js/texture_meta.js"></script>
+<script src="js/dowge.js"></script>
 
 
 <style>
@@ -803,7 +804,7 @@
 
 <script>
 
-  const scene = new SceneManager.Scene();
+  let scene = new SceneManager.Scene("mainscene");
 
   function initScene(scene) {
     scene.clear();
@@ -817,8 +818,8 @@
       });
     } else {
       scene.onReveal(true, cell => {
-          cell.setWall('ceiling', 'eye');
           cell.setWall('floor', 'brick');
+          cell.setWall('ceiling', 'eye');
       });
       scene.onReveal((x,z)=>x===-1 && z%7!==3, cell => {
           cell.setWall('leftwall', 'brick');
@@ -850,8 +851,6 @@
     }
   }
 
-
-
 main();
 
 //
@@ -859,13 +858,6 @@ main();
 //
 function main() {
   const canvas = document.querySelector('#glcanvas');
-  const gl = canvas.getContext('webgl');
-
-  if (!gl) {
-    alert('Unable to initialize WebGL. Your browser or machine may not support it.');
-    return;
-  }
-
   const viewPosition = View.Camera.create(.5, 0, 4).setAutoTilt(true);
   const pointDown = { x: 0, y: 0 };
   function onMouse(e) {
@@ -932,8 +924,12 @@ function main() {
     if (keyboard[KEY_E]) {
       rot ++;
     }
-    camera.move(dx, 0, dz);
-    camera.rotate(rot);
+    if(dx || dz) {
+      camera.move(dx, 0, dz);
+    }
+    if(rot) {
+      camera.rotate(rot);
+    }
   }
 
   document.addEventListener("mousemove", onMouse);
@@ -949,18 +945,18 @@ function main() {
     }    
   }
 
-  // Draw the scene repeatedly
-  const renderer = gl.getSpriteRenderer();
-  function render(now) {
-    updateMove(viewPosition);
-    refreshCamera(viewPosition, scene);
-    scene.refresh(viewPosition, now);
-    renderer.drawSprites(scene.getSprites(), viewPosition, now);
-    requestAnimationFrame(render);
-  }
+  Dowge.setScene("mainScene", scene);
+  Dowge.setCamera("mainCamera", viewPosition);
+  Dowge.renderCanvas(canvas, "mainScene", "mainCamera", (scene, camera, now) => {
+    updateMove(camera);
+    camera.step(scene);
+    if(!meta || !meta.animation) {
+      const [ x, y, z ] = camera.position;
+      scene.setSprite("x", "mark", "xmark", x, 0, z - 1.5, .05);
+    }    
+  });
+
   initScene(scene);
-//  renderer.setBackgroundColor(0xFFCCFF);
-  requestAnimationFrame(render);
 }
 
 

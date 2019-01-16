@@ -57,10 +57,6 @@ const SpriteRenderer = (function() {
 			return mix(oldColor, newColor, amount);
 		}
 
-		vec4 darkenColor(vec4 color, float zDist) {
-			return mix(color, uBackground, vec4(zDist, zDist, zDist, 0.0));
-		}
-
 		vec4 getTextureColor(float textureIndexFloat, vec2 vTextureCoord) {
 			int textureIndex = int(floor(textureIndexFloat));
 			if (textureIndex == 0) {
@@ -145,7 +141,6 @@ const SpriteRenderer = (function() {
 		void main(void) {
 			vec4 color = getTextureColor(textureIndex, vTextureCoord);
 			color = blur(color, vTextureCoord, min(1.0, (zDist * 1.5)));
-//			color = darkenColor(color, zDist * .8);
 //			color = reduceColor(color, vTextureCoord, min(1.0, (zDist * 2.0)));
 			color = alterHueSatLum(color, vec3(1.0, max(0.0, 1.0 - zDist * .2), max(0.0, 1.0 - zDist * 1.5)));
 
@@ -221,7 +216,7 @@ const SpriteRenderer = (function() {
 		const fieldOfView = 45 * Math.PI / 180;   // in radians
 		const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
 		const zNear = 0.1;
-		const zFar = 100.0;
+		const zFar = 1000.0;
 		const projectionMatrix = mat4.create();
 		mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
 		gl.uniformMatrix4fv(this.programInfo.projectionLocation, false, projectionMatrix);

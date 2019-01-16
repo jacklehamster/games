@@ -18,6 +18,11 @@ const View = (function() {
 			dx: 0, dy: 0, dz: 0, rot: 0,
 		};
 		this.zOffset = Z_OFFSET;
+		this.temp = {
+			position: {
+				x:0, y:0, z:0,
+			},
+		};
 	});
 
 	Utils.createAccessors(Camera, ['autoTilt']);
@@ -44,6 +49,17 @@ const View = (function() {
 
 	Camera.prototype.rotate = function(rot) {
 		this.mov.rot += rot;
+	};
+
+	Camera.prototype.getRelativePosition = function(offsetX,offsetZ) {
+	    const sin = Math.sin(this.turn);
+	    const cos = Math.cos(this.turn);
+	    const rdx = (cos * offsetX - sin * offsetZ);
+	    const rdz = (sin * offsetX + cos * offsetZ);
+	    const position = this.temp.position;
+	    position.x = this.position[0] + rdx;
+	    position.z = this.position[2] + Z_OFFSET + rdz;
+	    return position;
 	};
 
 	Camera.prototype.step = function(scene) {

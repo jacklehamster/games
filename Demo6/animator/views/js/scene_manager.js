@@ -1,5 +1,5 @@
 const SceneManager = (function() {
-	const CLEAN_FREQUENCY = 1;
+	const CLEAN_FREQUENCY = .1;
 	const DISTANCE_TO_WALL = .12;
 	const LEFT = -1;
 	const RIGHT = 1;
@@ -13,6 +13,22 @@ const SceneManager = (function() {
 
 	function Scene() {
 		this.clear();
+	}
+
+	Scene.prototype.clear = function() {
+		this.nextID = 0;
+		this.sprites = {};
+		this.revealMap = {};
+		this.cellCoverage = [];
+		this.cachedPosition = {};
+		this.spriteList = [];
+		this.spritesUpdated = true;
+		this.lastTurn = {
+			angle: 0,
+			sin: Math.sin(0),
+			cos: Math.cos(0),
+		};
+		this.spriteCompare = spriteCompare.bind(this);
 	}
 
 	function Cell() {}
@@ -57,14 +73,18 @@ const SceneManager = (function() {
 		this.label = label || null;
 		this.type = 'surface';
 		const array = [];
+		let x = 0, y = 0, z = 0;
 		for(let p=0; p<points.length; p++) {
 			const point = points[p];
 			for(let i=0; i<point.length; i++) {
 				array.push(point[i]);
 			}
+			x += point[0];
+			y += point[1];
+			z += point[2];
 		}
 		this.points = new Float32Array(array);
-//		this.points = points.map(array => vec3.fromValues(array[0], array[1], array[2]));
+		this.position = vec3.fromValues(x / points.length, y / points.length, z / points.length);
 		this.cell = cell || null;
 		this.order = 0;
 		scene.sprites[this.id] = this;
@@ -87,7 +107,7 @@ const SceneManager = (function() {
 		return this.scene.setSprite(name, label, id,
 			this.x + (offsetX || 0) + .5,
 			(offsetY || 0),
-			this.z + (offsetZ || 0) + .5, scale, this, blockSize);
+			this.z + (offsetZ || 0) + .5, scale, blockSize, this);
 	};
 
 	Cell.prototype.setBarrier = function(id,x0,z0,x1,z1) {
@@ -182,16 +202,6 @@ const SceneManager = (function() {
 		return this.scene.cell(this.x + offsetX, this.z + offsetZ);
 	};
 
-	Scene.prototype.clear = function() {
-		this.nextID = 0;
-		this.sprites = {};
-		this.revealMap = {};
-		this.cellCoverage = [];
-		this.cachedPosition = {};
-		this.cachedSpriteList = [];
-		this.spritesUpdated = true;
-	}
-
 	function checkWall(type, cell, x, z) {
 		if (cell) {
 			switch(type) {
@@ -234,7 +244,7 @@ const SceneManager = (function() {
 		return true;
 	};
 
-	Scene.prototype.setSprite = function(name, label, id, x, y, z, scale, cell, blockSize) {
+	Scene.prototype.setSprite = function(name, label, id, x, y, z, scale, blockSize, cell) {
 		if (!id) {
 			id = name;
 		}
@@ -246,9 +256,9 @@ const SceneManager = (function() {
 			sprite.name = name;
 			sprite.label = label;
 			const newCell = cell || null;
-			if (sprite.position[0] !== x || sprite.position[1] !== y || sprite.position[2] !== z || sprite.cell !== cell) {
+			if (sprite.position[0] !== x || sprite.position[1] !== y || sprite.position[2] !== z || sprite.cell !== newCell) {
 				vec3.set(sprite.position, x, y, z);
-				sprite.cell = cell || null;
+				sprite.cell = newCell;
 				this.spritesUpdated = true;
 			}
 			sprite.scale = scale || 1;
@@ -294,16 +304,6 @@ const SceneManager = (function() {
 		}
 	}
 
-	function spriteCompare(a, b) {
-		if(a.order !== b.order) {
-			return a.order - b.order;
-		}
-		if (a.position && b.position) {
-			return a.position[2] - b.position[2];
-		}
-		return 0;
-	}
-
     function getCell(scene, x, z) {
     	const xx = Math.floor(x);
     	const zz = Math.floor(z);
@@ -319,49 +319,82 @@ const SceneManager = (function() {
 	};
 
 	Scene.prototype.getSprites = function() {
-		const spriteList = this.cachedSpriteList;
-		if (this.spritesUpdated) {
-			spriteList.length = 0;
-			for(let s in this.sprites) {
-				spriteList.push(this.sprites[s]);
-			}
-			spriteList.sort(spriteCompare);
-			this.spritesUpdated = false;
-		}
-		return spriteList;
+		return this.spriteList;
 	};
 
-	Scene.prototype.refresh = function(camera, now) {
+ 	const VIEW_RANGE = 15;
+	Scene.prototype.refreshView = function(camera, now) {
 		const { revealMap, sprites, cellCoverage, cachedPosition } = this;
-		const roundZ = Math.floor(camera.position[2]);
-		const roundX = Math.floor(camera.position[0]);
-		if(cachedPosition.x !== roundX || cachedPosition.z !== roundZ) {
+
+		const forwardPos = camera.getRelativePosition(0, -VIEW_RANGE);
+		const roundX = Math.floor(forwardPos.x);
+		const roundZ = Math.floor(forwardPos.z);
+
+		const viewRadius = VIEW_RANGE + 2;
+		const viewLimit = viewRadius * viewRadius;
+
+		if(cachedPosition.x !== roundX || cachedPosition.z !== roundZ || this.lastTurn.angle !== camera.turn) {
 			cachedPosition.x = roundX;
 			cachedPosition.z = roundZ;
-			for(let z = -30; z <= 5; z++) {
-				const zz = z + roundZ;
-				const limit = Math.max(1, Math.min(5 - z, 8));
-				for(let x = -limit; x <= limit; x++) {
-					const xx = x + roundX;
-					const cell = getCell(this, xx, zz);
-					cell.time = now;
-					if (!cell.revealed) {
-						cell.revealed = true;
-						const cellCoverage = this.cellCoverage;
-						for(let c = 0; c < cellCoverage.length; c++) {
-							if(cellCoverage[c].condition(xx, zz)) {
-								cellCoverage[c].action(cell);
+
+			for(let z = -viewRadius; z <= viewRadius; z++) {
+				const zz = z*z;
+				const rZ = z + roundZ;
+				for(let x = -viewRadius; x <= viewRadius; x++) {
+					const xx = x*x;
+					if (xx + zz < viewLimit) {
+						const rX = x + roundX;
+						const cell = getCell(this, rX, rZ);
+						cell.time = now;
+						if (!cell.revealed) {
+							cell.revealed = true;
+							const cellCoverage = this.cellCoverage;
+							for(let c = 0; c < cellCoverage.length; c++) {
+								if(cellCoverage[c].condition(rX, rZ)) {
+									cellCoverage[c].action(cell);
+								}
 							}
-						}
+						}						
 					}
 				}
 			}
+
 			if(Math.random() < CLEAN_FREQUENCY) {
 				cleanReveal(revealMap, now);
 				cleanSprites(scene);
 			}
+			if(this.lastTurn.angle !== camera.turn) {
+				this.lastTurn.angle = camera.turn;
+				this.lastTurn.sin = Math.sin(-this.lastTurn.angle);
+				this.lastTurn.cos = Math.cos(-this.lastTurn.angle);
+				this.spritesUpdated = true;
+			}
+		}
+
+		if (this.spritesUpdated) {
+			this.spriteList.length = 0;
+			for(let s in this.sprites) {
+				this.spriteList.push(this.sprites[s]);
+			}
+			const sin = Math.sin(-this.lastTurn.angle);
+			const cos = Math.cos(-this.lastTurn.angle);
+			this.spriteList.sort(this.spriteCompare);
+			this.spritesUpdated = false;
 		}
     };
+
+    function spriteCompare(a, b) {
+		if(a.order !== b.order) {
+			return a.order - b.order;
+		}
+		if(a.order === 1) {
+			const { sin, cos } = this.lastTurn;
+			const ardz = (sin * a.position[0] + cos * a.position[2]);
+			const brdz = (sin * b.position[0] + cos * b.position[2]);
+			return ardz - brdz;
+		}
+		return 0;
+	}
 
 	return {
 		Scene,
