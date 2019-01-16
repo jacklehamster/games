@@ -163,7 +163,6 @@ const SpriteRenderer = (function() {
 	const SIZE_INCREASE = 500;
 	const ZERO_VEC3 = vec3.create();
 	const SCALE_VEC3 = vec3.fromValues(1,1,1);
-	const BASEZ_VEC3 = vec3.fromValues(0,0,-1.5);
 	const IDENTITY_QUAT = quat.identity(quat.create());
 
 	const CLEAN_FREQUENCY = .1;
@@ -209,6 +208,7 @@ const SpriteRenderer = (function() {
 			viewMatrix: mat4.create(),
 			tempPositions: new Float32Array(FLOAT_PER_VERTEX * VERTICES_PER_SPRITE),
 			translateVector: vec3.create(),
+			tempVec3: vec3.create(),
 		};
 
 		this.spriteMap = {
@@ -368,11 +368,12 @@ const SpriteRenderer = (function() {
 	function setCamera(renderer, camera, forceRefresh) {
 		if (!renderer.camera.equals(camera) || forceRefresh) {
 			const { gl, programInfo, cachedData, tempVariables, cameraQuat } = renderer;
-			const { viewMatrix, translateVector } = tempVariables;
+			const { viewMatrix, translateVector, tempVec3 } = tempVariables;
 			const turn = camera.turn;
 			const tilt = camera.getTilt();
 			quat.rotateY(cameraQuat, quat.rotateX(cameraQuat, IDENTITY_QUAT, tilt), turn);
-			mat4.fromRotationTranslationScaleOrigin(viewMatrix, cameraQuat, ZERO_VEC3, SCALE_VEC3, BASEZ_VEC3);			
+			tempVec3[2] = camera.zOffset || 0;
+			mat4.fromRotationTranslationScaleOrigin(viewMatrix, cameraQuat, ZERO_VEC3, SCALE_VEC3, tempVec3);			
 			quat.conjugate(cameraQuat, cameraQuat);	//	conjugate for sprites
 
 			const [ x, y, z ] = camera.position;

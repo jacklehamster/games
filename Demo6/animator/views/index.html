@@ -905,7 +905,7 @@ function main() {
         case KEY_W: case KEY_S: case KEY_A: case KEY_D:
         case KEY_Q: case KEY_E:
           keyboard[e.keyCode] = e.type === "keyup" ? 0 : 1;
-          updateMove();
+          updateMove(viewPosition);
           e.preventDefault();
           break;
       }

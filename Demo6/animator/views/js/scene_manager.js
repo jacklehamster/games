@@ -234,7 +234,6 @@ const SceneManager = (function() {
 		return true;
 	};
 
-	window. aaa = {};
 	Scene.prototype.setSprite = function(name, label, id, x, y, z, scale, cell, blockSize) {
 		if (!id) {
 			id = name;
@@ -257,11 +256,6 @@ const SceneManager = (function() {
 		if (sprite.cell && blockSize) {
 			sprite.cell.setBarrier(id + 'barrier',.5 - blockSize/2,.5 - blockSize/2,.5 + blockSize/2,.5 + blockSize/2);
 		}
-
-		if(!aaa[id]) {
-			aaa[id] = sprite;
-		}
-
 		return sprite;
 	};
 

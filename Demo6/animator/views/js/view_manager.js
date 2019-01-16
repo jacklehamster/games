@@ -4,6 +4,7 @@ const View = (function() {
 	const MOVE_MULTIPLIER = 2;
 	const ROTATION_STEP = 45 * Math.PI / 180;
 	const ROTATION_SPEED = .02;
+	const Z_OFFSET = -1.5;
 
 	function Camera() {};
 	Recycler.wrap(Camera, function(x, y, z, turn, tilt) {
@@ -16,6 +17,7 @@ const View = (function() {
 		this.mov = {
 			dx: 0, dy: 0, dz: 0, rot: 0,
 		};
+		this.zOffset = Z_OFFSET;
 	});
 
 	Utils.createAccessors(Camera, ['autoTilt']);
@@ -47,17 +49,17 @@ const View = (function() {
 	Camera.prototype.step = function(scene) {
 		const { dx, dy, dz, rot } = this.mov;
 	    if (rot) {
-	      this.turnMotion = (this.turnMotion + rot * ROTATION_SPEED) * SLOWDOWN;
-		  this.mov.rot = 0;
+			this.turnMotion = (this.turnMotion + rot * ROTATION_SPEED) * SLOWDOWN;
+			this.mov.rot = 0;
 	    } else if(this.turnMotion) {
-	      const closestRotation = this.turnMotion > 0 
-	        ? Math.ceil(this.turn / ROTATION_STEP) * ROTATION_STEP
-	        : Math.floor(this.turn / ROTATION_STEP) * ROTATION_STEP;
-	      this.turnMotion = (closestRotation - this.turn) * .25;
-	      if(Math.abs(this.turnMotion) < .001) {
-	        this.turn = closestRotation;
-	        this.turnMotion = 0;
-	      }
+			const closestRotation = this.turnMotion > 0 
+				? Math.ceil(this.turn / ROTATION_STEP) * ROTATION_STEP
+				: Math.floor(this.turn / ROTATION_STEP) * ROTATION_STEP;
+			this.turnMotion = (closestRotation - this.turn) * .25;
+			if(Math.abs(this.turnMotion) < .001) {
+				this.turn = closestRotation;
+				this.turnMotion = 0;
+			}
 	    }
 
 	    const sin = Math.sin(this.turn);
@@ -73,17 +75,17 @@ const View = (function() {
 	    const [ x, y, z ] = this.position;
 	    const xDest = x + this.motion[0] * SPEED_FACTOR;
 	    const zDest = z + this.motion[2] * SPEED_FACTOR;
-	    if(!scene || scene.canGo(x, z, xDest, zDest)) {
-	      this.position[0] = xDest;
-	      this.position[2] = zDest;
-	    } else if(scene.canGo(x, z, x, zDest)) {
-	      this.position[2] = zDest;
-	    } else if(scene.canGo(x, z, xDest, z)) {
-	      this.position[0] = xDest;
+	    if(!scene || scene.canGo(x, z + Z_OFFSET, xDest, zDest + Z_OFFSET)) {
+		    this.position[0] = xDest;
+		    this.position[2] = zDest;
+	    } else if(scene.canGo(x, z + Z_OFFSET, x, zDest + Z_OFFSET)) {
+		    this.position[2] = zDest;
+	    } else if(scene.canGo(x, z + Z_OFFSET, xDest, z + Z_OFFSET)) {
+	    	this.position[0] = xDest;
 	    }
 
 	    if (this.turnMotion) {
-	      this.turn += this.turnMotion;
+	    	this.turn += this.turnMotion;
 	    }
 	};
 
