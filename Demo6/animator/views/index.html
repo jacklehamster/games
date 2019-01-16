@@ -56,8 +56,8 @@
 </style>
 <body style="background-color: black">
   <div style="display: flex; flex-direction: row;">
-    <canvas id="glCanvas" width="1200" height="1200" style="width: 600; height: 600"></canvas>
-    <div style="width: 100px;">
+    <canvas id="glCanvas" width="1200" height="1200" style="width: 600; height: 600; image-rendering: pixelated;"></canvas>
+    <div id="editbar" style="display: none; width: 100px;">
       <button id="importButton" class="button" style="display:none; width: 100%"></button>
       <div id="cover" style="position: fixed; width: 100vw; height: 100vh; background-color: rgba(20, 26, 36, 0.98); left: 0; top: 0; display:none"></div>
       <div id="importOverlay" style="position: absolute; width: 100vw; left: 0; top: 0; display:none">
@@ -78,17 +78,20 @@
       </div>
     </div>
   </div>
-  <div id="editor" style="display: flex; flex-direction: column;">
+  <div id="editor" style="display: none; flex-direction: column;">
   </div>
-  <pre>
-    <div id="metadata" style="color: green">
-    </div>
-  </pre>
+  <div id="metadata" style="display: none; color: green;">
+  </div>
 </body>
 
 
 
 <script>
+    if(location.search.indexOf("edit")>=0) {
+      document.getElementById('editbar').style.display = '';
+      document.getElementById('editor').style.display = 'flex';
+      document.getElementById('metadata').style.display = '';
+    }
         let currentPath = '/Users/vincent/Google Drive/Project/Demo4';
         let fileSelection = -1;
         let meta = null;
