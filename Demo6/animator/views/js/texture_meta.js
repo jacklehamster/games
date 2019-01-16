@@ -57,7 +57,7 @@ const TextureFactory = (function() {
 		this.indexBuffer = new Float32Array(VERTICES_PER_SPRITE).fill(this.index);
 		this.fit = fit;
 		this.factory = factory;
-		this.time = 0;
+		this.name = null;
 	});
 
 	TextureData.prototype.remove = function() {
@@ -207,7 +207,22 @@ const TextureFactory = (function() {
 		if (createdTextureData[name] && !createdTextureData[name].recycled) {
 			createdTextureData[name].recycle();
 		}
-		return createdTextureData[name] = allocateTextureData(this, -width/2, -height, width, height);
+		const textureData = createdTextureData[name] = allocateTextureData(this, -width/2, -height, width, height);
+		textureData.name = name;
+		return textureData;
+	};
+
+	Factory.prototype.cleanCache = function(name) {
+		delete this.cache.cachedAnimationData[name];
+		for(let tag in this.cache.cachedTextureData) {
+			for(let frameId in this.cache.cachedTextureData[tag]) {
+				const textureData = this.cache.cachedTextureData[tag][frameId];
+				if(textureData.name === name) {
+					delete this.cache.cachedTextureData[tag][frameId];
+					textureData.remove();
+				}
+			}
+		}
 	};
 
 	Factory.prototype.getTextureData = function(name, animationTag, now) {
@@ -235,6 +250,7 @@ const TextureFactory = (function() {
 
 		const bigRect = animationFrame.bigRect;
 		const textureData = allocateTextureData(this, bigRect.x, bigRect.y, bigRect.width, bigRect.height);
+		textureData.name = name;
 
 		const { crop, hotspot } = animationFrame;
 		const imageData = canvas.getContext('2d').getImageData(crop.x, crop.y, crop.width, crop.height);
@@ -325,7 +341,6 @@ const TextureFactory = (function() {
 		  cachedAnimationData[metaName] = {};
 		}
 		return cachedAnimationData[metaName][animationTag] = {
-			name: meta.name,
 			frameRate: animation.frameRate,
 			frames: animationFrames,
 		}

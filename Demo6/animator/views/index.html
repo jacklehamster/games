@@ -789,7 +789,8 @@
             frame.hotspot.y += dy * 2;
           });
           const canvas = document.getElementById('spritesheet');
-          onMetaChange(meta, canvas);          
+          onMetaChange(meta, canvas); 
+          document.querySelector('#glcanvas').getContext('webgl').getTextureFactory().cleanCache(meta.name);
           Meta.addImage(canvas);
         }
 
