@@ -275,8 +275,8 @@ const SceneManager = (function() {
 		this.spritesUpdated = true;
 	}
 
-	Scene.prototype.onReveal = function(condition, action) {
-		this.cellCoverage.push(new Coverage(condition === true ? ()=>true : condition, action));
+	Scene.prototype.onReveal = function(callback) {
+		this.cellCoverage.push(callback);
 	};
 
 	function cleanReveal(revealMap, now) {
@@ -350,9 +350,7 @@ const SceneManager = (function() {
 							cell.revealed = true;
 							const cellCoverage = this.cellCoverage;
 							for(let c = 0; c < cellCoverage.length; c++) {
-								if(cellCoverage[c].condition(rX, rZ)) {
-									cellCoverage[c].action(cell);
-								}
+								cellCoverage[c](cell);
 							}
 						}						
 					}

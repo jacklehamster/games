@@ -57,6 +57,7 @@ const TextureFactory = (function() {
 		this.indexBuffer = new Float32Array(VERTICES_PER_SPRITE).fill(this.index);
 		this.fit = fit;
 		this.factory = factory;
+		this.time = 0;
 	});
 
 	TextureData.prototype.remove = function() {
@@ -272,7 +273,7 @@ const TextureFactory = (function() {
 		    if (lowRange <= f && f <= highRange) {
 		        const { crop, hotspot } = frame;
 		        return {
-		          frameId: md5(JSON.stringify([metaName, crop])),
+		          frameId: md5(JSON.stringify([metaName, crop, hotspot])),
 		          crop,
 		          hotspot,
 		          bigRect,
@@ -324,8 +325,9 @@ const TextureFactory = (function() {
 		  cachedAnimationData[metaName] = {};
 		}
 		return cachedAnimationData[metaName][animationTag] = {
-		  frameRate: animation.frameRate,
-		  frames: animationFrames,
+			name: meta.name,
+			frameRate: animation.frameRate,
+			frames: animationFrames,
 		}
 	}	
 

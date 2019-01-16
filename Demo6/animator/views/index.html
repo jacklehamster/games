@@ -810,43 +810,47 @@
     scene.clear();
     if(meta && meta.animation) {
       const selectedLabel = meta.animation.rows[Math.min(meta.animation.rows.length-1,Math.max(selectedIndex, 0))].label;
-      scene.onReveal((x,z)=>x===0 && z===0, cell => {
-        cell.setSprite(meta.name, selectedLabel);
-        if(hasHotspot) {
-          cell.setSprite('x', 'mark', 'xmark', 0, 0, 0, .2);
+      scene.onReveal(cell => {
+        const { x, z } = cell;
+        if (x===0 && z===0) {
+          cell.setSprite(meta.name, selectedLabel);
+          if(hasHotspot) {
+            cell.setSprite('x', 'mark', 'xmark', 0, 0, 0, .1);
+          }
         }
       });
     } else {
-      scene.onReveal(true, cell => {
+      scene.onReveal(cell => {
+          const { x, z } = cell;
           cell.setWall('floor', 'brick');
           cell.setWall('ceiling', 'eye');
-      });
-      scene.onReveal((x,z)=>x===-1 && z%7!==3, cell => {
-          cell.setWall('leftwall', 'brick');
-      });
-      scene.onReveal((x,z)=>x===-2 && z%7!==3, cell => {
-          cell.setWall('rightwall', 'brick');
-      });
-      scene.onReveal((x,z)=>x===1 && z%7!==4, cell => {
-          cell.setWall('rightwall', 'brick');
-      });
-      scene.onReveal((x,z)=>x===2 && z%7!==4, cell => {
-          cell.setWall('leftwall', 'brick');
-      });
-      scene.onReveal((x,z)=>x%11!== 3 && z===-1, cell => {
-          cell.setWall('wall', 'brick');
-      });
-      scene.onReveal((x,z)=>x%11!== 3 && z===-2, cell => {
-          cell.setWall('backwall', 'brick');
-      });
-      scene.onReveal((x,z)=> Math.abs(x ^ z) % 13 === 10, cell => {
-          cell.setSprite('tentacle', null, null, 0, 0, 0, 1, .5);
-      });
-      scene.onReveal((x,z)=>x===0&&z===0, cell => {
-          cell.setSprite('elephant', null, 'elephant', 0, 0, 0, 1, .9);
-      });
-      scene.onReveal((x,z)=>x===0&&z===1, cell => {
-          cell.setSprite('oozie', null, 'oozie', 0, 0, 0, .5);
+          if (x===-1 && z%7!==3) {
+            cell.setWall('leftwall', 'brick');            
+          }
+          if (x===-2 && z%7!==3) {
+            cell.setWall('rightwall', 'brick');            
+          }
+          if (x===1 && z%7!==4) {
+            cell.setWall('rightwall', 'brick');
+          }
+          if (x===2 && z%7!==4) {
+            cell.setWall('leftwall', 'brick');
+          }
+          if (x%11!== 3 && z===-1) {
+            cell.setWall('wall', 'brick');
+          }
+          if (x%11!== 3 && z===-2) {
+            cell.setWall('backwall', 'brick');            
+          }
+          if (Math.abs(x ^ z) % 13 === 10) {
+            cell.setSprite('tentacle', null, null, 0, 0, 0, 1, .5);            
+          }
+          if (x===0 && z===0) {
+            cell.setSprite('elephant', null, 'elephant', 0, 0, 0, 1, .9);
+          }
+          if (x===0&&z===1) {
+            cell.setSprite('oozie', null, 'oozie', 0, 0, 0, .5);            
+          }
       });
     }
   }
