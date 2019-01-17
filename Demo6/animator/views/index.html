@@ -14,6 +14,10 @@
 
 
 <style>
+body {
+  margin: 0;
+  padding: 0;
+}
 .button {
   margin: 1px;
   padding: 2px;
@@ -829,7 +833,7 @@
           cell.setWall('floor', 'brick');
           cell.setWall('ceiling', 'eye');
           if (x===-1 && z%7!==3) {
-            cell.setWall('leftwall', 'brick');            
+            cell.setWall('leftwall', z % 13 === 2 ? 'video' : 'brick');            
           }
           if (x===-2 && z%7!==3) {
             cell.setWall('rightwall', 'brick');            
@@ -972,35 +976,36 @@ function main() {
 </script>
 
 <script>
-// const video = document.createElement('video');
-// let videoPlaying = false;
+const video = document.createElement('video');
+let videoPlaying = false;
 
-// function setupVideo(url) {
-//   video.loop = true;
-//   video.muted = true;
-//   video.addEventListener('playing', function() {
-//     gl.getTextureFactory().createTextureData('video', video.videoWidth, video.videoHeight)
-//       .attachVideo(video);
-//   }, true);
+function setupVideo(url) {
+  video.loop = true;
+  video.muted = true;
+  video.addEventListener('playing', function() {
+    const gl = document.querySelector('#glcanvas').getContext('webgl');
+    gl.getTextureFactory().createTextureData('video', video.videoWidth, video.videoHeight)
+      .attachVideo(video);
+  }, true);
 
-//   video.addEventListener('timeupdate', function() {
-//   }, true);
-//   video.src = url;
-// }
-// setupVideo("fragglerock.mp4")
+  video.addEventListener('timeupdate', function() {
+  }, true);
+  video.src = url;
+}
+setupVideo("fragglerock.mp4")
 
-// document.addEventListener("keydown", e => {
-//   if(!videoPlaying) {
-//     video.play();
-//     videoPlaying = true;
-//   }
-// });
-// document.addEventListener("mousedown", e => {
-//   if(!videoPlaying) {
-//     video.play();
-//     videoPlaying = true;
-//   }
-// });
+document.addEventListener("keydown", e => {
+  if(!videoPlaying) {
+    video.play();
+    videoPlaying = true;
+  }
+});
+document.addEventListener("mousedown", e => {
+  if(!videoPlaying) {
+    video.play();
+    videoPlaying = true;
+  }
+});
 
 
 Meta.loadImage("card0001.png", console.log);
