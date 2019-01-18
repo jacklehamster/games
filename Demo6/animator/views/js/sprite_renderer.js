@@ -487,6 +487,7 @@ const SpriteRenderer = (function() {
 			spriteData.spriteTextureIndex = textureIndex;
 		}
 		spriteData.valid = true;
+		spriteData.time = now;
 	};
 
 	function draw(gl, count) {
