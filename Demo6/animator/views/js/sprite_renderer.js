@@ -206,8 +206,7 @@ const SpriteRenderer = (function() {
 			tempVec3: vec3.create(),
 		};
 
-		this.spriteMap = {
-		};
+		this.spriteMap = {};
 		this.nextIndex = 0;
 		this.recycledIndices = [];
 		this.indicesMap = [];
@@ -227,7 +226,7 @@ const SpriteRenderer = (function() {
 	function transformPosition(renderer, positions, cameraQuat, translateVector) {
 		vec3.forEach(positions, 0, 0, 0, vec3.transformQuat, cameraQuat);
 		for(let i=0; i<positions.length; i+=3) {
-			positions[i] += translateVector[0];
+			positions[i]   += translateVector[0];
 			positions[i+1] += translateVector[1];
 			positions[i+2] += translateVector[2];
 		}
@@ -235,7 +234,7 @@ const SpriteRenderer = (function() {
 
 	function copyPositions(positions, points) {
 		for(let i=0; i<positions.length; i+=3) {
-			positions[i] = points[i];
+			positions[i]   = points[i];
 			positions[i+1] = points[i+1];
 			positions[i+2] = points[i+2];
 		}		
@@ -349,7 +348,7 @@ const SpriteRenderer = (function() {
 			}
 		}
 		draw(gl, count);
-		if(Math.random()<CLEAN_FREQUENCY) {
+		if(Math.random() < CLEAN_FREQUENCY) {
 			cleanSpriteMap(this, now);
 		}
 	};

@@ -977,8 +977,8 @@ function main() {
     }    
   });
   Dowge.renderCanvas(canvas, "uiScene", "mainCamera", (scene, camera, now) => {
-      const [ x, y, z ] = camera.position;
-      scene.setSprite("eye", null, "ui", x, .5, z - 1.5, .05);
+      const [ x, y, z ] = camera.getRelativePosition(-.5, -0, 0);
+      scene.setSprite("button", null, "ui", x, y, z, .1);
   });
 
   initScene(scene);

@@ -328,11 +328,11 @@ const SceneManager = (function() {
 	Scene.prototype.refreshView = function(camera, now) {
 		const { revealMap, sprites, cellCoverage, cachedPosition } = this;
 
-		const forwardPos = camera.getRelativePosition(0, -VIEW_RANGE);
-		const roundX = Math.floor(forwardPos.x);
-		const roundZ = Math.floor(forwardPos.z);
+		const forwardPos = camera.getRelativePosition(0, 0, -VIEW_RANGE);
+		const roundX = Math.floor(forwardPos[0]);
+		const roundZ = Math.floor(forwardPos[2]);
 
-		const viewRadius = VIEW_RANGE + 2;
+		const viewRadius = VIEW_RANGE + 3;
 		const viewLimit = viewRadius * viewRadius;
 
 		if (cachedPosition.x !== roundX || cachedPosition.z !== roundZ || this.lastTurn.angle !== camera.turn) {

@@ -45,7 +45,7 @@ const Dowge = (function(document) {
 		if (!gl) {
 			alert('Unable to initialize WebGL. Your browser or machine may not support it.');
 			return;
-		}		
+		}
 		const renderer = gl.getSpriteRenderer();
 		const scene = getScene(sceneName), camera = getCamera(cameraName);
 		renderings.push({ canvas, cameraName, sceneName, renderer, scene, camera, refreshCallback });
