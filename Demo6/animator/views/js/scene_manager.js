@@ -276,15 +276,17 @@ const SceneManager = (function() {
 	}
 
 	Scene.prototype.onReveal = function(callback) {
-		this.cellCoverage.push(callback);
+		if (callback) {
+			this.cellCoverage.push(callback);
+		}
 	};
 
 	function cleanReveal(revealMap, now) {
-		for(let z in revealMap) {
-			for(let x in revealMap[z]) {
+		for (let z in revealMap) {
+			for (let x in revealMap[z]) {
 				const cell = revealMap[z][x];
-				if(cell.time !== now) {
-					for(let b in cell.barriers) {
+				if (cell.time !== now) {
+					for (let b in cell.barriers) {
 						cell.barriers[b].recycle();
 					}
 					cell.barriers = {};
@@ -297,7 +299,7 @@ const SceneManager = (function() {
 
 	function cleanSprites(scene) {
 		const sprites = scene.sprites;
-		for(let id in sprites) {
+		for (let id in sprites) {
 			if (sprites[id].cell && sprites[id].cell.recycled) {
 				scene.remove(id);
 			}
@@ -308,11 +310,11 @@ const SceneManager = (function() {
     	const xx = Math.floor(x);
     	const zz = Math.floor(z);
 		const revealMap = scene.revealMap;
-		if(!revealMap[zz]) {
+		if (!revealMap[zz]) {
 			revealMap[zz] = {};
 		}
 		let cell = revealMap[zz][xx];
-		if(!cell) {
+		if (!cell) {
 			cell = revealMap[zz][xx] = Cell.create(xx, zz, scene);
 		}
 		return cell;
@@ -333,35 +335,37 @@ const SceneManager = (function() {
 		const viewRadius = VIEW_RANGE + 2;
 		const viewLimit = viewRadius * viewRadius;
 
-		if(cachedPosition.x !== roundX || cachedPosition.z !== roundZ || this.lastTurn.angle !== camera.turn) {
+		if (cachedPosition.x !== roundX || cachedPosition.z !== roundZ || this.lastTurn.angle !== camera.turn) {
 			cachedPosition.x = roundX;
 			cachedPosition.z = roundZ;
 
-			for(let z = -viewRadius; z <= viewRadius; z++) {
-				const zz = z*z;
-				const rZ = z + roundZ;
-				for(let x = -viewRadius; x <= viewRadius; x++) {
-					const xx = x*x;
-					if (xx + zz < viewLimit) {
-						const rX = x + roundX;
-						const cell = getCell(this, rX, rZ);
-						cell.time = now;
-						if (!cell.revealed) {
-							cell.revealed = true;
-							const cellCoverage = this.cellCoverage;
-							for(let c = 0; c < cellCoverage.length; c++) {
-								cellCoverage[c](cell);
-							}
-						}						
+			if (cellCoverage.length > 0) {
+				for(let z = -viewRadius; z <= viewRadius; z++) {
+					const zz = z*z;
+					const rZ = z + roundZ;
+					for(let x = -viewRadius; x <= viewRadius; x++) {
+						const xx = x*x;
+						if (xx + zz < viewLimit) {
+							const rX = x + roundX;
+							const cell = getCell(this, rX, rZ);
+							cell.time = now;
+							if (!cell.revealed) {
+								cell.revealed = true;
+								const cellCoverage = this.cellCoverage;
+								for(let c = 0; c < cellCoverage.length; c++) {
+									cellCoverage[c](cell);
+								}
+							}						
+						}
 					}
 				}
 			}
 
-			if(Math.random() < CLEAN_FREQUENCY) {
+			if (Math.random() < CLEAN_FREQUENCY) {
 				cleanReveal(revealMap, now);
 				cleanSprites(scene);
 			}
-			if(this.lastTurn.angle !== camera.turn) {
+			if (this.lastTurn.angle !== camera.turn) {
 				this.lastTurn.angle = camera.turn;
 				this.lastTurn.sin = Math.sin(-this.lastTurn.angle);
 				this.lastTurn.cos = Math.cos(-this.lastTurn.angle);
@@ -374,9 +378,11 @@ const SceneManager = (function() {
 			for(let s in this.sprites) {
 				this.spriteList.push(this.sprites[s]);
 			}
-			const sin = Math.sin(-this.lastTurn.angle);
-			const cos = Math.cos(-this.lastTurn.angle);
-			this.spriteList.sort(this.spriteCompare);
+			if (this.spriteList.length) {
+				const sin = Math.sin(-this.lastTurn.angle);
+				const cos = Math.cos(-this.lastTurn.angle);
+				this.spriteList.sort(this.spriteCompare);
+			}
 			this.spritesUpdated = false;
 		}
     };

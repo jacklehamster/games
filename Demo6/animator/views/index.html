@@ -290,7 +290,7 @@ body {
                 Meta.loadImage(`${src}?${performance.now()}`, (img, meta) => {
                   Meta.addImage(img);
                   div.style.backgroundImage = `url('${img.src}')`;
-                  div.style.backgroundSize = "cover";//`${img.naturalWidth/2}px ${img.naturalHeight/2}px`;
+                  div.style.backgroundSize = "cover";
                   div.style.backgroundPosition = "center";
                   div.style.cursor = "pointer";
                   div.classList.add('sprite');
@@ -813,6 +813,7 @@ body {
 <script>
 
   let scene = new SceneManager.Scene("mainscene");
+  let scene2 = new SceneManager.Scene("uiscene");
 
   function initScene(scene) {
     scene.clear();
@@ -859,8 +860,15 @@ body {
           if (x===0&&z===1) {
             cell.setSprite('oozie', null, 'oozie', 0, 0, 0, .5);            
           }
+          if (x===1 && z===0) {
+            cell.setSprite('video', null, 'video', 0, 0, 0, 1, .9);
+          }
       });
     }
+  }
+
+  function initUIScene(scene) {
+    scene.clear();
   }
 
 main();
@@ -958,6 +966,7 @@ function main() {
   }
 
   Dowge.setScene("mainScene", scene);
+  Dowge.setScene("uiScene", scene2);
   Dowge.setCamera("mainCamera", viewPosition);
   Dowge.renderCanvas(canvas, "mainScene", "mainCamera", (scene, camera, now) => {
     updateMove(camera);
@@ -967,8 +976,13 @@ function main() {
       scene.setSprite("x", "mark", "xmark", x, 0, z - 1.5, .05);
     }    
   });
+  Dowge.renderCanvas(canvas, "uiScene", "mainCamera", (scene, camera, now) => {
+      const [ x, y, z ] = camera.position;
+      scene.setSprite("eye", null, "ui", x, .5, z - 1.5, .05);
+  });
 
   initScene(scene);
+  initUIScene(scene2);
 }
 
 
@@ -976,36 +990,36 @@ function main() {
 </script>
 
 <script>
-// const video = document.createElement('video');
-// let videoPlaying = false;
+const video = document.createElement('video');
+let videoPlaying = false;
 
-// function setupVideo(url) {
-//   video.loop = true;
-//   video.muted = true;
-//   video.addEventListener('playing', function() {
-//     const gl = document.querySelector('#glcanvas').getContext('webgl');
-//     gl.getTextureFactory().createTextureData('video', video.videoWidth, video.videoHeight)
-//       .attachVideo(video);
-//   }, true);
+function setupVideo(url) {
+  video.loop = true;
+  video.muted = true;
+  video.addEventListener('playing', function() {
+    const gl = document.querySelector('#glcanvas').getContext('webgl');
+    gl.getTextureFactory().createTextureData('video', video.videoWidth, video.videoHeight)
+      .attachVideo(video);
+  }, true);
 
-//   video.addEventListener('timeupdate', function() {
-//   }, true);
-//   video.src = url;
-// }
-// setupVideo("fragglerock.mp4")
+  video.addEventListener('timeupdate', function() {
+  }, true);
+  video.src = url;
+}
+//setupVideo("fragglerock.mp4")
 
-// document.addEventListener("keydown", e => {
-//   if(!videoPlaying) {
-//     video.play();
-//     videoPlaying = true;
-//   }
-// });
-// document.addEventListener("mousedown", e => {
-//   if(!videoPlaying) {
-//     video.play();
-//     videoPlaying = true;
-//   }
-// });
+document.addEventListener("keydown", e => {
+  if(!videoPlaying) {
+    video.play();
+    videoPlaying = true;
+  }
+});
+document.addEventListener("mousedown", e => {
+  if(!videoPlaying) {
+    video.play();
+    videoPlaying = true;
+  }
+});
 
 
 Meta.loadImage("card0001.png", console.log);

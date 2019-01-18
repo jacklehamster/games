@@ -212,16 +212,16 @@ const SpriteRenderer = (function() {
 		this.recycledIndices = [];
 		this.indicesMap = [];
 		this.backgroundColor = [ 0.0, 0.0, 0.0, 1.0 ];
+		this.lastCleared = 0;
 
 		const fieldOfView = 45 * Math.PI / 180;   // in radians
 		const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
 		const zNear = 0.1;
 		const zFar = 1000.0;
-		const projectionMatrix = mat4.create();
-		mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
+		const projectionMatrix = mat4.perspective(mat4.create(), fieldOfView, aspect, zNear, zFar);
 		gl.uniformMatrix4fv(this.programInfo.projectionLocation, false, projectionMatrix);
-
 		setCamera(this, View.Camera.create(), true);
+		clearRenderer(this, 0);
 	}
 
 	function transformPosition(renderer, positions, cameraQuat, translateVector) {
@@ -296,7 +296,6 @@ const SpriteRenderer = (function() {
 			spritePositions: new Float32Array(FLOAT_PER_VERTEX * VERTICES_PER_SPRITE),
 			spriteTextureCoordinates: new Float32Array(TEXTURE_FLOAT_PER_VERTEX * VERTICES_PER_SPRITE),
 			spriteTextureIndex: -1,
-			valid: false,
 			time: 0,
 		};
 	}
@@ -307,15 +306,30 @@ const SpriteRenderer = (function() {
 			const spriteData = spriteMap[s];
 			if (spriteData.time !== now) {
 				recycledIndices.push(spriteData);
-				spriteData.valid = false;
+				spriteData.time = 0;
 				delete spriteMap[s];
 			}
 		}
 	}
 
+	function clearRenderer(renderer, now) {
+		const gl = renderer.gl;
+		if (now===0) {
+			gl.clearColor.apply(gl, renderer.backgroundColor);  // Clear to black, fully opaque
+			gl.clearDepth(1.0);                 // Clear everything
+			gl.enable(gl.DEPTH_TEST);           // Enable depth testing
+			gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
+		} else if(renderer.lastCleared !== now) {
+			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		} else {
+			gl.clear(gl.DEPTH_BUFFER_BIT);
+		}
+		renderer.lastCleared = now;
+	};
+
 	Renderer.prototype.drawSprites = function(sprites, camera, now) {
 		const gl = this.gl;
-		clearScene(gl, this);
+		clearRenderer(this, now);
 		if(now) {
 			setTime(gl, this.programInfo, now);
 		}
@@ -358,6 +372,7 @@ const SpriteRenderer = (function() {
 			this.backgroundColor[2],
 			this.backgroundColor[3],
 		);
+		clearRenderer(this, 0);
 	};
 
 	function setCamera(renderer, camera, forceRefresh) {
@@ -432,14 +447,6 @@ const SpriteRenderer = (function() {
 		cleanSpriteMap(renderer, -1);
 	}
 
-	function clearScene(gl, renderer) {
-		gl.clearColor.apply(gl, renderer.backgroundColor);  // Clear to black, fully opaque
-		gl.clearDepth(1.0);                 // Clear everything
-		gl.enable(gl.DEPTH_TEST);           // Enable depth testing
-		gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
-		// gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-	}
-
 	function floatArrayEqual(a, b) {
 	  	for (let i=0; i < a.length; i++) {
 	    	if (a[i] !== b[i]) return false;
@@ -450,9 +457,9 @@ const SpriteRenderer = (function() {
 	function addFrame(renderer, texture, frameIndex, sprite, now) {
 		const { gl, programInfo, cachedData, indicesMap } = renderer;
 		const spriteData = getSpriteData(renderer, sprite.id);
-		const { slotIndex, spritePositions, spriteTextureCoordinates, spriteTextureIndex, valid } = spriteData;
+		const { slotIndex, spritePositions, spriteTextureCoordinates, spriteTextureIndex, time } = spriteData;
 
-		if (!valid || indicesMap[frameIndex] !== slotIndex) {
+		if (!time || indicesMap[frameIndex] !== slotIndex) {
 			let slotIndices = cachedData.indices[slotIndex];
 			if (!slotIndices) {
 				slotIndices = INDEX_ARRAY_PER_SPRITE.map(value => value + slotIndex * VERTICES_PER_SPRITE);
@@ -464,20 +471,20 @@ const SpriteRenderer = (function() {
 		}
 
 		const positions = getFramePositions(renderer, texture, sprite);
-		if (!valid || !floatArrayEqual(positions, spritePositions)) {
+		if (!time || !floatArrayEqual(positions, spritePositions)) {
 			gl.bindBuffer(gl.ARRAY_BUFFER, renderer.positionBuffer);
 			gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * FLOAT_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT, positions);
 			spritePositions.set(positions);
 		}
 
-		if (!valid || !floatArrayEqual(texture.coordinates, spriteTextureCoordinates)) {
+		if (!time || !floatArrayEqual(texture.coordinates, spriteTextureCoordinates)) {
 			gl.bindBuffer(gl.ARRAY_BUFFER, renderer.textureCoordBuffer);
 			gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * TEXTURE_FLOAT_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT, texture.coordinates);
 			spriteTextureCoordinates.set(texture.coordinates);
 		}
 
 		const textureIndex = texture.indexBuffer[0];
-		if (!valid || textureIndex != spriteTextureIndex) {
+		if (!time || textureIndex != spriteTextureIndex) {
 			if (textureIndex >= renderer.textureBuffer.length) {
 				renderer.textureBuffer = new Int32Array(textureIndex + 1).map((a, index) => index);
 				gl.uniform1iv(programInfo.uTextureLocation, renderer.textureBuffer);
@@ -486,7 +493,6 @@ const SpriteRenderer = (function() {
 			gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * Float32Array.BYTES_PER_ELEMENT, texture.indexBuffer);
 			spriteData.spriteTextureIndex = textureIndex;
 		}
-		spriteData.valid = true;
 		spriteData.time = now;
 	};
 
