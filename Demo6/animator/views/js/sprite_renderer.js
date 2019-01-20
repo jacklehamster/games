@@ -33,7 +33,7 @@ const SpriteRenderer = (function() {
 		varying highp float textureIndex;
 
 		float rand(vec2 co, float time){
-		  return fract(sin(dot(co.xy ,vec2(12.9898 + time,78.233 + time))) * 43758.5453);
+		  return fract(sin(dot(co.xy ,vec2(12.9898 + time, 78.233 + time))) * 43758.5453);
 		}
 
 		vec4 reduceColor(vec4 color, vec2 co, float amount) {
