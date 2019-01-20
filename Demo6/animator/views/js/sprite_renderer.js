@@ -144,6 +144,9 @@ const SpriteRenderer = (function() {
 //			color = reduceColor(color, vTextureCoord, min(1.0, (zDist * 2.0)));
 			color = alterHueSatLum(color, vec3(1.0, max(0.0, 1.0 - zDist * .2), max(0.0, 1.0 - zDist * 1.5)));
 
+			if (color.a == 0.0) {
+				discard;
+			} 
 			gl_FragColor = color;
 		}
 	`;
@@ -160,7 +163,7 @@ const SpriteRenderer = (function() {
 	const SCALE_VEC3 = vec3.fromValues(1,1,1);
 	const IDENTITY_QUAT = quat.identity(quat.create());
 
-	const CLEAN_FREQUENCY = .1;
+	const CLEAN_FREQUENCY = .01;
 
 	function Renderer(gl) {
 		if(!TextureFactory) {
@@ -212,6 +215,7 @@ const SpriteRenderer = (function() {
 		this.indicesMap = [];
 		this.backgroundColor = [ 0.0, 0.0, 0.0, 1.0 ];
 		this.lastCleared = 0;
+		this.lastCleaned = 0;
 
 		const fieldOfView = 45 * Math.PI / 180;   // in radians
 		const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
@@ -279,7 +283,7 @@ const SpriteRenderer = (function() {
 		}
 	}
 
-	function getSpriteData(renderer, id) {
+	function getSpriteCache(renderer, id) {
 		const spriteMap = renderer.spriteMap;
 		if (spriteMap[id]) {
 			return spriteMap[id];
@@ -299,11 +303,11 @@ const SpriteRenderer = (function() {
 		};
 	}
 
-	function cleanSpriteMap(renderer, now) {
+	function cleanSpriteMap(renderer, time) {
 		const { spriteMap, recycledIndices } = renderer;
 		for(let s in spriteMap) {
 			const spriteData = spriteMap[s];
-			if (spriteData.time !== now) {
+			if (spriteData.time !== time) {
 				recycledIndices.push(spriteData);
 				spriteData.time = 0;
 				delete spriteMap[s];
@@ -329,6 +333,13 @@ const SpriteRenderer = (function() {
 	Renderer.prototype.drawSprites = function(sprites, camera, now) {
 		const gl = this.gl;
 		clearRenderer(this, now);
+		if(now!==this.lastCleaned) {
+			if(Math.random() < CLEAN_FREQUENCY) {
+				cleanSpriteMap(this, this.lastCleaned);
+			}
+			this.lastCleaned = now;
+		}
+
 		if(now) {
 			setTime(gl, this.programInfo, now);
 		}
@@ -348,9 +359,6 @@ const SpriteRenderer = (function() {
 			}
 		}
 		draw(gl, count);
-		if(Math.random() < CLEAN_FREQUENCY) {
-			cleanSpriteMap(this, now);
-		}
 	};
 
 	function setTime(gl, programInfo, now) {
@@ -455,7 +463,7 @@ const SpriteRenderer = (function() {
 
 	function addFrame(renderer, texture, frameIndex, sprite, now) {
 		const { gl, programInfo, cachedData, indicesMap } = renderer;
-		const spriteData = getSpriteData(renderer, sprite.id);
+		const spriteData = getSpriteCache(renderer, sprite.id + texture.frameId);
 		const { slotIndex, spritePositions, spriteTextureCoordinates, spriteTextureIndex, time } = spriteData;
 
 		if (!time || indicesMap[frameIndex] !== slotIndex) {

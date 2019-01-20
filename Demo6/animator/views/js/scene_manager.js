@@ -324,7 +324,7 @@ const SceneManager = (function() {
 		return this.spriteList;
 	};
 
- 	const VIEW_RANGE = 15;
+ 	const VIEW_RANGE = 12;
 	Scene.prototype.refreshView = function(camera, now) {
 		const { revealMap, sprites, cellCoverage, cachedPosition } = this;
 

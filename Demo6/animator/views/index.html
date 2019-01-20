@@ -67,7 +67,8 @@ body {
       <div id="importOverlay" style="position: absolute; width: 100vw; left: 0; top: 0; display:none">
         <div style="display: flex; flex-direction: row; margin: 20px; color: silver">
           <button class="button" id="okImport" style="width: 80px; height: 30px; background-color: green;">IMPORT</button>
-          <button class="button" id="cancelImport" style="width: 80px; height: 30px; background-color: red;">CANCEL</button>      
+          <button class="button" id="cancelImport" style="width: 80px; height: 30px; background-color: red;">CANCEL</button>
+          <div id="recentPaths" style="padding: 2px"></div>
         </div>
         <div id="dir" style="width: 800px; margin: 20px 50px"></div>
       </div>
@@ -84,8 +85,9 @@ body {
   </div>
   <div id="editor" style="display: none; flex-direction: column;">
   </div>
-  <div id="metadata" style="display: none; color: green;">
-  </div>
+  <pre id="pre-metadata" style="display: none;">
+    <div id="metadata" style="color: green;"></div>    
+  </pre>
 </body>
 
 
@@ -94,7 +96,7 @@ body {
     if(location.search.indexOf("edit")>=0) {
       document.getElementById('editbar').style.display = '';
       document.getElementById('editor').style.display = 'flex';
-      document.getElementById('metadata').style.display = '';
+      document.getElementById('pre-metadata').style.display = '';
     }
         let currentPath = '/Users/vincent/Google Drive/Project/Demo4';
         let fileSelection = -1;
@@ -142,6 +144,20 @@ body {
                 compressCanvas(imgData.filter((data, index) => index == fileSelection));
               } else {
                 compressCanvas(imgData);
+              }
+
+              let recentPaths = localStorage.getItem("recentPaths");
+              if(!recentPaths) {
+                recentPaths = [];
+              } else {
+                recentPaths = JSON.parse(recentPaths);
+              }
+              if(recentPaths.indexOf(currentPath) < 0) {
+                recentPaths.unshift(currentPath);
+                if(recentPaths.length > 5) {
+                  recentPaths.pop();
+                }
+                localStorage.setItem("recentPaths", JSON.stringify(recentPaths));
               }
             });
           }
@@ -333,7 +349,7 @@ body {
 
           const isEnabled = meta && meta.name && (!spriteData.meta || meta.hash !== spriteData.meta.hash);
 
-          saveButton.disabled = !isEnabled;
+//          saveButton.disabled = !isEnabled;
 
           saveButton.style.display = meta.name ? "" : "none";
           if(saveButton.getAttribute('initialized')!="initialized") {
@@ -607,19 +623,16 @@ body {
             var cell = div.appendChild(document.createElement('div'));
             cell.style.flex = 1;
             cell.style.padding = "0 1px";
-            if(row.locked) {
-              var label = cell.appendChild(document.createElement('div'));
-              label.innerText = row.frameRate;
-            } else {
-              var input = cell.appendChild(document.createElement('input'));
-              input.value = row.frameRate;
-              input.style.width = "100%";
-              input.addEventListener("keyup", e => {
-                  var input = e.currentTarget;
-                  meta.animation.rows[index].frameRate = input.value;
-                  onMetaChange(meta, canvas);
-              });
-            }
+            var input = cell.appendChild(document.createElement('input'));
+            input.value = row.frameRate;
+            input.style.width = "100%";
+            input.addEventListener("keyup", e => {
+                var input = e.currentTarget;
+                meta.animation.rows[index].frameRate = input.value;
+                onMetaChange(meta, canvas);
+                document.querySelector('#glcanvas').getContext('webgl').getTextureFactory().cleanCache(meta.name);
+                Meta.addImage(canvas);
+            });
 
             var cell = div.appendChild(document.createElement('div'));
             cell.style.flex = 1;
@@ -640,6 +653,7 @@ body {
             const div = editor.appendChild(document.createElement('div'));
             {
               const button = div.appendChild(document.createElement('button'));
+              button.classList.add("button");
               button.innerText = "ADD";
               button.addEventListener("click", e => {
                   selectedIndex = meta.animation.rows.length;
@@ -654,10 +668,64 @@ body {
             }
             {
               const button = div.appendChild(document.createElement('button'));
+              button.classList.add("button");
               button.innerText = "HOTSPOT";
               button.addEventListener("click", e => {
                 hasHotspot = !hasHotspot;
                 initScene(scene);
+              });
+            }
+            {
+              const button = div.appendChild(document.createElement('button'));
+              button.classList.add("button");
+              button.innerText = "SPLIT";
+              button.disabled = meta.frames.length>1;
+              button.addEventListener("click", e => {
+                const splitDimension = prompt("Enter split dimension (cols x rows)", "2x2");
+                if(splitDimension) {
+                  const [ cols, rows ] = splitDimension.split("x").map(a => parseInt(a));
+                  const { width, height } = meta.canvas;
+                  const cellWidth = width / cols, cellHeight = height / rows;
+                  let frames = [];
+                  for(let y=0; y<rows; y++) {
+                    for(let x=0; x<cols; x++) {
+                      const top = Math.floor(y * cellHeight);
+                      const left = Math.floor(x * cellWidth);
+                      const bottom = Math.floor((y+1) * cellHeight) - 1;
+                      const right = Math.floor((x+1) * cellWidth) - 1;
+                      frames.push({
+                        crop: {
+                          x: left,
+                          y: top,
+                          width: right-left+1,
+                          height: bottom-top+1,
+                        },
+                      });
+                    }
+                  }
+                  frames = frames.map(f => {
+                    const { crop } = f;
+                    return {
+                      crop,
+                      hotspot: {
+                        x: crop.width / 2,
+                        y: crop.height / 2,
+                      },
+                    };
+                  }).map((f,index) => {
+                    const { crop, hotspot } = f;
+                    return {
+                      crop,
+                      hotspot,
+                      range: `${index}-${index}`,
+                    };
+                  });
+                  meta.frames = frames;
+                  meta.animation.rows[0].range = `0-${frames.length-1}`;
+                  onMetaChange(meta, canvas);
+                  document.querySelector('#glcanvas').getContext('webgl').getTextureFactory().cleanCache(meta.name);
+                  Meta.addImage(canvas);
+                }
               });
             }
           }
@@ -696,15 +764,17 @@ body {
 
           for(let i=0; i<obj.images.length; i++) {
             const src = `/img/local/${encodeURIComponent(obj.images[i])}`;
-            htmls.push(`<div id="thumb_${i}" index="${i}" style='display: inline-block; width: 50px; height: 50px; border: 2px ${i===fileSelection?'#FFFFFF':'#282828'} solid; background-image: none; background-size: 100% auto; background-repeat: no-repeat; cursor: pointer;' onMouseDown="selectFile('${i}')"></div>`);
+            htmls.push(`<div title=${encodeURIComponent(obj.images[i].split("/").pop())} id="thumb_${i}" src="${src}" index="${i}" style='display: inline-block; width: 50px; height: 50px; border: 2px ${i===fileSelection?'#FFFFFF':'#282828'} solid; background-image: none; background-size: 100% auto; background-repeat: no-repeat; cursor: pointer;' onMouseDown="selectFile('${i}')"></div>`);
             const img = new Image();
             img.src = src;
             img.setAttribute('index', i);
             img.addEventListener('load', e => {
                 const img = e.currentTarget;
-                process(imgData, parseInt(img.getAttribute('index')), img);
                 const div = document.getElementById('thumb_' + parseInt(img.getAttribute('index')));
-                div.style.backgroundImage = `url(${img.src})`;
+                if (div && div.getAttribute('src')===src) {
+                  process(imgData, parseInt(img.getAttribute('index')), img);
+                  div.style.backgroundImage = `url(${img.src})`;
+                }
             });
           }
 
@@ -724,6 +794,15 @@ body {
         }
 
         function fillDir(root) {
+          let recentPaths = localStorage.getItem("recentPaths");
+          if(recentPaths) {
+            document.getElementById('recentPaths').innerHTML =
+              JSON.parse(recentPaths).map(path => {
+                const folder = path.split("/").pop();
+                return `<span class="link" style="margin: 2px;" onClick="fillDir('${path}')">../${folder}</span>`;
+              });
+          }
+
           checkImportButton(false);
           currentPath = root;
           const xhr = new XMLHttpRequest();
@@ -772,7 +851,9 @@ body {
           });
 
           return {
-            name: currentPath.split("/").pop(),
+            name: imgData.length === 1 
+              ? decodeURIComponent(imgData[0].img.src).split("/").pop().split(".")[0] 
+              : currentPath.split("/").pop(),
             canvas: {
               width, height,
             },
@@ -834,13 +915,13 @@ body {
           cell.setWall('floor', 'brick');
           cell.setWall('ceiling', 'eye');
           if (x===-1 && z%7!==3) {
-            cell.setWall('leftwall', 'brick');            
+            cell.setWall('leftwall', 'ice');            
           }
           if (x===-2 && z%7!==3) {
             cell.setWall('rightwall', 'brick');            
           }
           if (x===1 && z%7!==4) {
-            cell.setWall('rightwall', 'brick');
+            cell.setWall('rightwall', 'ice');
           }
           if (x===2 && z%7!==4) {
             cell.setWall('leftwall', 'brick');
@@ -853,6 +934,9 @@ body {
           }
           if (Math.abs(x ^ z) % 13 === 10) {
             cell.setSprite('tentacle', null, null, 0, 0, 0, 1, .5);            
+          }
+          if (Math.abs(x ^ z) % 23 === 11) {
+            cell.setSprite('blue-penguin', null, null, 0, 0, 0, .2, .2);
           }
           if (x===0 && z===0) {
             cell.setSprite('elephant', null, 'elephant', 0, 0, 0, 1, .9);
@@ -978,7 +1062,7 @@ function main() {
   });
   Dowge.renderCanvas(canvas, "uiScene", "mainCamera", (scene, camera, now) => {
       const [ x, y, z ] = camera.getRelativePosition(-.5, -0, 0);
-      scene.setSprite("button", null, "ui", x, y, z, .1);
+//      scene.setSprite("button", null, "ui", x, y, z, .1);
   });
 
   initScene(scene);

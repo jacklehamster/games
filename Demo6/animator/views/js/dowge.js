@@ -51,20 +51,38 @@ const Dowge = (function(document) {
 		renderings.push({ canvas, cameraName, sceneName, renderer, scene, camera, refreshCallback });
 	}
 
+	let frameTime = 1000 / 60;
+	let active = true, throttled = false, frameCount = 0, lastNow = 0;
 	function render(now) {
-		for (let i=0; i < renderings.length; i++) {
-			const { renderer, camera, scene, refreshCallback } = renderings[i];
-			if (camera && scene && renderer) {
-				if (refreshCallback) {
-					refreshCallback(scene, camera, renderer, now);
+		if (now - lastNow > frameTime && active) {
+			for (let i=0; i < renderings.length; i++) {
+				const { renderer, camera, scene, refreshCallback } = renderings[i];
+				if (camera && scene && renderer) {
+					if (refreshCallback) {
+						refreshCallback(scene, camera, renderer, now);
+					}
+				    scene.refreshView(camera, now);
+					renderer.drawSprites(scene.getSprites(), camera, now);
 				}
-			    scene.refreshView(camera, now);
-				renderer.drawSprites(scene.getSprites(), camera, now);
 			}
+			lastNow = now;
 		}
 		requestAnimationFrame(render);
 	}
 	requestAnimationFrame(render);
+
+	function onBlurChange(e) {
+		const fps = e.type === 'blur' ? 24 : 60;
+		frameTime = 1000 / fps;
+	}
+
+	function onVisibilityChange(e) {
+		active = !document.hidden;
+	}
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("blur", onBlurChange);
+    window.addEventListener("focus", onBlurChange);
 
 	return {
 		renderCanvas,

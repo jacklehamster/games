@@ -159,6 +159,7 @@ const TextureFactory = (function() {
 		  	gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, texture.width, texture.height, border, srcFormat, srcType, null);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+//			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 		} else {
 			gl.bindTexture(gl.TEXTURE_2D, texture);			
 		}
@@ -251,6 +252,7 @@ const TextureFactory = (function() {
 		const bigRect = animationFrame.bigRect;
 		const textureData = allocateTextureData(this, bigRect.x, bigRect.y, bigRect.width, bigRect.height);
 		textureData.name = name;
+		textureData.frameId = frameId;
 
 		const { crop, hotspot } = animationFrame;
 		const imageData = canvas.getContext('2d').getImageData(crop.x, crop.y, crop.width, crop.height);
