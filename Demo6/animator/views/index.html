@@ -20,7 +20,7 @@ body {
 }
 .button {
   margin: 1px;
-  padding: 2px;
+  padding: 5px;
   background-color: lightblue;
   border-style: outset;
   border-radius: 10px;
@@ -61,8 +61,11 @@ body {
 <body style="background-color: black">
   <div style="display: flex; flex-direction: row;">
     <canvas id="glCanvas" width="1200" height="1200" style="width: 600; height: 600; image-rendering: pixelated;"></canvas>
-    <div id="editbar" style="display: none; width: 100px;">
-      <button id="importButton" class="button" style="display:none; width: 100%"></button>
+    <div id="editbar" style="display: none;">
+      <div style="display: flex; flex-direction: row">
+        <button id="importButton" class="button" style="display:none;">Import...</button>
+        <button id="changeBgColor" class="button" style="display:none;">Change background</button>
+      </div>
       <div id="cover" style="position: fixed; width: 100vw; height: 100vh; background-color: rgba(20, 26, 36, 0.98); left: 0; top: 0; display:none"></div>
       <div id="importOverlay" style="position: absolute; width: 100vw; left: 0; top: 0; display:none">
         <div style="display: flex; flex-direction: row; margin: 20px; color: silver">
@@ -119,7 +122,6 @@ body {
 
           if(importButton.getAttribute('initialized')!="initialized") {
             importButton.setAttribute('initialized', 'initialized');
-            importButton.innerText = "Import..."
             importButton.style.height = "25px";
             importButton.classList.add("button");
             importButton.style.display = "";
@@ -131,12 +133,25 @@ body {
               fillDir(currentPath);
             });
 
+            const changeBgColor = document.getElementById('changeBgColor');
+            changeBgColor.style.height = "25px";
+            changeBgColor.classList.add("button");
+            changeBgColor.style.display = "";
+            changeBgColor.addEventListener('click', e => {
+              const color = Math.floor(Math.random() * 0xFFFFFF);
+              document.body.style.backgroundColor = "#" + color.toString(16);
+              const gl = document.querySelector('#glcanvas').getContext('webgl');
+              gl.getSpriteRenderer().setBackgroundColor(color);
+            });
+
+            const cancelImport = document.getElementById('cancelImport');
             cancelImport.addEventListener('click', e => {
               const importOverlay = document.getElementById('importOverlay');
               importOverlay.style.display = "none";
               document.getElementById('cover').style.display = "none";
             });
 
+            const okImport = document.getElementById('okImport');
             okImport.addEventListener('click', e => {
               importOverlay.style.display = "none";
               document.getElementById('cover').style.display = "none";
@@ -198,6 +213,10 @@ body {
               maxY: img.naturalHeight-1,
             },
             canvas,
+            orgSize: {
+              width: img.naturalWidth,
+              height: img.naturalHeight,
+            },
           };
 
           canvas.width = img.naturalWidth;
@@ -681,18 +700,18 @@ body {
               button.innerText = "SPLIT";
               button.disabled = meta.frames.length>1;
               button.addEventListener("click", e => {
-                const splitDimension = prompt("Enter split dimension (cols x rows)", "2x2");
+                const splitDimension = prompt("Enter sprite dimension (width x height)", "32x32");
                 if(splitDimension) {
-                  const [ cols, rows ] = splitDimension.split("x").map(a => parseInt(a));
+                  const [ cellWidth, cellHeight ] = splitDimension.split("x").map(a => parseInt(a));
                   const { width, height } = meta.canvas;
-                  const cellWidth = width / cols, cellHeight = height / rows;
+                  const cols = Math.ceil(width / cellWidth), rows = Math.ceil(height / cellHeight);
                   let frames = [];
                   for(let y=0; y<rows; y++) {
                     for(let x=0; x<cols; x++) {
                       const top = Math.floor(y * cellHeight);
                       const left = Math.floor(x * cellWidth);
-                      const bottom = Math.floor((y+1) * cellHeight) - 1;
-                      const right = Math.floor((x+1) * cellWidth) - 1;
+                      const bottom = Math.min(Math.floor((y+1) * cellHeight) - 1, height-1);
+                      const right = Math.min(Math.floor((x+1) * cellWidth) - 1, width-1);
                       frames.push({
                         crop: {
                           x: left,
@@ -708,8 +727,8 @@ body {
                     return {
                       crop,
                       hotspot: {
-                        x: crop.width / 2,
-                        y: crop.height / 2,
+                        x: cellWidth / 2,
+                        y: cellHeight / 2,
                       },
                     };
                   }).map((f,index) => {
@@ -912,18 +931,18 @@ body {
     } else {
       scene.onReveal(cell => {
           const { x, z } = cell;
-          cell.setWall('floor', 'brick');
+          cell.setWall('floor', 'floor');
           cell.setWall('ceiling', 'eye');
-          if (x===-1 && z%7!==3) {
+          if (x===-1 && Math.abs(z)%7!==3) {
             cell.setWall('leftwall', 'ice');            
           }
-          if (x===-2 && z%7!==3) {
+          if (x===-2 && Math.abs(z)%7!==3) {
             cell.setWall('rightwall', 'brick');            
           }
-          if (x===1 && z%7!==4) {
+          if (x===1 && Math.abs(z)%7!==4) {
             cell.setWall('rightwall', 'ice');
           }
-          if (x===2 && z%7!==4) {
+          if (x===2 && Math.abs(z)%7!==4) {
             cell.setWall('leftwall', 'brick');
           }
           if (x%11!== 3 && z===-1) {
@@ -1057,12 +1076,15 @@ function main() {
     camera.step(scene);
     if(!meta || !meta.animation) {
       const [ x, y, z ] = camera.position;
-      scene.setSprite("x", "mark", "xmark", x, 0, z - 1.5, .05);
+      const { moveDirection } = camera;
+      const dist = Math.sqrt(moveDirection.x * moveDirection.x + moveDirection.z * moveDirection.z);
+      const relativeDirection = camera.getRelativePosition(moveDirection.x, 0, moveDirection.z);
+      scene.setSprite("penguin", null, "penguin", x, 0, z - 1.5, .2, 0, null, dist < .01);
     }    
   });
   Dowge.renderCanvas(canvas, "uiScene", "mainCamera", (scene, camera, now) => {
       const [ x, y, z ] = camera.getRelativePosition(-.5, -0, 0);
-//      scene.setSprite("button", null, "ui", x, y, z, .1);
+      scene.setSprite("button", null, "ui", x, y, z, .1);
   });
 
   initScene(scene);

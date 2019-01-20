@@ -21,6 +21,7 @@ const View = (function() {
 		this.temp = {
 			position: vec3.create(),
 		};
+		this.moveDirection = { x: 0, z: 0 };
 	});
 
 	Utils.createAccessors(Camera, ['autoTilt']);
@@ -88,15 +89,19 @@ const View = (function() {
 		this.mov.dz = 0;
 
 	    const [ x, y, z ] = this.position;
-	    const xDest = x + this.motion[0] * SPEED_FACTOR;
-	    const zDest = z + this.motion[2] * SPEED_FACTOR;
-	    if(!scene || scene.canGo(x, z + Z_OFFSET, xDest, zDest + Z_OFFSET)) {
-		    this.position[0] = xDest;
-		    this.position[2] = zDest;
-	    } else if(scene.canGo(x, z + Z_OFFSET, x, zDest + Z_OFFSET)) {
-		    this.position[2] = zDest;
-	    } else if(scene.canGo(x, z + Z_OFFSET, xDest, z + Z_OFFSET)) {
-	    	this.position[0] = xDest;
+	    if(this.motion[0]!==0 || this.motion[2]!==0) {
+		    const xDest = x + this.motion[0] * SPEED_FACTOR;
+		    const zDest = z + this.motion[2] * SPEED_FACTOR;
+		    if(!scene || scene.canGo(x, z + Z_OFFSET, xDest, zDest + Z_OFFSET)) {
+			    this.position[0] = xDest;
+			    this.position[2] = zDest;
+		    } else if(scene.canGo(x, z + Z_OFFSET, x, zDest + Z_OFFSET)) {
+			    this.position[2] = zDest;
+		    } else if(scene.canGo(x, z + Z_OFFSET, xDest, z + Z_OFFSET)) {
+		    	this.position[0] = xDest;
+		    }
+		    this.moveDirection.x = (x - xDest);
+		    this.moveDirection.z = (z - zDest);
 	    }
 
 	    if (this.turnMotion) {

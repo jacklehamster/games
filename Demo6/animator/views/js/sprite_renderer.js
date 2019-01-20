@@ -352,7 +352,7 @@ const SpriteRenderer = (function() {
 		let count = 0;
 		for(let i = 0; i < sprites.length; i++) {
 			const sprite = sprites[i];
-			const textureData = textureFactory.getTextureData(sprite.name, sprite.label, now);
+			const textureData = textureFactory.getTextureData(sprite.name, sprite.label, sprite.frozen ? 0 : now);
 			if (textureData) {
 				addFrame(this, textureData, count, sprite, now);
 				count ++;

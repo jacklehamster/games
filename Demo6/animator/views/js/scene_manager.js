@@ -58,7 +58,8 @@ const SceneManager = (function() {
 	});
 
 	function Barrier() {}
-	Recycler.wrap(Barrier, function(x0, z0, x1, z1) {
+	Recycler.wrap(Barrier, function(x0, z0, x1, z1, id) {
+		this.id = id;
 		this.x0 = Math.min(x0, x1);
 		this.x1 = Math.max(x0, x1);
 		this.z0 = Math.min(z0, z1);
@@ -114,7 +115,7 @@ const SceneManager = (function() {
 		if (this.barriers[id]) {
 			this.barriers[id].recycle();
 		}
-		this.barriers[id] = Barrier.create(this.x + x0, this.z + z0, this.x + x1, this.z + z1);
+		this.barriers[id] = Barrier.create(this.x + x0, this.z + z0, this.x + x1, this.z + z1, id);
 	};
 
 	Utils.createAccessors(Sprite, ['name', 'label', 'x', 'y', 'z', 'cell', 'scale']);
@@ -167,10 +168,10 @@ const SceneManager = (function() {
 		} else if(type === 'backwall') {
 			checkWall(type, this, x, z);
 			surface = this.setSurface(name, label, id,
-				[ x+1, y,   z],
-				[ x,   y,   z],
-				[ x,   y+1, z],
-				[ x+1, y+1, z]
+				[ x+1, y,   z+1],
+				[ x,   y,   z+1],
+				[ x,   y+1, z+1],
+				[ x+1, y+1, z+1]
 			);			
 		}
 		return surface;
@@ -244,7 +245,7 @@ const SceneManager = (function() {
 		return true;
 	};
 
-	Scene.prototype.setSprite = function(name, label, id, x, y, z, scale, blockSize, cell) {
+	Scene.prototype.setSprite = function(name, label, id, x, y, z, scale, blockSize, cell, frozen) {
 		if (!id) {
 			id = name;
 		}
@@ -266,6 +267,7 @@ const SceneManager = (function() {
 		if (sprite.cell && blockSize) {
 			sprite.cell.setBarrier(id + 'barrier',.5 - blockSize/2,.5 - blockSize/2,.5 + blockSize/2,.5 + blockSize/2);
 		}
+		sprite.frozen = frozen || false;
 		return sprite;
 	};
 
