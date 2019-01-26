@@ -12,6 +12,13 @@
 	<script src="game.js"></script>
 	<script src="engine.js"></script>
 	<body style="margin: 0">
-		<canvas id="canvas"></canvas>
+		<div style="display: flex; flex-direction: row">
+			<canvas id="canvas"></canvas>
+			<pre id="debug"></pre>
+		</div>
 	</body>
+	<script>
+		Engine.setCanvas(document.getElementById('canvas'));
+		Engine.setDebug(document.getElementById('debug'));
+	</script>
 </html>
