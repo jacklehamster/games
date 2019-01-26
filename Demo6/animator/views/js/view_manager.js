@@ -1,8 +1,8 @@
 const View = (function() {
 	const SLOWDOWN = .75;
-	const SPEED_FACTOR = .02;
-	const MOVE_MULTIPLIER = 2;
-	const ROTATION_STEP = 45 * Math.PI / 180;
+	const SPEED_FACTOR = .01;
+	const MOVE_MULTIPLIER = 1.5;
+	const ROTATION_STEP = Math.PI / 8;
 	const ROTATION_SPEED = .02;
 	const Z_OFFSET = -1.5;
 
@@ -17,17 +17,17 @@ const View = (function() {
 		this.mov = {
 			dx: 0, dy: 0, dz: 0, rot: 0,
 		};
-		this.zOffset = Z_OFFSET;
 		this.temp = {
 			position: vec3.create(),
 		};
 		this.moveDirection = { x: 0, z: 0 };
+		this.zOffset = Z_OFFSET;
 	});
 
-	Utils.createAccessors(Camera, ['autoTilt']);
+	Utils.createAccessors(Camera, ['autoTilt', 'zOffset']);
 
 	Camera.prototype.getTilt = function() {
-		return this.autoTilt ? this.position[1] / 2 : this.tilt;
+		return this.autoTilt ? this.position[1] : this.tilt;
 	}
 
 	Camera.prototype.equals = function(camera) {
@@ -58,8 +58,19 @@ const View = (function() {
 	    const position = this.temp.position;
 	    position[0] = this.position[0] + rdx;
 	    position[1] = this.position[1] + offsetY;
-	    position[2] = this.position[2] + Z_OFFSET + rdz;
+	    position[2] = this.position[2] + this.zOffset + rdz;
 	    return position;
+	};
+
+	Camera.prototype.getCameraAngle = function(direction) {
+		const angle = Math.atan2(direction.z, direction.x);
+		return angle - this.turn;
+	};
+
+	Camera.prototype.isMoving = function() {
+		const { x, z } = this.moveDirection;
+		const dist = Math.sqrt(x * x + z * z);
+		return dist > .01;
 	};
 
 	Camera.prototype.step = function(scene) {
@@ -82,22 +93,27 @@ const View = (function() {
 	    const cos = Math.cos(this.turn);
 	    const rdx = (cos * dx - sin * dz) * MOVE_MULTIPLIER;
 	    const rdz = (sin * dx + cos * dz) * MOVE_MULTIPLIER;
-	    this.motion[0] = (this.motion[0] + rdx) * SLOWDOWN;
-	    this.motion[2] = (this.motion[2] + rdz) * SLOWDOWN;
+	    const dist = Math.sqrt(rdx * rdx + rdz * rdz);
+	    if (dist) {
+		    this.motion[0] += rdx / dist;
+		    this.motion[2] += rdz / dist;
+	    }
+    	this.motion[0] *= SLOWDOWN;
+    	this.motion[2] *= SLOWDOWN;
 		this.mov.dx = 0;
 		this.mov.dy = 0;
 		this.mov.dz = 0;
 
 	    const [ x, y, z ] = this.position;
-	    if(this.motion[0]!==0 || this.motion[2]!==0) {
+	    if(Math.abs(this.motion[0])>.01 || Math.abs(this.motion[2])>.01) {
 		    const xDest = x + this.motion[0] * SPEED_FACTOR;
 		    const zDest = z + this.motion[2] * SPEED_FACTOR;
-		    if(!scene || scene.canGo(x, z + Z_OFFSET, xDest, zDest + Z_OFFSET)) {
+		    if(!scene || scene.canGo(x, z + this.zOffset, xDest, zDest + this.zOffset)) {
 			    this.position[0] = xDest;
 			    this.position[2] = zDest;
-		    } else if(scene.canGo(x, z + Z_OFFSET, x, zDest + Z_OFFSET)) {
+		    } else if(scene.canGo(x, z + this.zOffset, x, zDest + this.zOffset)) {
 			    this.position[2] = zDest;
-		    } else if(scene.canGo(x, z + Z_OFFSET, xDest, z + Z_OFFSET)) {
+		    } else if(scene.canGo(x, z + this.zOffset, xDest, z + this.zOffset)) {
 		    	this.position[0] = xDest;
 		    }
 		    this.moveDirection.x = (x - xDest);

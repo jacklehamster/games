@@ -45,8 +45,18 @@ const Utils = (function() {
 		});
 	}
 
+	function rad2deg(rad) {
+      return (360 + (rad * 180 / Math.PI) % 360) % 360;
+	}
+
+	function getAngleIndex(deg, range) {
+      return Math.floor(deg * range / 360 + .5) % range;
+	}
+
 	return {
 		getCrop,
 		createAccessors,
+		rad2deg,
+		getAngleIndex,
 	};
 })();

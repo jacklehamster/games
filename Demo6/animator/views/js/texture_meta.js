@@ -47,11 +47,23 @@ const TextureFactory = (function() {
 	Recycler.wrap(TextureData, function(positions, textureCoordinates, index, fit, factory) {
 		const { textureLeft, textureTop, textureRight, textureBottom } = textureCoordinates;
 		this.positions = positions;
+		this.flipPositions = {
+			left: -this.positions.right,
+			right: -this.positions.left,
+			top: this.positions.top,
+			bottom: this.positions.bottom,
+		};
 		this.coordinates = new Float32Array([
 			textureLeft,   textureBottom,
 			textureRight,  textureBottom,
 			textureRight,  textureTop,
 			textureLeft,   textureTop,
+		]);
+		this.flipCoordinates = new Float32Array([
+			textureRight,   textureBottom,
+			textureLeft,  textureBottom,
+			textureLeft,  textureTop,
+			textureRight,   textureTop,
 		]);
 		this.index = index;
 		this.indexBuffer = new Float32Array(VERTICES_PER_SPRITE).fill(this.index);
@@ -324,10 +336,7 @@ const TextureFactory = (function() {
 		  maxX = Math.max(maxX, crop.width - (x||0) - 1);
 		  maxY = Math.max(maxY, crop.height - (y||0) - 1);
 		}
-		const bigRect = { 
-			x: minX, y: minY, width: (maxX - minX) + 1, height: (maxY - minY) + 1,
-		};
-
+		const bigRect = { x: minX, y: minY, width: (maxX - minX) + 1, height: (maxY - minY) + 1 };
 		const range = animation.range.split("-");
 		const lowRange = parseInt(range[0]);
 		const highRange = range.length>=2 ? parseInt(range[1]) : lowRange;

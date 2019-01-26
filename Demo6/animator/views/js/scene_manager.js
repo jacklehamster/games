@@ -1,5 +1,5 @@
 const SceneManager = (function() {
-	const CLEAN_FREQUENCY = .1;
+	const CLEAN_FREQUENCY = 1;//.1;
 	const DISTANCE_TO_WALL = .12;
 	const LEFT = -1;
 	const RIGHT = 1;
@@ -88,6 +88,7 @@ const SceneManager = (function() {
 		this.position = vec3.fromValues(x / points.length, y / points.length, z / points.length);
 		this.cell = cell || null;
 		this.order = 0;
+		this.scale = 1;
 		scene.sprites[this.id] = this;
 		scene.spritesUpdated = true;
 	});
@@ -111,7 +112,7 @@ const SceneManager = (function() {
 			this.z + (offsetZ || 0) + .5, scale, blockSize, this);
 	};
 
-	Cell.prototype.setBarrier = function(id,x0,z0,x1,z1) {
+	Cell.prototype.setBarrier = function(id, x0, z0, x1, z1) {
 		if (this.barriers[id]) {
 			this.barriers[id].recycle();
 		}
@@ -326,7 +327,7 @@ const SceneManager = (function() {
 		return this.spriteList;
 	};
 
- 	const VIEW_RANGE = 12;
+ 	const VIEW_RANGE = 13;
 	Scene.prototype.refreshView = function(camera, now) {
 		const { revealMap, sprites, cellCoverage, cachedPosition } = this;
 
@@ -334,7 +335,7 @@ const SceneManager = (function() {
 		const roundX = Math.floor(forwardPos[0]);
 		const roundZ = Math.floor(forwardPos[2]);
 
-		const viewRadius = VIEW_RANGE + 3;
+		const viewRadius = VIEW_RANGE - Math.floor(camera.zOffset);
 		const viewLimit = viewRadius * viewRadius;
 
 		if (cachedPosition.x !== roundX || cachedPosition.z !== roundZ || this.lastTurn.angle !== camera.turn) {

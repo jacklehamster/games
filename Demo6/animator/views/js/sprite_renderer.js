@@ -138,15 +138,23 @@ const SpriteRenderer = (function() {
 		    return vec4(fragRGB, color.a);
 		}
 
+		vec4 fade(vec4 color, float value) {
+			vec4 newcolor = mix(color, uBackground, value);
+			newcolor.a = color.a;
+			return newcolor;
+		}
+
 		void main(void) {
 			vec4 color = getTextureColor(textureIndex, vTextureCoord);
-			color = blur(color, vTextureCoord, min(1.0, (zDist * 1.5)));
-//			color = reduceColor(color, vTextureCoord, min(1.0, (zDist * 2.0)));
-			color = alterHueSatLum(color, vec3(1.0, max(0.0, 1.0 - zDist * .2), max(0.0, 1.0 - zDist * 1.5)));
-
 			if (color.a == 0.0) {
 				discard;
 			} 
+			color = blur(color, vTextureCoord, min(1.0, (zDist * 1.5)));
+			color = fade(color, min(1.0, (zDist * 1.5)));
+//			color = reduceColor(color, vTextureCoord, min(1.0, (zDist * 2.0)));
+//			color = alterHueSatLum(color, vec3(1.0, max(0.0, 1.0 - zDist * .2), max(0.0, 1.0 - zDist * 1.0)));
+			color = alterHueSatLum(color, vec3(1.0, max(0.0, 1.0 - zDist * .2), 1.0));
+
 			gl_FragColor = color;
 		}
 	`;
@@ -163,7 +171,7 @@ const SpriteRenderer = (function() {
 	const SCALE_VEC3 = vec3.fromValues(1,1,1);
 	const IDENTITY_QUAT = quat.identity(quat.create());
 
-	const CLEAN_FREQUENCY = .01;
+	const CLEAN_FREQUENCY = 1;//.01;
 
 	function Renderer(gl) {
 		if(!TextureFactory) {
@@ -221,7 +229,8 @@ const SpriteRenderer = (function() {
 		const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
 		const zNear = 0.1;
 		const zFar = 1000.0;
-		const projectionMatrix = mat4.perspective(mat4.create(), fieldOfView, aspect, zNear, zFar);
+		const projectionMatrix = mat4.create();
+		mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
 		gl.uniformMatrix4fv(this.programInfo.projectionLocation, false, projectionMatrix);
 		setCamera(this, View.Camera.create(), true);
 		clearRenderer(this, 0);
@@ -254,10 +263,12 @@ const SpriteRenderer = (function() {
 				break;
 			case 'sprite':
 				{
-					const left = texture.positions.left * sprite.scale;
-					const right = texture.positions.right * sprite.scale;
-					const top = texture.positions.top * sprite.scale;
-					const bottom = texture.positions.bottom * sprite.scale;
+					const texturePositions = sprite.scale < 0 ? texture.flipPositions : texture.positions;
+					const scale = Math.abs(sprite.scale);
+					const left = texturePositions.left * scale;
+					const right = texturePositions.right * scale;
+					const top = texturePositions.top * scale;
+					const bottom = texturePositions.bottom * scale;
 					positions[0] = left;
 					positions[1] = top;
 					positions[2] = 0;
@@ -484,10 +495,11 @@ const SpriteRenderer = (function() {
 			spritePositions.set(positions);
 		}
 
-		if (!time || !floatArrayEqual(texture.coordinates, spriteTextureCoordinates)) {
+		const coordinates = sprite.scale < 0 ? texture.flipCoordinates : texture.coordinates;
+		if (!time || !floatArrayEqual(coordinates, spriteTextureCoordinates)) {
 			gl.bindBuffer(gl.ARRAY_BUFFER, renderer.textureCoordBuffer);
-			gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * TEXTURE_FLOAT_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT, texture.coordinates);
-			spriteTextureCoordinates.set(texture.coordinates);
+			gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * TEXTURE_FLOAT_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT, coordinates);
+			spriteTextureCoordinates.set(coordinates);
 		}
 
 		const textureIndex = texture.indexBuffer[0];

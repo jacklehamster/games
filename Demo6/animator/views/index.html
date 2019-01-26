@@ -139,7 +139,7 @@ body {
             changeBgColor.style.display = "";
             changeBgColor.addEventListener('click', e => {
               const color = Math.floor(Math.random() * 0xFFFFFF);
-              document.body.style.backgroundColor = "#" + color.toString(16);
+              document.body.style.backgroundColor = "#" + (new Array(6 - color.toString(16).length + 1)).join("0") + color.toString(16);
               const gl = document.querySelector('#glcanvas').getContext('webgl');
               gl.getSpriteRenderer().setBackgroundColor(color);
             });
@@ -368,7 +368,7 @@ body {
 
           const isEnabled = meta && meta.name && (!spriteData.meta || meta.hash !== spriteData.meta.hash);
 
-//          saveButton.disabled = !isEnabled;
+          saveButton.disabled = false;//!isEnabled;
 
           saveButton.style.display = meta.name ? "" : "none";
           if(saveButton.getAttribute('initialized')!="initialized") {
@@ -913,7 +913,7 @@ body {
 <script>
 
   let scene = new SceneManager.Scene("mainscene");
-  let scene2 = new SceneManager.Scene("uiscene");
+  let uiScene = new SceneManager.Scene("uiscene");
 
   function initScene(scene) {
     scene.clear();
@@ -981,13 +981,16 @@ main();
 //
 function main() {
   const canvas = document.querySelector('#glcanvas');
-  const viewPosition = View.Camera.create(.5, 0, 4).setAutoTilt(true);
+  const viewPosition = View.Camera.create(.5, 0, 9)
+    .setAutoTilt(true).setZOffset(-1.5);
+  const birdPosition = View.Camera.create(.5, .3, 9)
+    .setAutoTilt(true).setZOffset(-5.5);
   const pointDown = { x: 0, y: 0 };
   function onMouse(e) {
     const { pageX, pageY } = e;
     switch(e.type) {
       case "mousemove":
-        if(e.buttons === 1 && e.target.id==="glCanvas") {
+        if (e.buttons === 1 && e.target.id==="glCanvas") {
             const dx = - (pageX - pointDown.x);
             const dy = - (pageY - pointDown.y);
             if (hasHotspot && meta && meta.animation) {
@@ -1064,31 +1067,56 @@ function main() {
     camera.step(scene);
     if(!meta || !meta.animation) {
       const [ x, y, z ] = camera.position;
-      scene.setSprite("x", "mark", "xmark", x, 0, z - 1.5, .05);
+      scene.setSprite("x", "mark", "xmark", x, 0, z + camera.zOffset, .05);
     }    
   }
 
+  const PENGUIN_SPRITES = [
+    {sprite:"penguin-right", flip:-1},
+    {sprite:"penguin-top-left", flip:1}, {sprite:"penguin-up", flip:1}, {sprite:"penguin-top-left", flip:-1},
+    {sprite:"penguin-right", flip:1},
+    {sprite:"penguin-bot-left", flip:-1}, {sprite:"penguin-down", flip:1}, {sprite:"penguin-bot-left", flip:1}];
+  function getPenguinSprite(angleIndex) {
+    return PENGUIN_SPRITES[angleIndex].sprite;
+  }
+
+  function getPenguinFlip(angleIndex) {
+    return PENGUIN_SPRITES[angleIndex].flip;
+  }
+
   Dowge.setScene("mainScene", scene);
-  Dowge.setScene("uiScene", scene2);
+  Dowge.setScene("uiScene", uiScene);
   Dowge.setCamera("mainCamera", viewPosition);
+  Dowge.setCamera("birdCamera", birdPosition);
   Dowge.renderCanvas(canvas, "mainScene", "mainCamera", (scene, camera, now) => {
     updateMove(camera);
     camera.step(scene);
     if(!meta || !meta.animation) {
       const [ x, y, z ] = camera.position;
       const { moveDirection } = camera;
-      const dist = Math.sqrt(moveDirection.x * moveDirection.x + moveDirection.z * moveDirection.z);
-      const relativeDirection = camera.getRelativePosition(moveDirection.x, 0, moveDirection.z);
-      scene.setSprite("penguin", null, "penguin", x, 0, z - 1.5, .2, 0, null, dist < .01);
-    }    
+      const angleIndex = Utils.getAngleIndex(Utils.rad2deg(camera.getCameraAngle(moveDirection)), PENGUIN_SPRITES.length);
+      let info = document.getElementById('info');
+      if(!info) {
+        info = document.body.appendChild(document.createElement('div'));
+        info.id = 'info';
+      }
+      info.innerText = angleIndex;
+
+      const spriteName = getPenguinSprite(angleIndex);
+      const flip = getPenguinFlip(angleIndex);
+
+      scene.setSprite(spriteName, null, "penguin",
+        x, 0, z + camera.zOffset,
+        flip * .2, 0, null, !camera.isMoving());
+    }
   });
   Dowge.renderCanvas(canvas, "uiScene", "mainCamera", (scene, camera, now) => {
-      const [ x, y, z ] = camera.getRelativePosition(-.5, -0, 0);
+      const [ x, y, z ] = camera.getRelativePosition(-.5, 0, 0);
       scene.setSprite("button", null, "ui", x, y, z, .1);
   });
 
   initScene(scene);
-  initUIScene(scene2);
+  initUIScene(uiScene);
 }
 
 
