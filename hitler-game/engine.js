@@ -1,5 +1,6 @@
 const Game = function(document, game) {
-	const VIEWPORT_SIZE = 480;
+	let gameStarted = true;
+	const VIEWPORT_SIZE = 512;
 	const { scenes, assets } = game;
 	const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!;,'?".split("");
 	let canvas;
@@ -8,6 +9,12 @@ const Game = function(document, game) {
 		'cross-cursor': {
 			type: 'cross-cursor',
 		},
+		'starfield': {
+			type: 'starfield',
+		},
+		'draw-dots': {
+			type: 'draw-dots',
+		},
 	};
 	window.stock = stock;
 	const loaded = {};
@@ -15,7 +22,6 @@ const Game = function(document, game) {
 	let exitTime = 0;
 	let dropTimes = {};
 	let newSceneTime = 0;
-	const vars = {};
 	let openInventory = 0;
 	let closeInventory = 0;
 	let needInventoryExit = false;
@@ -28,8 +34,11 @@ const Game = function(document, game) {
 	let tip = "";
 	let spriteShown = {};
 	let tipsViewed = {};
+	let soundsPlayed = {};
+	let hurry = 1;
+	let triggered = {};
 
-	function loadImage(src, width, height, count) {
+	function loadImage(src, width, height, count, option) {
 		const img = new Image();
 		img.addEventListener('load', e => {
 			let img = e.currentTarget;
@@ -70,6 +79,7 @@ const Game = function(document, game) {
 						imgY: y * height,
 						imgWidth: width,
 						imgHeight: height,
+						fixColor: option==='fixcolor',
 					};
 				}
 			}
@@ -90,10 +100,20 @@ const Game = function(document, game) {
 		];
 	}
 
+	function spritesFromScrollingText(text, time) {
+		const x = 2, y = getFrame(180, time);
+		return [
+			["text", x, canvas.height - 1 - y, text],
+		];
+	}
+
 	function renderScene(context, scene) {
 		clearCanvas(scene.background);
 		spriteShown = {};
 		const { sprites } = scene;
+		if(scene.scroll) {
+			renderSprites(context, spritesFromScrollingText(scene.scroll, newSceneTime));			
+		}
 		if(sprites) {
 			renderSprites(context, sprites, 0, 0);
 		}
@@ -102,7 +122,40 @@ const Game = function(document, game) {
 			renderSprites(context, spritesFromRollingText(tip, tipTime));
 		}
 		applyFade(context,scene);
-//		replaceColor(context);
+		handleIdle(scene);
+	}
+
+	function handleIdle(scene) {
+		if(scene.onIdle) {
+			scene.onIdle.forEach(idle => {
+				if (!exitTime && (!idle.delay || getFrame(idle.delay) !== 0)) {
+					if(idle.ifequal) {
+						const [ prop, value ] = idle.ifequal;
+						if(getVar(prop) != value) {
+							return;
+						}
+					}
+					if(idle.ifgreaterequal) {
+						const [ prop, value ] = idle.ifgreaterequal;
+						if(getVar(prop) < value) {
+							return;
+						}
+					}
+					if(idle.next) {
+						moveScene(idle.next, idle.fadeOut);						
+					}
+					if(idle.setCache) {
+						setStorage(idle.setCache, idle.value);
+					}
+					if(idle.clearCache) {
+						setStorage(idle.clearCache, null);
+					}
+					if(idle.trigger) {
+						dispatchTrigger(idle);
+					}
+				}
+			});
+		}		
 	}
 
 	function replaceCanvasColor(ctx) {
@@ -207,19 +260,33 @@ const Game = function(document, game) {
 	}
 
 	function getVar(prop) {
-		return vars[prop];
+		return getStorage(prop);
 	}
 
 	function renderSprites(context, sprites, offsetX, offsetY) {
 		for(let i=0; i<sprites.length; i++) {
 			let [ id, x, y, param, option ] = sprites[i];
+			if(i===0) {
+				sprites[i];
+			}
 			if(param==='ifselected') {
 				if(itemSelected !== option) {
 					continue;
 				}
 			}
 			if(param==='ifvar') {
-				if(!vars[option]) {
+				if(!getVar(option)) {
+					continue;
+				}
+			}
+			if(param==='ifnotvar') {
+				if(getVar(option)) {
+					continue;
+				}
+			}
+			if(param==='ifequal') {
+				const [ prop, value ] = option;
+				if(getVar(prop) != value) {
 					continue;
 				}
 			}
@@ -241,6 +308,54 @@ const Game = function(document, game) {
 		}
 	}
 
+	function getRGB(color) {
+		const R = Math.floor(color / 256 / 256) % 256;
+		const G = Math.floor(color / 256) % 256;
+		const B = Math.floor(color) % 256;
+		return [R, G, B];
+	}
+
+	function randy(value) {
+	    const x = Math.sin(value) * 10000;
+	    return x - Math.floor(x);
+	}
+
+	const fixCanvas = document.createElement('canvas');
+	const fixContext = fixCanvas.getContext('2d');
+	const FIX_COLORS = [ 0x000000, 0xFFFFFF, 0xd8a184, replaceColor(0xae5e32) ]
+		.map(getRGB);
+	function fixImage(img, cropX, cropY, cropWidth, cropHeight, time) {
+		fixCanvas.width = cropWidth;
+		fixCanvas.height = cropHeight;
+		fixContext.clearRect(0, 0, cropWidth, cropHeight);
+		fixContext.drawImage(img, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+		const imgData = fixContext.getImageData(0, 0, cropWidth, cropHeight);
+		const data = imgData.data;
+		const now = performance.now();
+		for(let i=0; i<data.length; i+=4) {
+			if(data[i+3]!==0) {
+				let bestColor = 0;
+				let bestValue = Number.MAX_SAFE_INTEGER;
+				for(let c=0; c<FIX_COLORS.length; c++) {
+					let value = 0;
+					for(let n=0; n<3; n++) {
+						const v = (data[i + n]-FIX_COLORS[c][n]) + Math.random()*randy(i ^ c)* Math.sin(now/100) * 200;
+						value += v * v;
+					}
+					if(value < bestValue) {
+						bestColor = c;
+						bestValue = value;
+					}
+				}
+				data[i] = 	FIX_COLORS[bestColor][0];
+				data[i+1] =  FIX_COLORS[bestColor][1];
+				data[i+2] =  FIX_COLORS[bestColor][2];
+			}
+		}
+		fixContext.putImageData(imgData, 0, 0);
+		return fixCanvas;
+	}
+
 	function renderObj(context, obj, x, y, param, option) {
 		if(obj) {
 			const type = obj.type || obj;
@@ -251,12 +366,18 @@ const Game = function(document, game) {
 				case 'img':
 					let offsetX = 0, offsetY = 0;
 					if(param === "from-top") {
-						offsetY = Math.min(0, -30 + getFrame(50));
+						offsetY = Math.min(0, -30 + getFrame(50 * hurry));
 					} else if(param==='from-right') {
-						offsetX = Math.max(0, 30 - getFrame(50));
+						offsetX = Math.max(0, 30 - getFrame(50 * hurry));
 					}
-					const { img, imgX, imgY, imgWidth, imgHeight } = obj;
-					context.drawImage(img, imgX, imgY, imgWidth, imgHeight, x + offsetX, y + offsetY, imgWidth, imgHeight);
+					let { img } = obj;
+					const { imgX, imgY, imgWidth, imgHeight, fixColor } = obj;
+					if(fixColor) {
+						img = fixImage(img, imgX, imgY, imgWidth, imgHeight);
+						context.drawImage(img, x + offsetX, y + offsetY);
+					} else {
+						context.drawImage(img, imgX, imgY, imgWidth, imgHeight, x + offsetX, y + offsetY, imgWidth, imgHeight);
+					}
 					break;
 				case 'group':
 					renderSprites(context, param, x, y);
@@ -267,9 +388,85 @@ const Game = function(document, game) {
 				case 'cross-cursor':
 					renderCrossCursor(context, mousePos.x, mousePos.y);
 					break;
+				case 'starfield':
+					renderStarfield(context);
+					break;
+				case 'draw-dots':
+					renderDots(context, x, y, param, option);
+					break;
+				case 'sound':
+					renderSound(obj.name, obj.audio, param, option, x);
+					break;
 				default:
 					break;
 			}
+		}
+	}
+
+	function renderDots(ctx, x, y, prop, color) {
+		const dots = JSON.parse(getStorage(prop)||"[]");
+		ctx.fillStyle = color || black;
+		dots.forEach(dot => {
+			ctx.fillRect(x + dot.x, y + dot.y, 1, 1);
+		});
+	}
+
+	function renderSound(name, audio, delay, option, volume) {
+		if(!delay || getFrame(delay) !== 0) {
+			if(option==="stop") {
+				audio.pause();
+				audio.currentTime = 0;
+			} else if(option==="fade") {
+				let n = 0;
+				const interval = setInterval(audio => {
+					if(n >= 10) {
+						audio.pause();
+						audio.currentTime = 0;
+						audio.volume = 1;
+						clearInterval(interval);
+					} else {
+						n++;
+						audio.volume = Math.max(1 - n / 10, 0);
+					}
+				}, 100, audio);
+			} else {
+				if(!soundsPlayed[name]) {
+					soundsPlayed[name] = true;
+					if(option==="loop") {
+						audio.loop = true;
+					}
+					audio.play();
+				}
+			}
+			if(volume) {
+				audio.volume = Math.max(0, volume);
+			}
+		}
+	}
+
+	const stars = [];
+	function renderStarfield(ctx) {
+		const now = new Date().getTime();
+		if(!stars.length) {
+			for(let i=0; i<100; i++) {
+				stars[i] = {
+					dx: Math.random()-.5,
+					dy: Math.random()-.5,
+				};
+				stars[i].x = stars[i].dx*64;
+				stars[i].y = stars[i].dy*64;
+			}
+		}
+		ctx.fillStyle = 'white';
+		for(let i=0; i<stars.length; i++) {
+			const { x, y, dx, dy } = stars[i];
+			ctx.fillRect(32 + Math.round(x),32 + Math.round(y),1,1);
+			if(x*x + y*y > 64*64) {
+				stars[i].x = dx*10;
+				stars[i].y = dy*10;
+			}
+			stars[i].x += dx / 2;
+			stars[i].y += dy / 2;
 		}
 	}
 
@@ -309,7 +506,6 @@ const Game = function(document, game) {
 			frame = Math.min(frame, count-1);
 		}
 
-
 		const tag = `${name}.${frame}`;
 		if(stock[tag]) {
 			renderObj(context, stock[tag], x, y, param, option);
@@ -322,7 +518,7 @@ const Game = function(document, game) {
 		let upperText = text.toUpperCase();
 		if(option === 'progressive' || option === 'progressive-next') {
 			const frame = option === 'progressive' 
-				? getFrame(50) - (typeof(scene.fadeIn)!=='undefined' ? 50 : 0)
+				? getFrame(50 * hurry) - (typeof(scene.fadeIn)!=='undefined' ? 50 : 0)
 				: option === 'progressive-next' && exitTime
 				? getFrame(20, exitTime)
 				: 0;
@@ -356,6 +552,22 @@ const Game = function(document, game) {
 				fadeColor = typeof(fadeOut) !== 'undefined' ? fadeOut : null;
 				nextScene = next;
 				exitTime = new Date().getTime();
+				if(scene.onFadeOut) {
+					scene.onFadeOut.forEach(fade => {
+						if(fade.stopSong) {
+							const { name, audio } = stock[fade.stopSong];
+							if(name && audio) {
+								renderSound(name, audio, 0, 'stop');
+							}
+						}
+						if(fade.playSong) {
+							const { name, audio } = stock[fade.playSong];
+							if(name && audio) {
+								renderSound(name, audio, 0);
+							}
+						}
+					});
+				}
 			}
 		} else {
 			setScene(getSceneIndex(next));
@@ -372,8 +584,15 @@ const Game = function(document, game) {
 		canvas.style.background = 'black';
 		canvas.style.imageRendering = 'pixelated';
 
+
+
 		canvas.addEventListener("mousedown", e => {
-			if(getFrame(500) === 0) {
+			if(getFrame(400) === 0) {
+				hurry = .2;
+				return;
+			}
+			if(!gameStarted) {
+				gameStarted = true;
 				return;
 			}
 			if (scene.next) {
@@ -441,15 +660,45 @@ const Game = function(document, game) {
 								if(typeof(action.selectItem) !== 'undefined') {
 									itemSelected = action.selectItem;
 								}
-								if(action.setVar) {
-									vars[action.setVar] = action.value;
+								if(action.setCache) {
+									setStorage(action.setCache, action.value);
+								}
+								if(action.clearCache) {
+									setStorage(action.clearCache, null);
+								}
+								if(action.incrementCache) {
+									setStorage(action.incrementCache, parseInt(getStorage(action.incrementCache)||0) + 1);
 								}
 								if(typeof(action.setMission) !== 'undefined') {
-									localStorage.setItem('mission', action.setMission);
+									setStorage('mission', action.setMission);
 								}
 								if(action.dropSprite) {
 									replacedSprite[action.dropSprite] = action.dropSprite + "-dropped";
 									dropTimes[action.dropSprite + "-dropped"] = new Date().getTime();
+								}
+								if(action.playSound) {
+									const { name, audio } = stock[action.playSound];
+									if(name && audio) {
+										renderSound(name, audio, 0);
+									}
+								}
+								if(action.stopSong) {
+									const { name, audio } = stock[action.stopSong];
+									if(name && audio) {
+										renderSound(name, audio, 0, 'stop');
+									}
+								}
+								if(action.addDot) {
+									const { x, y } = mousePos;
+									const dots = JSON.parse(getStorage(action.addDot) || "[]");
+									dots.push({ x: Math.floor(x), y: Math.floor(y) });
+									if(dots.length > 30) {
+										dots.shift();
+									}
+									setStorage(action.addDot, JSON.stringify(dots));
+								}
+								if(action.trigger) {
+									dispatchTrigger(action);
 								}
 							});
 							break;
@@ -521,6 +770,17 @@ const Game = function(document, game) {
 		spriteShown = {};
 		tipsViewed = {};
 		dropTimes = {};
+		soundsPlayed = {};
+		triggered = {};
+		hurry = 1;
+		if(scene.incrementCache) {
+			setStorage(scene.incrementCache, parseInt(getStorage(scene.incrementCache)||0) + 1);
+		}
+		if(scene.clearCache) {
+			scene.clearCache.forEach(cache => {
+				setStorage(cache, null);
+			});
+		}
 		refreshCanvasCursor();
 	}
 
@@ -532,15 +792,48 @@ const Game = function(document, game) {
 		}
 	}
 
+	function loadSound(src) {
+		const name = src.split('/').pop().split('.')[0];
+		stock[name] = {
+			type: 'sound',
+			name,
+			src,
+			audio: new Audio(src),
+		};
+	}
+
 	function initAssets() {
-		assets.forEach(asset => loadImage.apply(null, asset));
+		assets.filter(asset => asset[0].split(".").pop()==='png').forEach(asset => loadImage.apply(null, asset));
+		assets.filter(asset => asset[0].split(".").pop()==='mp3'||asset[0].split(".").pop()==='wav').forEach(asset => loadSound.apply(null, asset));
+	}
+
+	const storage = {};
+	function getStorage(prop) {
+		try {
+			const value = localStorage.getItem(prop);
+			return value;
+		} catch(e) {
+			return storage[prop];
+		}
+	}
+
+	function setStorage(prop, value) {
+		try {
+			if(value!==null) {
+				localStorage.setItem(prop, value);
+			} else {
+				localStorage.removeItem(prop, value);
+			}
+		} catch(e) {
+			if(value!==null) {
+				storage[prop] = value;
+			} else {
+				delete storage[prop];
+			}
+		}
 	}
 
 	function initVars() {
-		const mission = localStorage.getItem('mission') || 0;
-		vars.mission = mission;
-		localStorage.setItem('mission', Math.min(9, mission + 1));
-
 		inventory = game.inventory || [];
 	}
 
@@ -554,9 +847,37 @@ const Game = function(document, game) {
 		requestAnimationFrame(refresh);
 	}
 
+	const triggers = {};
+	const triggersOnAll = [];
+	function onTrigger(trigger, callback) {
+		if(typeof(trigger)==='function') {
+			triggersOnAll.push(trigger);
+		} else {
+			if(!triggers[trigger]) {
+				triggers[trigger] = [];
+			}
+			triggers[trigger].push(callback);
+		}
+	}
+
+	function dispatchTrigger(action) {
+		if(!triggered[action.trigger]) {
+			if(triggers[action.trigger]) {
+				triggers[action.trigger].forEach(callback => {
+					callback(action);
+				});
+			}
+			triggersOnAll.forEach(callback => {
+				callback(action);
+			});
+			triggered[action.trigger] = true;
+		}
+	}
+
 	let lastNow = 0;
 	function refresh(now) {
 //		if(now - lastNow > 10) {
+		if(gameStarted)
 			renderScene(context, scene);
 		// 	lastNow = now;
 		// }
@@ -566,5 +887,8 @@ const Game = function(document, game) {
 
 	document.addEventListener("DOMContentLoaded", init);
 
+	return {
+		onTrigger,
+	};
 
 }(document, game);
