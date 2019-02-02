@@ -238,19 +238,9 @@ const SpriteRenderer = (function() {
 
 	function transformPosition(renderer, positions, cameraQuat, translateVector) {
 		vec3.forEach(positions, 0, 0, 0, vec3.transformQuat, cameraQuat);
-		for(let i=0; i<positions.length; i+=3) {
-			positions[i]   += translateVector[0];
-			positions[i+1] += translateVector[1];
-			positions[i+2] += translateVector[2];
+		for(let i=0; i<positions.length; i++) {
+			positions[i] += translateVector[i%3];
 		}
-	}
-
-	function copyPositions(positions, points) {
-		for(let i=0; i<positions.length; i+=3) {
-			positions[i]   = points[i];
-			positions[i+1] = points[i+1];
-			positions[i+2] = points[i+2];
-		}		
 	}
 
 	function getFramePositions(renderer, texture, sprite) {
@@ -258,7 +248,7 @@ const SpriteRenderer = (function() {
 		switch(sprite.type) {
 			case 'surface':
 				{
-					copyPositions(positions, sprite.points);
+					return sprite.points;
 				}
 				break;
 			case 'sprite':
@@ -294,8 +284,9 @@ const SpriteRenderer = (function() {
 		}
 	}
 
-	function getSpriteCache(renderer, id) {
+	function getSpriteCache(renderer, spriteId, frameId) {
 		const spriteMap = renderer.spriteMap;
+		const id = spriteId + frameId;
 		if (spriteMap[id]) {
 			return spriteMap[id];
 		}
@@ -362,10 +353,7 @@ const SpriteRenderer = (function() {
 		const textureFactory = gl.getTextureFactory();
 		let count = 0;
 		for(let i = 0; i < sprites.length; i++) {
-			const sprite = sprites[i];
-			const textureData = textureFactory.getTextureData(sprite.name, sprite.label, sprite.frozen ? 0 : now);
-			if (textureData) {
-				addFrame(this, textureData, count, sprite, now);
+			if(addFrame(this, textureFactory, count, sprites[i], now)) {
 				count ++;
 			}
 		}
@@ -472,9 +460,14 @@ const SpriteRenderer = (function() {
 	  	return true;
 	}
 
-	function addFrame(renderer, texture, frameIndex, sprite, now) {
+	function addFrame(renderer, textureFactory, frameIndex, sprite, now) {
 		const { gl, programInfo, cachedData, indicesMap } = renderer;
-		const spriteData = getSpriteCache(renderer, sprite.id + texture.frameId);
+		const texture = textureFactory.getTextureData(sprite.name, sprite.label, sprite.frozen ? 0 : now);
+		if (!texture) {
+			return false;
+		}
+
+		const spriteData = getSpriteCache(renderer, sprite.id, texture.frameId);
 		const { slotIndex, spritePositions, spriteTextureCoordinates, spriteTextureIndex, time } = spriteData;
 
 		if (!time || indicesMap[frameIndex] !== slotIndex) {
@@ -513,6 +506,7 @@ const SpriteRenderer = (function() {
 			spriteData.spriteTextureIndex = textureIndex;
 		}
 		spriteData.time = now;
+		return true;
 	};
 
 	function draw(gl, count) {

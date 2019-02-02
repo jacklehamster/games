@@ -44,7 +44,7 @@ const SceneManager = (function() {
 	});
 
 	function Sprite() {}
-	Recycler.wrap(Sprite, function(id, name, label, x, y, z, cell, scale, scene) {
+	Recycler.wrap(Sprite, function(name, label, id, x, y, z, cell, scale, scene) {
 		this.id = id;
 		this.name = name;
 		this.label = label || null;
@@ -55,15 +55,6 @@ const SceneManager = (function() {
 		this.scale = scale || 1;
 		scene.sprites[this.id] = this;
 		scene.spritesUpdated = true;
-	});
-
-	function Barrier() {}
-	Recycler.wrap(Barrier, function(x0, z0, x1, z1, id) {
-		this.id = id;
-		this.x0 = Math.min(x0, x1);
-		this.x1 = Math.max(x0, x1);
-		this.z0 = Math.min(z0, z1);
-		this.z1 = Math.max(z0, z1);
 	});
 
 	function Surface() {}
@@ -91,6 +82,15 @@ const SceneManager = (function() {
 		this.scale = 1;
 		scene.sprites[this.id] = this;
 		scene.spritesUpdated = true;
+	});
+
+	function Barrier() {}
+	Recycler.wrap(Barrier, function(x0, z0, x1, z1, id) {
+		this.id = id;
+		this.x0 = Math.min(x0, x1);
+		this.x1 = Math.max(x0, x1);
+		this.z0 = Math.min(z0, z1);
+		this.z1 = Math.max(z0, z1);
 	});
 
 	Barrier.prototype.blocks = function(x, z) {
@@ -253,7 +253,7 @@ const SceneManager = (function() {
 
 		let sprite = this.sprites[id];
 		if(!sprite) {
-			sprite = Sprite.create(id, name, label, x, y, z, cell, scale, this);
+			sprite = Sprite.create(name, label, id, x, y, z, cell, scale, this);
 		} else {
 			sprite.name = name;
 			sprite.label = label;
@@ -343,10 +343,10 @@ const SceneManager = (function() {
 			cachedPosition.z = roundZ;
 
 			if (cellCoverage.length > 0) {
-				for(let z = -viewRadius; z <= viewRadius; z++) {
+				for (let z = -viewRadius; z <= viewRadius; z++) {
 					const zz = z*z;
 					const rZ = z + roundZ;
-					for(let x = -viewRadius; x <= viewRadius; x++) {
+					for (let x = -viewRadius; x <= viewRadius; x++) {
 						const xx = x*x;
 						if (xx + zz < viewLimit) {
 							const rX = x + roundX;
@@ -355,7 +355,7 @@ const SceneManager = (function() {
 							if (!cell.revealed) {
 								cell.revealed = true;
 								const cellCoverage = this.cellCoverage;
-								for(let c = 0; c < cellCoverage.length; c++) {
+								for (let c = 0; c < cellCoverage.length; c++) {
 									cellCoverage[c](cell);
 								}
 							}						
@@ -396,8 +396,8 @@ const SceneManager = (function() {
 		}
 		if(a.order === 1) {
 			const { sin, cos } = this.lastTurn;
-			const ardz = (sin * a.position[0] + cos * a.position[2]);
-			const brdz = (sin * b.position[0] + cos * b.position[2]);
+			const ardz = sin * a.position[0] + cos * a.position[2];
+			const brdz = sin * b.position[0] + cos * b.position[2];
 			return ardz - brdz;
 		}
 		return 0;

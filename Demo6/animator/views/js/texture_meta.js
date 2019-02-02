@@ -38,6 +38,8 @@ const TextureFactory = (function() {
 			gl.TEXTURE14,
 			gl.TEXTURE15,
 		];
+		this.md5index = {};
+		this.count = 1;
 
 		gl.enable(gl.BLEND);
 		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -251,7 +253,7 @@ const TextureFactory = (function() {
 			animationTag = DEFAULT;
 		}
 		const { cachedAnimationData, cachedTextureData } = this.cache;
-		const animationFrame = getAnimationFrame(meta, animationTag, now, cachedAnimationData);
+		const animationFrame = getAnimationFrame(this, meta, animationTag, now, cachedAnimationData);
 		const frameId = animationFrame.frameId;
 		if(!frameId) {
 			return null;
@@ -279,17 +281,18 @@ const TextureFactory = (function() {
 		return cachedTextureData[animationTag][frameId] = textureData;
 	};
 
-	function getAnimationFrame(meta, animationTag, now, cachedAnimationData) {
-		const animationData = getAnimationData(meta, animationTag, cachedAnimationData) || EMPTY_ANIMATION;
+	function getAnimationFrame(factory, meta, animationTag, now, cachedAnimationData) {
+		const animationData = getAnimationData(factory, meta, animationTag, cachedAnimationData) || EMPTY_ANIMATION;
 		const frame = ~~(now * animationData.frameRate / 1000);
 		return animationData.frames[frame % animationData.frames.length] || EMPTY;
 	}
 
-	function getAnimationData(meta, animationTag, cachedAnimationData) {
+	function getAnimationData(factory, meta, animationTag, cachedAnimationData) {
 		const metaName = meta.name;
 		if (cachedAnimationData[metaName] && cachedAnimationData[metaName][animationTag]) {
 		  return cachedAnimationData[metaName][animationTag];
 		}
+		const { md5index } = factory;
 
 		function findAnimationForFrame(f, animation, name, bigRect) {
 		  const canvasWidth = meta.canvas.width;
@@ -302,12 +305,9 @@ const TextureFactory = (function() {
 		    const highRange = range.length>=2 ? range[1] : lowRange;
 		    if (lowRange <= f && f <= highRange) {
 		        const { crop, hotspot } = frame;
-		        return {
-		          frameId: md5(JSON.stringify([metaName, crop, hotspot])),
-		          crop,
-		          hotspot,
-		          bigRect,
-		        };
+		        const md5value = md5(JSON.stringify([metaName, crop, hotspot]));
+		        const frameId = md5index[md5value] || (md5index[md5value] = factory.count++);
+		        return { frameId, crop, hotspot, bigRect };
 		    }
 		  }
 		  return {};

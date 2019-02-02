@@ -8,15 +8,13 @@ const View = (function() {
 
 	function Camera() {};
 	Recycler.wrap(Camera, function(x, y, z, turn, tilt) {
-		this.position = vec3.fromValues(x||0,y||0,z||0);
+		this.position = vec3.fromValues(x||0, y||0, z||0);
 		this.turn = turn||0;
 		this.tilt = tilt||0;
 		this.autoTilt = false;
 		this.motion = vec3.create();
 		this.turnMotion = 0;
-		this.mov = {
-			dx: 0, dy: 0, dz: 0, rot: 0,
-		};
+		this.mov = { dx: 0, dy: 0, dz: 0, rot: 0 };
 		this.temp = {
 			position: vec3.create(),
 		};
@@ -51,14 +49,23 @@ const View = (function() {
 	};
 
 	Camera.prototype.getRelativePosition = function(offsetX, offsetY, offsetZ) {
-	    const sin = Math.sin(this.turn);
-	    const cos = Math.cos(this.turn);
-	    const rdx = (cos * offsetX - sin * offsetZ);
-	    const rdz = (sin * offsetX + cos * offsetZ);
+		const [ rdx, rdy, rdz ] = this.getRelativeDirection(offsetX, offsetY, offsetZ);
 	    const position = this.temp.position;
 	    position[0] = this.position[0] + rdx;
-	    position[1] = this.position[1] + offsetY;
-	    position[2] = this.position[2] + this.zOffset + rdz;
+	    position[1] = this.position[1] + rdy;
+	    position[2] = this.position[2] + rdz + this.zOffset;
+	    return position;
+	};
+
+	Camera.prototype.getRelativeDirection = function(dx, dy, dz) {
+	    const sin = Math.sin(this.turn);
+	    const cos = Math.cos(this.turn);
+	    const rdx = (cos * dx - sin * dz);
+	    const rdz = (sin * dx + cos * dz);
+	    const position = this.temp.position;
+	    position[0] = rdx;
+	    position[1] = dy;
+	    position[2] = rdz;
 	    return position;
 	};
 
@@ -89,10 +96,8 @@ const View = (function() {
 			}
 	    }
 
-	    const sin = Math.sin(this.turn);
-	    const cos = Math.cos(this.turn);
-	    const rdx = (cos * dx - sin * dz) * MOVE_MULTIPLIER;
-	    const rdz = (sin * dx + cos * dz) * MOVE_MULTIPLIER;
+	    const [ rdx, rdy, rdz ] = this.getRelativeDirection(dx * MOVE_MULTIPLIER, dy * MOVE_MULTIPLIER, dz * MOVE_MULTIPLIER);
+
 	    const dist = Math.sqrt(rdx * rdx + rdz * rdz);
 	    if (dist) {
 		    this.motion[0] += rdx / dist;
