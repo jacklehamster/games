@@ -1052,6 +1052,10 @@ function main() {
     }
     if(dx || dz) {
       camera.move(dx, 0, dz);
+      // const [ ddx, , ddz ] = camera.getRelativeDirection(dx, 0, dz);
+      // const dist = Math.sqrt(ddx*ddx + ddz*ddz);
+      // hero.x += ddx / dist / 30;
+      // hero.z += ddz / dist / 30;
     }
     if(rot) {
       camera.rotate(rot);
@@ -1083,6 +1087,8 @@ function main() {
   function getPenguinFlip(angleIndex) {
     return PENGUIN_SPRITES[angleIndex].flip;
   }
+
+  const hero = { x: 0, z: 0 };
 
   Dowge.setScene("mainScene", scene);
   Dowge.setScene("uiScene", uiScene);
