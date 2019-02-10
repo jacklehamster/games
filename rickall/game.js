@@ -12,7 +12,20 @@ const Game = function() {
 		backgroundColor: 'black',
 	};
 
-	const SPEED = 3;
+	const gameAudio = new Audio();
+	gameAudio.src = "spring_sprinkle(demo).mp3";
+	gameAudio.loop = true;
+	let gameStarted = false;
+
+	function startGameMusic() {
+		gameAudio.play();
+	}
+
+	function stopGameMusic() {
+		gameAudio.stop();
+	}
+
+	const SPEED = 1;
 	const characters = {
 		'npc': {
 			'body-up': 'npc-body-up',
@@ -53,8 +66,17 @@ const Game = function() {
 		},
 	};
 
+	const HEADS = ['v-head', 'npc-head', 'round-head'];
+
 	let scroll = { x: 0, y: 0 };
-	let hero = { x: settings.size[0] / 2, y: settings.size[1] / 2, move: { dx: 0, dy: 0 }, face: { dx: 0, dy: 0 } };
+	let hero = { 
+		x: settings.size[0] / 2, 
+		y: settings.size[1] / 2, 
+		move: { dx: 0, dy: 0 }, 
+		face: { dx: 0, dy: 0 },
+		bodyColor: 'nude',
+		gender: 'penis',
+	 };
 
 	const FACE_COLORS = [
 		{ name: 'default' },
@@ -72,6 +94,7 @@ const Game = function() {
 	let npcs = new Array(100).fill(null).map(
 		a => {
 			return { 
+				head: getRandom(HEADS),
 				skinColor: getRandom(FACE_COLORS).name,
 				bodyColor: getRandom(BODY_COLORS).name,
 				x: Math.random()*WORLD_SIZE[0], 
@@ -81,6 +104,7 @@ const Game = function() {
 					dy: Math.round(2*(Math.random()-.5)),
 				},
 				type: getRandom(['npc', 'pixie', 'mad', 'smart']),
+				gender: Math.random() < .5 ? 'penis' : 'vagina',
 			};
 		}
 	);
@@ -204,6 +228,8 @@ const Game = function() {
 		const OFFSET_X = -16, OFFSET_Y = -32;
 		const moveDist = Math.sqrt(dx*dx + dy*dy);
 		const character = characters[name];
+		const headSprite = npc.head || character.head;
+
 		const faceDx = npc.face ? npc.face.dx : dx;
 		const faceDy = npc.face ? npc.face.dy : dy;
 		const skinColor = npc.skinColor || character.skinColor || 'default';
@@ -212,7 +238,9 @@ const Game = function() {
 		let face = null;
 		let body = null;
 		let mouth = null;
-		let head = [character['head'], OFFSET_X, OFFSET_Y +-26, {animated: moveDist, color: skinColor}];
+		let downThere = null;
+		let head = [headSprite, OFFSET_X, OFFSET_Y +-26, {animated: moveDist, color: skinColor}];
+
 		if (!dx) {
 			if (dy < 0) {
 				body = [character['body-up'], OFFSET_X, OFFSET_Y, {animated: true, color: comboColor}];
@@ -230,12 +258,18 @@ const Game = function() {
 			face = [character['face'], OFFSET_X + faceDx * faceOffsetX, OFFSET_Y -26 + faceDy, {animated: true, animMove: moveDist, flip: faceDx>0}];
 			mouth = [character['mouth'], OFFSET_X + faceDx * faceOffsetX, OFFSET_Y -26 + faceDy, {animated: npc.talking, flip: faceDx>0, animMove: moveDist}];
 		}
+
+		if (bodyColor==='nude' && body[0]===character['body-down']) {
+			downThere = [npc.gender || 'penis', OFFSET_X, OFFSET_Y, {animated: moveDist}];
+		}
+
 		return [
 			'group', x, y, {}, [
 				body,
 				head,
 				face,
 				mouth,
+				downThere,
 			],
 		];
 	}
@@ -297,7 +331,6 @@ const Game = function() {
 					if (p !== 'name') {
 						if (bodyColor[p] === 'nude') {
 							newColor[p] = faceColor[0xFFFFFF];
-							console.log(faceColor[0xFFFFFF])
 						} else {
 							newColor[p] = bodyColor[p];
 						}
@@ -310,6 +343,12 @@ const Game = function() {
 		return colors;
 	}
 
+	const WALK_ANIM_OFFSET = [
+		[0, 0],
+		[1, -1],
+		[0, 0],
+		[-1, -1],
+	];
 
 	return {
 		settings,
@@ -323,80 +362,39 @@ const Game = function() {
 			['npc-body.png', 32, 32, {
 				colors: comboColors(FACE_COLORS, BODY_COLORS),				
 			}],
+			['penis.png', 32, 32, {
+			}],
+			['vagina.png', 32, 32, {
+			}],
 			['npc-face.png', 32, 32, {
-				animOffset: [
-					[0, 0],
-					[1, -1],
-					[0, 0],
-					[-1, -1],
-				],
+				animOffset: WALK_ANIM_OFFSET,
 			}],
 			['mad-face.png', 32, 32, {
 				count: 20,
-				animOffset: [
-					[0, 0],
-					[1, -1],
-					[0, 0],
-					[-1, -1],
-				],
+				animOffset: WALK_ANIM_OFFSET,
 			}],
 			['smart-face.png', 32, 32, {
 				count: 20,
-				animOffset: [
-					[0, 0],
-					[1, -1],
-					[0, 0],
-					[-1, -1],
-				],
+				animOffset: WALK_ANIM_OFFSET,
 			}],
 			['pixie-face.png', 32, 32, {
 				count: 20,
-				animOffset: [
-					[0, 0],
-					[1, -1],
-					[0, 0],
-					[-1, -1],
-				],
+				animOffset: WALK_ANIM_OFFSET,
 			}],
 			['npc-head.png', 32, 32, {
-				animOffset: [
-					[0, 0],
-					[1, -1],
-					[0, 0],
-					[-1, -1],
-				],
-				colors: [
-					{ name: 'default' },
-					{ name: "pink", 0xFFFFFF: 0xFFEEEE },
-					{ name: "yellow", 0xFFFFFF: 0xFFFFCC },
-					{ name: "black", 0xFFFFFF: 0x994444 },
-					{ name: "halfblack", 0xFFFFFF: 0xEE9966 },
-					{ name: "blue", 0xFFFFFF: 0x88EEDD },
-				],
+				animOffset: WALK_ANIM_OFFSET,
+				colors: FACE_COLORS,
 			}],
 			['round-head.png', 32, 32, {
-				animOffset: [
-					[0, 0],
-					[1, -1],
-					[0, 0],
-					[-1, -1],
-				],
-				colors: [
-					{ name: 'default' },
-					{ name: "pink", 0xFFFFFF: 0xFFEEEE },
-					{ name: "yellow", 0xFFFFFF: 0xFFFFCC },
-					{ name: "black", 0xFFFFFF: 0x994444 },
-					{ name: "halfblack", 0xFFFFFF: 0xEE9966 },
-					{ name: "blue", 0xFFFFFF: 0x88EEDD },
-				],
+				animOffset: WALK_ANIM_OFFSET,
+				colors: FACE_COLORS,
+			}],
+			['v-head.png', 32, 32, {
+				animOffset: WALK_ANIM_OFFSET,
+				colors: FACE_COLORS,
 			}],
 			['npc-mouth.png', 32, 32, {
-				animOffset: [
-					[0, 0],
-					[1, -1],
-					[0, 0],
-					[-1, -1],
-				],				
+				animOffset: WALK_ANIM_OFFSET,				
 			}],
 			['floor-tile.png', 32, 32, {
 			}],
