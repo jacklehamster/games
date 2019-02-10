@@ -13,7 +13,7 @@ const Game = function() {
 	};
 
 	const gameAudio = new Audio();
-	gameAudio.src = "spring_sprinkle(demo).mp3";
+	gameAudio.src = "spring_sprinkle.mp3";
 	gameAudio.loop = true;
 	let gameStarted = false;
 
@@ -74,8 +74,8 @@ const Game = function() {
 		y: settings.size[1] / 2, 
 		move: { dx: 0, dy: 0 }, 
 		face: { dx: 0, dy: 0 },
-		bodyColor: 'nude',
-		gender: 'penis',
+		// bodyColor: 'nude',
+		// gender: 'penis',
 	 };
 
 	const FACE_COLORS = [
@@ -121,6 +121,7 @@ const Game = function() {
 	}
 
 	function initScene() {
+		startGameMusic();
 	}
 
 	function performActions() {
