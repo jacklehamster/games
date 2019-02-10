@@ -17,7 +17,7 @@ const SpriteRenderer = (function() {
 			vTextureCoord = aTextureCoord;
 			textureIndex = aTextureIndex;
 			zDist = position.z / 50.0 + abs(position.x / 30.0);
-			position.y -= (position.z * position.z + position.x * position.x) / 1000.0;
+			position.y -= (position.z * position.z + position.x * position.x) / 50.0;
 			gl_Position = position;
 		}
 	`;

@@ -86,8 +86,7 @@ const Engine = function(document, Game) {
 						canvas,
 						flipCanvas,
 					}],
-					offsetX: [offsetX + animOffsetX],
-					offsetY: [offsetY + animOffsetY],
+					offset: [ [offsetX + animOffsetX, offsetY + animOffsetY] ],
 					option,
 				};
 				sprites.push(addStock(`${tag}.${index}`, sprite));
@@ -95,8 +94,7 @@ const Engine = function(document, Game) {
 			const mainSprite = {
 				type: 'img',
 				images: sprites.map(sprite => sprite.images[0]),
-				offsetX: sprites.map(sprite => sprite.offsetX[0]),
-				offsetY: sprites.map(sprite => sprite.offsetY[0]),
+				offset: sprites.map(sprite => sprite.offset[0]),
 				option,
 			};
 			if(option.colors) {
@@ -534,16 +532,23 @@ const Engine = function(document, Game) {
 
 	function renderImage(sprite, definition, x, y, now, option) {
 		let images = (definition.coloredImages ? definition.coloredImages[option.color] : null) || definition.images;
-		const { offsetX, offsetY } = definition;
+		const { offset } = definition;
 		const { spriteFrameRate } = Game.settings;
 		const timeStart = option.animationStart ? evaluate(option.animationStart, option) : 0;
-		let frame = evaluate(option.animated, option) ? Math.floor((now - timeStart) / 1000 * (spriteFrameRate|| 10)) : 0;
+		const timeFrame = Math.floor((now - timeStart) / 1000 * (spriteFrameRate|| 10));
+		let frame = evaluate(option.animated, option) ? timeFrame : (option.frame || 0);
 		if (option.repeat && frame >= option.repeat * images.length) {
 			frame = images.length-1;
 		}
+		let frameOffset = frame;
+		if(typeof(option.animMove) !== 'undefined') {
+			frameOffset = evaluate(option.animMove, option) ? timeFrame : (option.frame || 0);
+			if (option.repeat && frameOffset >= option.repeat * images.length) {
+				frame = images.length-1;
+			}
+		}
 		const img = images[frame % images.length];
-		const oX = offsetX[frame % images.length];
-		const oY = offsetY[frame % images.length];
+		const [oX, oY] = offset[frameOffset % images.length];
 		const xx = Math.floor(x + oX);
 		const yy = Math.floor(y + oY);
 		const { canvas, flipCanvas } = img;

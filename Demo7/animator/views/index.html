@@ -930,7 +930,8 @@ body {
       });
     } else {
       scene.onReveal(cell => {
-          const { x, z } = cell;
+          let { x, z } = cell;
+          x = x%30; z = z%30;
           cell.setWall('floor', 'floor');
           cell.setWall('ceiling', 'eye');
           if (x===-1 && Math.abs(z)%7!==3) {
@@ -958,13 +959,13 @@ body {
             cell.setSprite('blue-penguin', null, null, 0, 0, 0, .2, .2);
           }
           if (x===0 && z===0) {
-            cell.setSprite('elephant', null, 'elephant', 0, 0, 0, 1, .9);
+            cell.setSprite('elephant', null, null, 0, 0, 0, 1, .9);
           }
           if (x===0&&z===1) {
-            cell.setSprite('oozie', null, 'oozie', 0, 0, 0, .5);            
+            cell.setSprite('oozie', null, null, 0, 0, 0, .5);            
           }
           if (x===1 && z===0) {
-            cell.setSprite('video', null, 'video', 0, 0, 0, 1, .9);
+            cell.setSprite('video', null, null, 0, 0, 0, 1, .9);
           }
       });
     }
