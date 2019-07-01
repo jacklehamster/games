@@ -1,0 +1,48 @@
+<DOMSymbolItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://ns.adobe.com/xfl/2008/" name="Noodle Ingredient" itemID="5bcd826b-000002b8" lastModified="1540194961">
+  <timeline>
+    <DOMTimeline name="Noodle Ingredient" layerDepthEnabled="true">
+      <layers>
+        <DOMLayer name="Layer_1" color="#00FFFF" current="true" isSelected="true">
+          <frames>
+            <DOMFrame index="0" keyMode="9728">
+              <elements>
+                <DOMSymbolInstance libraryItemName="Symbol 1">
+                  <matrix>
+                    <Matrix tx="-10"/>
+                  </matrix>
+                  <transformationPoint>
+                    <Point/>
+                  </transformationPoint>
+                  <filters>
+                    <DropShadowFilter blurX="4" blurY="4" distance="4"/>
+                  </filters>
+                </DOMSymbolInstance>
+                <DOMStaticText left="-46.75" width="336.35" height="46.9" isSelectable="false">
+                  <matrix>
+                    <Matrix tx="-74.65" ty="-18.15"/>
+                  </matrix>
+                  <textRuns>
+                    <DOMTextRun>
+                      <characters>Noodle</characters>
+                      <textAttrs>
+                        <DOMTextAttrs aliasText="false" lineHeight="46.9" size="42" bitmapSize="840" face="BDCartoonShout"/>
+                      </textAttrs>
+                    </DOMTextRun>
+                  </textRuns>
+                </DOMStaticText>
+                <DOMSymbolInstance libraryItemName="Noodles">
+                  <matrix>
+                    <Matrix a="0.165237426757812" d="0.165237426757812" tx="-176.95" ty="0.9"/>
+                  </matrix>
+                  <transformationPoint>
+                    <Point/>
+                  </transformationPoint>
+                </DOMSymbolInstance>
+              </elements>
+            </DOMFrame>
+          </frames>
+        </DOMLayer>
+      </layers>
+    </DOMTimeline>
+  </timeline>
+</DOMSymbolItem>
