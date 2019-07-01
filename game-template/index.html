@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <title></title>
+		<meta charset="utf-8"/>
+		<style>
+			canvas {  
+		        image-rendering: optimizeSpeed;
+				image-rendering: -moz-crisp-edges;
+				image-rendering: -webkit-crisp-edges;
+				image-rendering: pixelated;
+				image-rendering: crisp-edges;
+		        image-rendering: optimize-contrast;
+		        -ms-interpolation-mode: nearest-neighbor;
+			}
+
+			html, body {
+			    height: 100%;
+			}
+			body {
+			    margin: 0;
+			}
+			.flex-container {
+			    height: 100%;
+			    padding: 0;
+			    margin: 0;
+			    display: -webkit-box;
+			    display: -moz-box;
+			    display: -ms-flexbox;
+			    display: -webkit-flex;
+			    display: flex;
+			    align-items: center;
+			    justify-content: center;
+			}
+			.row {
+			    width: auto;
+			}
+			.flex-item {
+			    text-align: center;
+			}
+		</style>
+	</head>
+	<script src="lib/gl-matrix.js"></script>
+	<script src="lib/recycler.js"></script>
+	<script src="sprite.js"></script>
+	<script src="keyboard.js"></script>
+	<script src="engine.js"></script>
+	<script src="game.js"></script>
+	<script>
+		window.addEventListener("load", e => {
+			Engine.initialize();
+			Engine.setCanvas(document.getElementById('canvas'));
+			Engine.loadGame(Game);
+		});
+	</script>	
+	<body style="margin: 0;">
+		<div class="flex-container">
+			<div class="row">
+				<canvas class="flex-item" id="canvas"></canvas>
+			</div>
+		</div>
+		<div style="background-color: #FFcccc; min-height: 100px">
+			<pre id="log"></pre>
+		</div>
+	</body>
+</html>

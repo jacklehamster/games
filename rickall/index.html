@@ -7,15 +7,44 @@
 			  image-rendering: pixelated;
 			  image-rendering: crisp-edges;
 			}
+
+			html, body {
+			    height: 100%;
+			}
+			body {
+			    margin: 0;
+			}
+			.flex-container {
+			    height: 100%;
+			    padding: 0;
+			    margin: 0;
+			    display: -webkit-box;
+			    display: -moz-box;
+			    display: -ms-flexbox;
+			    display: -webkit-flex;
+			    display: flex;
+			    align-items: center;
+			    justify-content: center;
+			}
+			.row {
+			    width: auto;
+			}
+			.flex-item {
+			    text-align: center;
+			}			
 		</style>
 	</head>
 	<script src="keyboard.js"></script>
 	<script src="game.js"></script>
 	<script src="engine.js"></script>
+	<script src="lib/newgroundsio.min.js"></script>
+	<script src="ng.js"></script>
 	<body style="margin: 0;">
-		<div style="display: flex; flex-direction: row">
-			<canvas id="canvas"></canvas>
-			<pre id="debug" style="font-size: 9px; width: 100px"></pre>
+		<div class="flex-container">
+			<div class="row">
+				<canvas class="flex-item" id="canvas"></canvas>
+			</div>
+			<!--pre id="debug" style="font-size: 9px; width: 100px"></pre-->
 		</div>
 	</body>
 	<script>

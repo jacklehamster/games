@@ -236,7 +236,7 @@ const SpriteRenderer = (function() {
 		clearRenderer(this, 0);
 	}
 
-	function transformPosition(renderer, positions, cameraQuat, translateVector) {
+	function transformPosition(positions, cameraQuat, translateVector) {
 		vec3.forEach(positions, 0, 0, 0, vec3.transformQuat, cameraQuat);
 		for(let i=0; i<positions.length; i++) {
 			positions[i] += translateVector[i%3];
@@ -271,7 +271,7 @@ const SpriteRenderer = (function() {
 					positions[9] = left;
 					positions[10] = bottom;
 					positions[11] = 0;
-					transformPosition(renderer, positions, renderer.cameraQuat, sprite.position);
+					transformPosition(positions, renderer.cameraQuat, sprite.position);
 				}
 				break;
 		}
@@ -492,6 +492,7 @@ const SpriteRenderer = (function() {
 		if (!time || !floatArrayEqual(coordinates, spriteTextureCoordinates)) {
 			gl.bindBuffer(gl.ARRAY_BUFFER, renderer.textureCoordBuffer);
 			gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * TEXTURE_FLOAT_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT, coordinates);
+			console.log(coordinates);
 			spriteTextureCoordinates.set(coordinates);
 		}
 

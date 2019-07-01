@@ -1052,11 +1052,18 @@ function main() {
       rot ++;
     }
     if(dx || dz) {
-      camera.move(dx, 0, dz);
-      // const [ ddx, , ddz ] = camera.getRelativeDirection(dx, 0, dz);
-      // const dist = Math.sqrt(ddx*ddx + ddz*ddz);
-      // hero.x += ddx / dist / 30;
-      // hero.z += ddz / dist / 30;
+//      camera.move(dx, 0, dz);
+      const [ ddx, , ddz ] = camera.getRelativeDirection(dx, 0, dz);
+      const dist = Math.sqrt(ddx*ddx + ddz*ddz);
+      hero.mov.x = -ddx / dist / 100;
+      hero.mov.z = -ddz / dist / 60;
+      hero.face.x = hero.mov.x;
+      hero.face.z = hero.mov.z;
+      hero.x -= hero.mov.x;
+      hero.z -= hero.mov.z;
+    } else {
+      hero.mov.x = 0;
+      hero.mov.z = 0;
     }
     if(rot) {
       camera.rotate(rot);
@@ -1069,7 +1076,8 @@ function main() {
 
 
   function refreshCamera(camera, scene) {
-    camera.step(scene);
+    camera.step();
+//    camera.step(scene);
     if(!meta || !meta.animation) {
       const [ x, y, z ] = camera.position;
       scene.setSprite("x", "mark", "xmark", x, 0, z + camera.zOffset, .05);
@@ -1089,7 +1097,7 @@ function main() {
     return PENGUIN_SPRITES[angleIndex].flip;
   }
 
-  const hero = { x: 0, z: 0 };
+  const hero = { x: .5, z: 5.5, mov: { x:0, z:0 }, face: { x:0, z:-1 } };
 
   Dowge.setScene("mainScene", scene);
   Dowge.setScene("uiScene", uiScene);
@@ -1100,8 +1108,29 @@ function main() {
     camera.step(scene);
     if(!meta || !meta.animation) {
       const [ x, y, z ] = camera.position;
-      const { moveDirection } = camera;
-      const angleIndex = Utils.getAngleIndex(Utils.rad2deg(camera.getCameraAngle(moveDirection)), PENGUIN_SPRITES.length);
+      const dx = (hero.x - x);
+      const dz = (- camera.zOffset + hero.z - z);
+      if (Math.abs(dx)>.1 || Math.abs(dz)>.1) {
+        camera.move(dx / 1000, 0, dz/1000);
+      }
+
+      // const [ x, y, z ] = camera.position;
+      // const { moveDirection } = camera;
+      // const angleIndex = Utils.getAngleIndex(Utils.rad2deg(camera.getCameraAngle(moveDirection)), PENGUIN_SPRITES.length);
+      // let info = document.getElementById('info');
+      // if(!info) {
+      //   info = document.body.appendChild(document.createElement('div'));
+      //   info.id = 'info';
+      // }
+      // info.innerText = angleIndex;
+
+      // const spriteName = getPenguinSprite(angleIndex);
+      // const flip = getPenguinFlip(angleIndex);
+
+      // scene.setSprite(spriteName, null, "penguin",
+      //   x, 0, z + camera.zOffset,
+      //   flip * .2, 0, null, !camera.isMoving());
+      const angleIndex = Utils.getAngleIndex(Utils.rad2deg(camera.getCameraAngle(hero.face)), PENGUIN_SPRITES.length);
       let info = document.getElementById('info');
       if(!info) {
         info = document.body.appendChild(document.createElement('div'));
@@ -1111,10 +1140,9 @@ function main() {
 
       const spriteName = getPenguinSprite(angleIndex);
       const flip = getPenguinFlip(angleIndex);
-
       scene.setSprite(spriteName, null, "penguin",
-        x, 0, z + camera.zOffset,
-        flip * .2, 0, null, !camera.isMoving());
+        hero.x, 0, hero.z,
+        flip * .2, 0, null, !hero.mov.x && !hero.mov.z);
     }
   });
   Dowge.renderCanvas(canvas, "uiScene", "mainCamera", (scene, camera, now) => {

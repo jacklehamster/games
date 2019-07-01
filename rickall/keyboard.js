@@ -9,26 +9,48 @@ const Keyboard = function() {
   const KEY_D = 68;
   const KEY_Q = 81;
   const KEY_E = 69;
+  const KEY_ENTER = 13;
   const KEY_SPACE = 32;
+  const KEY_ESCAPE = 27;
+  const KEY_P = 80;
   const keyboard = [];
+  let keysMove = true;
   let move = {
   	dx: 0,
   	dy: 0,
   };
-  const action = {};
+  const listeners = { onPressOnce: null, };
+  const action = { pressedOnce: false, down: false };
   function onKey(e) {
     switch(e.keyCode) {
-      case KEY_LEFT: case KEY_RIGHT: case KEY_UP: case KEY_DOWN:
       case KEY_W: case KEY_S: case KEY_A: case KEY_D:
-      case KEY_Q: case KEY_E:
+        keyboard[e.keyCode] = e.type === "keyup" ? 0 : 1;
+        if(keysMove) {
+          updateMove();
+        }
+        e.preventDefault();
+      case KEY_LEFT: case KEY_RIGHT: case KEY_UP: case KEY_DOWN:
         keyboard[e.keyCode] = e.type === "keyup" ? 0 : 1;
         updateMove();
         e.preventDefault();
         break;
       case KEY_SPACE:
+      case KEY_ENTER:
         action.down = e.type === 'keyup' ? 0 : 1;
         e.preventDefault();
         break;
+      case KEY_P:
+      case KEY_ESCAPE:
+        action.cancel = e.type === 'keyup' ? 0 : 1;
+        e.preventDefault();
+        break;
+    }
+    if(!action.pressedOnce) {
+      action.pressedOnce = true;
+    }
+    if(listeners.onPressOnce) {
+      listeners.onPressOnce();
+      listeners.onPressOnce = null;
     }
   }
 
@@ -53,8 +75,10 @@ const Keyboard = function() {
   document.addEventListener("keydown", onKey);
   document.addEventListener("keyup", onKey);
   return {
+    keysMove,
   	keyboard,
   	move,
     action,
+    listeners,
   };	
 }();
