@@ -15,8 +15,8 @@ varying highp vec2 vTextureCoord;
 varying highp float zDist;
 varying highp float textureIndex;
 
-uniform vec2 uTextures[400];
-uniform float uTextureId[100];
+uniform vec2 uTextures[800];
+uniform float uTextureId[200];
 
 void main(void) {
 	float texIndex = aFrame[0];

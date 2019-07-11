@@ -364,7 +364,7 @@ const Game = (() => {
 				spriteSize: [32, 32],
 				options: {
 					scale: 10 / waterSize,
-					chunks: 2,//Math.max(1, Math.floor(waterSize / 10)),
+					chunks: Math.max(1, Math.floor(waterSize / 10)),
 				},
 			},
 		],
