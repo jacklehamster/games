@@ -49,7 +49,7 @@ const Game = (() => {
 					id: ({cam}) => {
 						const { mov, rotation } = cam;
 						const turn = Utils.getCameraAngle(penguinData.mov, rotation);
-					    const angleIndex = Utils.getAngleIndex(Utils.rad2deg(turn), penguin_sprites.length);
+					    const angleIndex = Utils.getAngleIndex(turn, penguin_sprites.length);
 					    return penguin_sprites[angleIndex].id;
 					},
 					pos: ({cam}) => {

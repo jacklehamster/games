@@ -317,24 +317,9 @@ const Engine = ((document) => {
 
 	function turnImageIntoTexture(id, img, spriteSize, options, gl) {
 		if (!glTextures.length) {
-			const textureIds = [
-				gl.TEXTURE0,
-				gl.TEXTURE1,
-				gl.TEXTURE2,
-				gl.TEXTURE3,
-				gl.TEXTURE4,
-				gl.TEXTURE5,
-				gl.TEXTURE6,
-				gl.TEXTURE7,
-				gl.TEXTURE8,
-				gl.TEXTURE9,
-				gl.TEXTURE10,
-				gl.TEXTURE11,
-				gl.TEXTURE12,
-				gl.TEXTURE13,
-				gl.TEXTURE14,
-				gl.TEXTURE15,
-			];
+			const textureIds =  new Array(16).fill(null).map((a, index) => {
+				return gl["TEXTURE" + index];
+			});
 
 			textureIds.forEach((tex, index) => {
 				gl.activeTexture(tex);
@@ -409,7 +394,7 @@ const Engine = ((document) => {
 				textures,
 				chunks: typeof(chunks) == 'number' ? [chunks,chunks] : Array.isArray(chunks) ? chunks : [1, 1],
 				verticesMap: makeVerticesMap(spriteWidth, spriteHeight, scale),
-				uploaded: false,
+				sentToGPU: false,
 			};
 
 			gl.generateMipmap(gl.TEXTURE_2D);
@@ -429,16 +414,16 @@ const Engine = ((document) => {
 
 		return {
 			'floor': new Float32Array([
-				left, 0, top - .5,
-				right, 0, top - .5,
-				right, 0, bottom - .5,
-				left, 0, bottom - .5,
+				left, 	0, top - .5,
+				right, 	0, top - .5,
+				right, 	0, bottom - .5,
+				left, 	0, bottom - .5,
 			]),
 			'ceiling': new Float32Array([
-				left, 0, bottom - .5,
-				right, 0, bottom - .5,
-				right, 0, top - .5,
-				left, 0, top - .5,
+				left, 	0, bottom - .5,
+				right, 	0, bottom - .5,
+				right, 	0, top - .5,
+				left, 	0, top - .5,
 			]),
 			'left': new Float32Array([
 				0, bottom, right,
@@ -455,14 +440,14 @@ const Engine = ((document) => {
 			'sprite': new Float32Array([
 				left, 	bottom, 0,
 				right, 	bottom, 0,
-				right, 	top, 0,
-				left, 	top, 0,
+				right, 	top, 	0,
+				left, 	top, 	0,
 			]),
 			'default': new Float32Array([
 				left, 	bottom, 0,
 				right, 	bottom, 0,
-				right, 	top, 0,
-				left, 	top, 0,
+				right, 	top, 	0,
+				left, 	top, 	0,
 			]),
 		};
 	}
@@ -486,11 +471,10 @@ const Engine = ((document) => {
 			if (!textureData) {
 				return;
 			}
-			if (!textureData.uploaded) {
-				const { textures, flip } = textureData;
-				
-				textureData.uploaded = true;
+			if (!textureData.sentToGPU) {
+				textureData.sentToGPU = true;
 
+				const { textures, flip, chunks } = textureData;
 				textureData.texIndex = texIndex;
 
 				textures.forEach(({ index, coordinates }, frameIndex) => {
@@ -511,10 +495,10 @@ const Engine = ((document) => {
 						left,   top,
 					]);
 
-					const glTexturesLocation = gl.getUniformLocation(shaderProgram, `uTextures[${(texIndex + frameIndex) * VERTICES_PER_SPRITE}]`);
+					const glTexturesLocation = gl.getUniformLocation(shaderProgram, `uTextureCoords[${(texIndex + frameIndex) * VERTICES_PER_SPRITE}]`);
 					gl.uniform2fv(glTexturesLocation, textureCoordinates);
-					const glTextureIdLocation = gl.getUniformLocation(shaderProgram, `uTextureId[${texIndex + frameIndex}]`);
-					gl.uniform1f(glTextureIdLocation, index);
+					const glTextureIdLocation = gl.getUniformLocation(shaderProgram, `uTextureInfo[${texIndex + frameIndex}]`);
+					gl.uniform3fv(glTextureIdLocation, new Float32Array([index,...chunks]));
 				});
 				texIndex += textures.length;
 			}

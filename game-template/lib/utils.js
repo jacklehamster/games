@@ -70,12 +70,10 @@ class Utils {
 		});
 	}
 
-	static getAngleIndex(deg, range) {
-      return Math.floor(deg * range / 360 + .5) % range;
-	}
-
-	static rad2deg(rad) {
-      return (360 + (rad * 180 / Math.PI) % 360) % 360;
+	static getAngleIndex(rad, range) {
+		const angleRange = Math.PI * 2;
+		rad = ((rad % angleRange) + angleRange) % angleRange;
+      	return Math.floor(rad * range / angleRange + .5) % range;
 	}
 
     static getCameraAngle(direction, rotation) {

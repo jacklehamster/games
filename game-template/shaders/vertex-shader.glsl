@@ -14,10 +14,10 @@ uniform mat4 uCameraRotation;
 
 varying highp vec2 vTextureCoord;
 varying highp float zDist;
-varying highp float textureIndex;
+varying highp float textureSlot;
 
-uniform vec2 uTextures[800];
-uniform float uTextureId[200];
+uniform vec2 uTextureCoords[800];
+uniform vec3 uTextureInfo[200];
 
 void main(void) {
 	float texIndex = aFrame[0];
@@ -25,6 +25,7 @@ void main(void) {
 	float fps = aFrame[2];
 	float timeOffset = aFrame[3];
 
+	float frame = (texIndex + mod(floor((now + timeOffset) * fps / 1000.0), totalFrames));
 	vec4 vPos = aVertexPosition;
 	if (aIsSprite == 1.0) {
 		vPos = uCameraRotation * vPos;
@@ -40,10 +41,8 @@ void main(void) {
 	}
 	vec4 position = uProjectionMatrix * uViewMatrix * vPos;
 
+	vTextureCoord = uTextureCoords[int(float(aCorner + frame * 4.0))];
 	zDist = abs(position.z / 12.0) + abs(position.y / 10.0);
-
-	float frame = (texIndex + mod(floor((now + timeOffset) * fps / 1000.0), totalFrames));
-	vTextureCoord = uTextures[int(float(aCorner + frame * 4.0))];
-	textureIndex = uTextureId[int(frame)];
+	textureSlot = uTextureInfo[int(frame)][0];
 	gl_Position = position;
 }
