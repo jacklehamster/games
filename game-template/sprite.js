@@ -147,6 +147,7 @@ class Sprite {
 	getFrameData(frameIndices) {
 		const chunkCols = frameIndices.length;
 		const chunkRows = frameIndices[0].length;
+
 		const chunkCol = ((this.chunkCol % chunkCols) + chunkCols) % chunkCols;
 		const chunkRow = ((this.chunkRow % chunkRows) + chunkRows) % chunkRows;
 		const frame = frameIndices[chunkCol][chunkRow];

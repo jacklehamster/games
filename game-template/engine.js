@@ -391,18 +391,15 @@ const Engine = ((document) => {
 				}
 			}
 
-			textures = textures.map(cell => {
-				const textureLeft = cell.x/TEXTURE_SIZE;
-				const textureRight = cell.x/TEXTURE_SIZE + spriteWidth/TEXTURE_SIZE;
-				const textureTop = cell.y/TEXTURE_SIZE;
-				const textureBottom = cell.y/TEXTURE_SIZE + spriteHeight/TEXTURE_SIZE;
+			textures = textures.map(({ x, y, index }) => {
+				const textureLeft = x / TEXTURE_SIZE;
+				const textureRight = x / TEXTURE_SIZE + spriteWidth / TEXTURE_SIZE;
+				const textureTop = y / TEXTURE_SIZE;
+				const textureBottom = y/ TEXTURE_SIZE + spriteHeight / TEXTURE_SIZE;
 				return {
-					index: cell.index,
+					index,
 					coordinates: [
-						textureLeft,
-						textureRight,
-						textureTop,
-						textureBottom,
+						textureLeft, textureRight, textureTop, textureBottom,
 					],
 				};
 			});
@@ -532,7 +529,6 @@ const Engine = ((document) => {
 							gl.uniform1f(glTextureIdLocation, index);
 						});
 						texIndex += textures.length;
-						break;
 					}
 				}
 			}
