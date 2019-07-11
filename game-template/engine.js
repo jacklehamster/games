@@ -407,7 +407,7 @@ const Engine = ((document) => {
 			stock[id].textureData = {
 				flip,
 				textures,
-				chunks: typeof(chunks) == 'number' ? [chunks,chunks] : Array.isArray(chunks) ? chunks : [1, 1],
+				chunks: [1,1],// typeof(chunks) == 'number' ? [chunks,chunks] : Array.isArray(chunks) ? chunks : [1, 1],
 				verticesMap: makeVerticesMap(spriteWidth, spriteHeight, scale),
 				uploaded: false,
 			};
