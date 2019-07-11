@@ -407,7 +407,7 @@ const Engine = ((document) => {
 			stock[id].textureData = {
 				flip,
 				textures,
-				chunks: [1,1],// typeof(chunks) == 'number' ? [chunks,chunks] : Array.isArray(chunks) ? chunks : [1, 1],
+				chunks: typeof(chunks) == 'number' ? [chunks,chunks] : Array.isArray(chunks) ? chunks : [1, 1],
 				verticesMap: makeVerticesMap(spriteWidth, spriteHeight, scale),
 				uploaded: false,
 			};
@@ -487,50 +487,36 @@ const Engine = ((document) => {
 				return;
 			}
 			if (!textureData.uploaded) {
-				console.log(resolve(sprite.options.id));
-				const { textures, chunks, flip } = textureData;
+				const { textures, flip } = textureData;
 				
 				textureData.uploaded = true;
 
-				const [ chunkCols, chunkRows ] = chunks;
-				textureData.texIndices = new Array(chunkCols).fill(null).map(() => {
-					return new Array(chunkRows);
+				textureData.texIndex = texIndex;
+
+				textures.forEach(({ index, coordinates }, frameIndex) => {
+					let [ left, right, top, bottom ] = coordinates;
+					const texWidth = right - left;
+					const texHeight = bottom - top;
+
+			  		if (flip) {
+			  			const temp = left;
+			  			left = right;
+			  			right = temp;
+			  		}
+
+					textureCoordinates.set([
+						left,   bottom,
+						right,  bottom,
+						right,  top,
+						left,   top,
+					]);
+
+					const glTexturesLocation = gl.getUniformLocation(shaderProgram, `uTextures[${(texIndex + frameIndex) * VERTICES_PER_SPRITE}]`);
+					gl.uniform2fv(glTexturesLocation, textureCoordinates);
+					const glTextureIdLocation = gl.getUniformLocation(shaderProgram, `uTextureId[${texIndex + frameIndex}]`);
+					gl.uniform1f(glTextureIdLocation, index);
 				});
-
-				for (let row = 0; row < chunkRows; row++) {
-					for (let col = 0; col < chunkCols; col++ ) {
-						textureData.texIndices[col][row] = texIndex;
-
-						textures.forEach(({ index, coordinates }, frameIndex) => {
-							const [ left, right, top, bottom ] = coordinates;
-							const texWidth = right - left;
-							const texHeight = bottom - top;
-
-							let chunkLeft 	= left + texWidth * col / chunkCols,
-								chunkRight 	= left + texWidth * (col + 1) / chunkCols,
-								chunkTop 	= top + texHeight * row / chunkRows,
-								chunkBottom = top + texHeight * (row + 1) / chunkRows;
-					  		if (flip) {
-					  			const temp = chunkLeft;
-					  			chunkLeft = chunkRight;
-					  			chunkRight = temp;
-					  		}
-
-							textureCoordinates.set([
-								chunkLeft,   chunkBottom,
-								chunkRight,  chunkBottom,
-								chunkRight,  chunkTop,
-								chunkLeft,   chunkTop,
-							]);
-
-							const glTexturesLocation = gl.getUniformLocation(shaderProgram, `uTextures[${(texIndex + frameIndex) * VERTICES_PER_SPRITE}]`);
-							gl.uniform2fv(glTexturesLocation, textureCoordinates);
-							const glTextureIdLocation = gl.getUniformLocation(shaderProgram, `uTextureId[${texIndex + frameIndex}]`);
-							gl.uniform1f(glTextureIdLocation, index);
-						});
-						texIndex += textures.length;
-					}
-				}
+				texIndex += textures.length;
 			}
 
 			const needsUpdate = forceRedraw || sprite.slotIndex !== count;
@@ -551,7 +537,7 @@ const Engine = ((document) => {
 				gl.bindBuffer(gl.ARRAY_BUFFER, waveBuffer);
 				gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * Float32Array.BYTES_PER_ELEMENT, wave);
 
-				const frameData = sprite.getFrameData(textureData.texIndices);
+				const frameData = sprite.getFrameData(textureData.texIndex);
 				gl.bindBuffer(gl.ARRAY_BUFFER, frameBuffer);
 				gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * 4 * Float32Array.BYTES_PER_ELEMENT, frameData);
 

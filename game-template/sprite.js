@@ -144,13 +144,7 @@ class Sprite {
 		return this;
 	}
 
-	getFrameData(frameIndices) {
-		const chunkCols = frameIndices.length;
-		const chunkRows = frameIndices[0].length;
-
-		const chunkCol = ((this.chunkCol % chunkCols) + chunkCols) % chunkCols;
-		const chunkRow = ((this.chunkRow % chunkRows) + chunkRows) % chunkRows;
-		const frame = frameIndices[chunkCol][chunkRow];
+	getFrameData(frame) {
 		for (let i = 0; i < VERTICES_PER_SPRITE; i++) {
 			this.frameData[i * 4] = frame;
 		}
