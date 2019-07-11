@@ -66,5 +66,5 @@ class Keyboard {
 
 Keyboard.keys = Keyboard.makeKeys();
 Keyboard.callback = (code, down, keys) => {
-	console.log(code, down);
+//	console.log(code, down);
 };

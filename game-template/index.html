@@ -41,13 +41,14 @@
 		</style>
 	</head>
 	<script src="lib/gl-matrix.js"></script>
+	<script src="lib/utils.js"></script>
 	<script src="lib/recycler.js"></script>
 	<script src="sprite.js"></script>
 	<script src="keyboard.js"></script>
 	<script src="engine.js"></script>
 	<script src="game.js"></script>
 	<script>
-		window.addEventListener("load", e => {
+		document.addEventListener("DOMContentLoaded", e => {
 			Engine.initialize();
 			Engine.setCanvas(document.getElementById('canvas'));
 			Engine.loadGame(Game);
@@ -55,11 +56,9 @@
 	</script>	
 	<body style="margin: 0;">
 		<div class="flex-container">
-			<div class="row">
-				<canvas class="flex-item" id="canvas"></canvas>
-			</div>
+			<canvas class="flex-item" id="canvas"></canvas>
 		</div>
-		<div style="background-color: #FFcccc; min-height: 100px">
+		<div id="debug" style="display: none; background-color: #FFcccc; min-height: 100px; padding: 5px">
 			<pre id="log"></pre>
 		</div>
 	</body>
