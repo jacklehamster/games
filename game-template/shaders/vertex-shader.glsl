@@ -44,16 +44,17 @@ float getSinWaveOffset(float now, vec3 pos, float wave) {
 	return sin(now / 100.0 + pos.x * 1.0 + pos.z * 2.0) / 8.0 * aWave;
 }
 
-float 
+float getFrame(float time, float fps, float totalFrames) {
+	return mod(time * fps / SECOND_TO_MILLIS, totalFrames);
+}
 
 void main(void) {
 	float texIndex = aFrame[0];
 	float totalFrames = aFrame[1];
 	float fps = aFrame[2];
 	float timeOffset = aFrame[3];
-	int chunkIndex = int(aChunk);
+	float frame = texIndex + getFrame(now + timeOffset, fps, totalFrames);
 
-	float frame = (texIndex + mod(floor((now + timeOffset) * fps / SECOND_TO_MILLIS), totalFrames));
 	vec4 vPos = aVertexPosition;
 
 	//	Make sprite face camera
