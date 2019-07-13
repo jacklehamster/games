@@ -1,10 +1,17 @@
 const FLOAT_PER_VERTEX 			= 3;	//	x,y,z
 const VERTICES_PER_SPRITE 		= 4;	//	4 corners
 
+const SpriteTypes = {
+	floor: 0,
+	ceiling: 1,
+	left: 2,
+	right: 3,
+	sprite: 4,
+};
+
 class Sprite {
 	constructor() {
 		this.pos = vec3.create();
-		this.vertices = new Float32Array(FLOAT_PER_VERTEX * VERTICES_PER_SPRITE);
 		this.textureCoordinates = new Float32Array(2 * VERTICES_PER_SPRITE);
 		this.wave = new Float32Array(VERTICES_PER_SPRITE);
 		this.frameData = new Float32Array(4 * VERTICES_PER_SPRITE);
@@ -19,7 +26,7 @@ class Sprite {
 		sprite.chunkCol = 0;
 		sprite.chunkRow = 0;
 		sprite.type = 'sprite';
-		sprite.vertices.fill(0);
+		sprite.typeIndex = SpriteTypes[sprite.type];
 		sprite.textureCoordinates.fill(0);
 		sprite.wave.fill(0);
 		sprite.frameData.fill(0);
@@ -40,7 +47,7 @@ class Sprite {
 	}
 
 	setPosition(pos) {
-		if (!vec3.equals(this.pos, pos)) {
+		if (!vec3.exactEquals(this.pos, pos)) {
 			this.pos.set(pos);
 			for (let i = 0; i < VERTICES_PER_SPRITE; i++) {
 				this.posBuffer.set(pos, i * 3);
@@ -50,36 +57,13 @@ class Sprite {
 		return this;
 	}
 
-	getChunk(textureCoordinates, chunkCol, chunkRow, chunks) {
-		const [ chunkCols, chunkRows ] = chunks;
-		const [ textureLeft, textureRight, textureTop, textureBottom ] = textureCoordinates;
-		const texWidth = textureRight - textureLeft;
-		const texHeight = textureBottom - textureTop;
-		chunkCol = ((chunkCol % chunkCols) + chunkCols) % chunkCols;
-		chunkRow = ((chunkRow % chunkRows) + chunkRows) % chunkRows;
-
-		const chunkLeft = textureLeft + texWidth * chunkCol / chunkCols,
-			  chunkRight = textureLeft + texWidth * (chunkCol+1) / chunkCols,
-			  chunkTop = textureTop + texHeight * chunkRow / chunkRows,
-			  chunkBottom = textureTop + texHeight * (chunkRow + 1) / chunkRows;
-		this.textureCoordinates.set([
-			chunkLeft,   chunkBottom,
-			chunkRight,  chunkBottom,
-			chunkRight,  chunkTop,
-			chunkLeft,   chunkTop,
-		]);
-		return this.textureCoordinates;
-	}
-
 	getPosition() {
 		return this.posBuffer;
 	}
 
 	getVertices() {
-		const { vertices, type, pos } = this;
-		const { verticesMap } = this.textureData;
-		vertices.set(verticesMap[type] || verticesMap.default);
-		return vertices;
+		const { textureData, typeIndex } = this;
+		return textureData.verticesMap[typeIndex];
 	}
 	
 	setTextureData(textureData) {
@@ -93,6 +77,7 @@ class Sprite {
 	setType(type) {
 		if (this.type !== type) {
 			this.type = type;
+			this.typeIndex = SpriteTypes[type];
 			this.slotIndex = -1;
 		}
 		return this;
@@ -116,6 +101,12 @@ class Sprite {
 		return this;
 	}
 
+	getChunkIndex() {
+		const { chunks } = this.textureData;
+		const [ chunkCols, chunkRows ] = chunks;
+		return (this.chunkCol % chunkCols) + (this.chunkRow % chunkRows) * chunkCols;
+	}
+
 	setWave(wave) {
 		if (wave.constructor === Number) {
 			if (this.wave[0] != wave) {
@@ -133,9 +124,8 @@ class Sprite {
 
 	setFrameData(fps, timeOffset) {
 		const { textures } = this.textureData;
-		if (this.frameData[1] != textures.length || this.frameData[2] != fps || this.frameData[3] != timeOffset) {
+		if (this.frameData[1] !== textures.length || this.frameData[2] !== fps || this.frameData[3] !== timeOffset) {
 			const data = new Float32Array([ 0, textures.length, fps, timeOffset ]);
-
 			for (let i = 0; i < VERTICES_PER_SPRITE; i++) {
 				this.frameData.set(data, i * 4);
 			}
@@ -144,24 +134,12 @@ class Sprite {
 		return this;
 	}
 
-	getFrameData(frame) {
+	getFrameData() {
+		const { texIndex } = this.textureData;
 		for (let i = 0; i < VERTICES_PER_SPRITE; i++) {
-			this.frameData[i * 4] = frame;
+			this.frameData[i * 4] = texIndex;
 		}
 		return this.frameData;
-	}
-
-	getTextureIndex(frame) {
-		const { textures } = this.textureData;
-		const { index } = textures[frame % textures.length];
-		return index;
-	}
-
-	getTextureCoordinates(frame) {
-		const { textures } = this.textureData;
-		const { coordinates, chunks } = textures[frame % textures.length];
-
-		return this.getChunk(coordinates, this.chunkCol, this.chunkRow, chunks);
 	}
 
 	getWave() {

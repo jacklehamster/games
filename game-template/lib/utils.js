@@ -1,6 +1,10 @@
 const cache = {};
 const canDebug = location.search.indexOf("debug") >= 0;
 const tempVec3 = vec3.create();
+const temp4Float = new Float32Array(4);
+const FLOAT_NUMS = new Array(10).fill(null).map((a, index) => {
+	return Float32Array.from([index, index, index, index]);
+});
 
 class Utils {
 	static get debug() {
@@ -102,5 +106,9 @@ class Utils {
 			}
 		}
 		return true;
+	}
+
+	static get4Floats(num) {
+		return FLOAT_NUMS[num] || temp4Float.fill(num);
 	}
 }

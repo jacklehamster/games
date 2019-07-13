@@ -12,7 +12,7 @@ const Engine = ((document) => {
 	const IDENTITY_QUAT = quat.identity(quat.create());
 	const ZERO_VEC3 = vec3.create();
 	const SCALE_VEC3 = vec3.fromValues(1, 1, 1);
-	const vec3temp = vec3.create();
+	const vec3temp = vec3.create(), vec3temp2 = vec3.create();
 
 	const CORNERS = Float32Array.from([0, 1, 2, 3 ]);
 
@@ -31,27 +31,50 @@ const Engine = ((document) => {
 		pos: vec3.create(),
 	};
 
-	let imageCount = 0;
 	const sprites = [];
+	const activeSprites = [];
+	const dirtySprites = [];
 
+	const tempCanvas = document.createElement('canvas');
+				
 	let texIndex = 0;
 	const textureCoordinates = new Float32Array(VERTICES_PER_SPRITE * TEXTURE_FLOAT_PER_VERTEX);
 
-
 	function refresh(now) {
-		if (mainGame) {
+		if (mainGame && renderer) {
 			globalData.now = now;
 
 			refreshMove(mainGame);
 
-			imageCount = 0;
-			sprites.forEach(refreshSprite);
+			let imageCount = 0;
+			activeSprites.length = 0;
+			sprites.forEach(sprite => {
+				resolve(sprite.options.process);
+				const { id } = sprite.options;
+				const { textureData } = stock[resolve(id)];
 
-			if (renderer && renderer.shaderProgram && imageCount > 0) {
+				if (textureData && textureData.textures) {
+					imageCount += textureData.textures.length;
+
+					if (sprite.needsRefresh()) {
+						const { followcam, chunk, pos, type, fps, timeOffset, wave, process } = sprite.options;
+						sprite.setTextureData(textureData)
+							.setChunk(resolve(chunk))
+							.setType(resolve(type))
+							.setPosition(resolve(pos))
+							.setWave(resolve(wave) || 0)
+							.setFrameData(resolve(fps) || 0, resolve(timeOffset) || 0);
+					}
+					activeSprites.push(sprite);
+				}
+			});
+
+			if (activeSprites.length) {
 				gl.uniform1f(renderer.programInfo.nowLocation, now);
-				refreshMatrices(renderer);				
+				refreshMatrices(renderer);			
 				const bufferResized = ensureBuffer(renderer, imageCount);
-				drawSprites(renderer, sprites, bufferResized);
+				sendTexturesToGPU(renderer);
+				drawSprites(renderer, activeSprites, bufferResized);
 			}
 		}
 
@@ -60,28 +83,34 @@ const Engine = ((document) => {
 		}
 	}
 
-	function refreshSprite(sprite) {
-		resolve(sprite.options.process);
-		const { id } = sprite.options;
-		const { textureData } = stock[resolve(id)];
+	function sendTexturesToGPU({ gl, shaderProgram }) {
+		for (let id in stock) {
+			const { textureData } = stock[id];
+			if (textureData && textureData.textures && !textureData.sentToGPU) {
+				textureData.sentToGPU = true;
 
-		if (textureData) {
-			imageCount += textureData.textures.length;
+				const { textures, flip, chunks } = textureData;
+				textureData.texIndex = texIndex;
 
-			if (sprite.needsRefresh()) {
-				const { followcam, chunk, pos, type, fps, timeOffset, wave, process } = sprite.options;
-				sprite.setTextureData(textureData)
-					.setChunk(resolve(chunk))
-					.setType(resolve(type))
-					.setPosition(resolve(pos))
-					.setWave(resolve(wave) || 0)
-					.setFrameData(resolve(fps) || 0, resolve(timeOffset) || 0);
+				textures.forEach(({ index, coordinates }, frameIndex) => {
+			  		if (flip) {
+			  			const temp = coordinates[0];
+			  			coordinates[0] = coordinates[1];
+			  			coordinates[1] = temp;
+			  		}
+
+			  		const glTextureCellLocation = gl.getUniformLocation(shaderProgram, `uTextureCell[${texIndex + frameIndex}]`);
+			  		gl.uniform4fv(glTextureCellLocation, new Float32Array(coordinates));
+					const glTextureIdLocation = gl.getUniformLocation(shaderProgram, `uTextureInfo[${texIndex + frameIndex}]`);
+					gl.uniform3fv(glTextureIdLocation, new Float32Array([index,...chunks]));
+				});
+				texIndex += textures.length;
 			}
 		}
 	}
 
 	let lastRot = 0;
-	function refreshMove(game) {
+	function refreshMove({ settings, camera }) {
 		const { ax, ay, rot } = Keyboard.getActions();
 		const { mov, pos } = cam;
 		mov[X_POS] = (mov[X_POS] - ax * acceleration) * .5;
@@ -97,7 +126,7 @@ const Engine = ((document) => {
 			cam.rotation += rot * acceleration * .5;
 			lastRot = rot;
 		} else if (lastRot) {
-			const { angleStep } = game.settings;
+			const { angleStep } = settings;
 			const goal = lastRot < 0 ? Math.floor(cam.rotation / angleStep) * angleStep :
 				Math.ceil(cam.rotation / angleStep) * angleStep;
 			cam.rotation += (goal - cam.rotation) /8;
@@ -107,11 +136,9 @@ const Engine = ((document) => {
 		}
 
 		const directionVector = Utils.getRelativeDirection(cam.rotation, mov);
-
 		vec3.add(pos, pos, directionVector);
 
 		if (viewMatrix) {
-			const { settings, camera } = game;
 			const { scale } = settings;
 			const h = camera.height || 0;
 			const { cameraQuat } = renderer;
@@ -119,8 +146,8 @@ const Engine = ((document) => {
 			const tilt = h/2;
 			const zOffset = -camera.distance || 0;
 			quat.rotateY(cameraQuat, quat.rotateX(cameraQuat, IDENTITY_QUAT, tilt), turn);
-			vec3.set(vec3temp, 0, h, zOffset);
-			mat4.fromRotationTranslationScaleOrigin(viewMatrix, cameraQuat, ZERO_VEC3, vec3.fromValues(scale, scale, scale), vec3temp);			
+			mat4.fromRotationTranslationScaleOrigin(viewMatrix, cameraQuat, ZERO_VEC3,
+				vec3.set(vec3temp2, scale, scale, scale), vec3.set(vec3temp, 0, h, zOffset));			
 			quat.conjugate(cameraQuat, cameraQuat);	//	conjugate for sprites			
 			mat4.translate(viewMatrix, viewMatrix, pos);
 
@@ -139,8 +166,7 @@ const Engine = ((document) => {
 	let projectionMatrix = null;
 	let cameraRotationMatrix = null;
 
-	function refreshMatrices(renderer) {
-		const { cache, programInfo, cameraQuat } = renderer;
+	function refreshMatrices({ cache, programInfo, cameraQuat }) {
 		if (!projectionMatrix) {
 			projectionMatrix = mat4.create();
 			const fieldOfView = 45 * Math.PI / 180;   // in radians
@@ -158,12 +184,10 @@ const Engine = ((document) => {
 		if (!viewMatrix) {
 			const [ x, y, z ] = vec3.fromValues(0, 0, 0);
 			viewMatrix = mat4.create();
-
 			mat4.translate(viewMatrix, viewMatrix, vec3.fromValues(-x, -y, -z));
 			gl.uniformMatrix4fv(programInfo.viewLocation, false, viewMatrix);
 			cache.viewMatrix = mat4.create();
 		}
-
 		if (!mat4.exactEquals(viewMatrix, cache.viewMatrix)) {
 			gl.uniformMatrix4fv(programInfo.viewLocation, false, viewMatrix);
 			mat4.copy(cache.viewMatrix, viewMatrix);
@@ -174,7 +198,6 @@ const Engine = ((document) => {
 			gl.uniformMatrix4fv(programInfo.cameraRotationLocation, false, cameraRotationMatrix);
 			cache.cameraRotationMatrix = mat4.create();
 		}
-
 		if (!mat4.exactEquals(cameraRotationMatrix, cache.cameraRotationMatrix)) {
 			gl.uniformMatrix4fv(programInfo.cameraRotationLocation, false, cameraRotationMatrix);
 			mat4.copy(cache.cameraRotationMatrix, cameraRotationMatrix);
@@ -190,7 +213,6 @@ const Engine = ((document) => {
 	};
 
 	function initialize() {
-		let lastFrame = 0;
 		function step(timestamp) {
 			refresh(performance.now());
 		    requestAnimationFrame(step);
@@ -202,7 +224,7 @@ const Engine = ((document) => {
 		mainCanvas = canvas;
 		gl = canvas.getContext('webgl', {antialias: false});
 		Engine.gl = gl;
-		renderer = getRenderer(gl);
+		fetchRenderer(gl).then(r => renderer = r);
 		initGL(gl);
 	}
 
@@ -212,6 +234,8 @@ const Engine = ((document) => {
 
 		gl.depthFunc(gl.LEQUAL);
 		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);	
+
+		gl.enable(gl.SAMPLE_COVERAGE);
 	}
 
 	const textureSlots = [
@@ -273,49 +297,54 @@ const Engine = ((document) => {
 			}
 		}
 		return null;
-	};
+	}
+
+	function putBackTextureCell(cell) {
+		textureSlots.push(cell);
+	}
 
 	const glTextures = [];
 	const glTextureIndexBuffers = [];
 
-	function getRenderer(gl) {
-		const renderer = {
-			gl,
-			spriteBufferSize: 0,
-			cache: {},
-			canvas: document.createElement('canvas'),
-			cameraQuat: quat.create(),
-			textureBuffer: new Int32Array(16).map((a, index) => index),
-		};
-
-		Promise.all(Utils.load(["shaders/vertex-shader.glsl", "shaders/fragment-shader.glsl"])).then(([vsSource, fsSource]) => {
-			const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
-			gl.useProgram(shaderProgram);
-			renderer.shaderProgram = shaderProgram;
-			renderer.programInfo = {
-				vertexLocation: 			gl.getAttribLocation(shaderProgram,  'aVertexPosition'),
-				frameLocation:              gl.getAttribLocation(shaderProgram,  'aFrame'),
-				waveLocation: 				gl.getAttribLocation(shaderProgram,  'aWave'),
-				posLocation:                gl.getAttribLocation(shaderProgram,  'aPosition'),
-				isSpriteLocation: 			gl.getAttribLocation(shaderProgram,  'aIsSprite'),
-				cornerLocation:             gl.getAttribLocation(shaderProgram,  'aCorner'),
-				projectionLocation: 		gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
-				viewLocation: 				gl.getUniformLocation(shaderProgram, 'uViewMatrix'),
-				cameraRotationLocation:     gl.getUniformLocation(shaderProgram, 'uCameraRotation'),
-				uTextureLocation: 			gl.getUniformLocation(shaderProgram, 'uTexture'),
-				nowLocation: 				gl.getUniformLocation(shaderProgram, "now"),
+	function fetchRenderer(gl) {
+		return new Promise((resolve, reject) => {
+			const renderer = {
+				gl,
+				spriteBufferSize: 0,
+				cache: {},
+				cameraQuat: quat.create(),
 			};
-			gl.uniform1iv(renderer.programInfo.uTextureLocation, renderer.textureBuffer);
-		});
 
-		gl.enable(gl.CULL_FACE);
-		gl.cullFace(gl.BACK);
-		return renderer;
+			Promise.all(Utils.load(["shaders/vertex-shader.glsl", "shaders/fragment-shader.glsl"]))
+				.then(([vsSource, fsSource]) => {
+					const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+					gl.useProgram(shaderProgram);
+					renderer.shaderProgram = shaderProgram;
+					renderer.programInfo = {
+						vertexLocation: 			gl.getAttribLocation(shaderProgram,  'aVertexPosition'),
+						frameLocation:              gl.getAttribLocation(shaderProgram,  'aFrame'),
+						waveLocation: 				gl.getAttribLocation(shaderProgram,  'aWave'),
+						posLocation:                gl.getAttribLocation(shaderProgram,  'aPosition'),
+						isSpriteLocation: 			gl.getAttribLocation(shaderProgram,  'aIsSprite'),
+						chunkLocation:              gl.getAttribLocation(shaderProgram,  'aChunk'),
+						cornerLocation:             gl.getAttribLocation(shaderProgram,  'aCorner'),
+						projectionLocation: 		gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
+						viewLocation: 				gl.getUniformLocation(shaderProgram, 'uViewMatrix'),
+						cameraRotationLocation:     gl.getUniformLocation(shaderProgram, 'uCameraRotation'),
+						nowLocation: 				gl.getUniformLocation(shaderProgram, 'now'),
+					};
+				}).then(() => {
+					resolve(renderer);
+				});
+
+			gl.enable(gl.CULL_FACE);
+			gl.cullFace(gl.BACK);
+		});
 	}
 
 	const cellCache = {	};
 
-	function turnImageIntoTexture(id, img, spriteSize, options, gl) {
+	function turnImageIntoTexture(id, src, spriteSize, options, gl) {
 		if (!glTextures.length) {
 			const textureIds =  new Array(16).fill(null).map((a, index) => {
 				return gl["TEXTURE" + index];
@@ -340,66 +369,87 @@ const Engine = ((document) => {
 
 		if (!stock[id].textureData) {
 			const [ spriteWidth, spriteHeight ] = spriteSize;
-			const { naturalWidth, naturalHeight } = img;
-			const cols = Math.ceil(naturalWidth / spriteWidth);
-			const rows = Math.ceil(naturalHeight / spriteHeight)
-			const { canvas } = renderer;
-			canvas.width = spriteWidth; canvas.height = spriteHeight;
-			const ctx = canvas.getContext('2d');
 			const { chunks, scale, flip } = options;
-
-			let textures = [];
-			for (let r = 0; r < rows; r++) {
-				for (let c = 0; c < cols; c++) {
-					let cell = cellCache[`${img.src}_${c}_${r}`];
-					if (!cell) {
-						cell = getTextureCell(spriteWidth, spriteHeight);
-						ctx.clearRect(0, 0, canvas.width, canvas.height);
-						ctx.drawImage(img, -c * spriteWidth, -r * spriteHeight);
-
-						const glTexture = glTextures[cell.index];
-						if (!glTexture) {
-							console.warn("No more texture slots available.");
-							continue;
-						}
-						if (glTexture.width < TEXTURE_SIZE || glTexture.height < TEXTURE_SIZE) {
-							glTexture.width = TEXTURE_SIZE;
-							glTexture.height = TEXTURE_SIZE;
-							gl.bindTexture(gl.TEXTURE_2D, glTexture);
-							gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, glTexture.width, glTexture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-						}
-
-						gl.texSubImage2D(gl.TEXTURE_2D, 0, cell.x, cell.y, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
-						cellCache[`${img.src}_${c}_${r}`] = cell;
-					}
-					textures.push(cell);
-				}
-			}
-
-			textures = textures.map(({ x, y, index }) => {
-				const textureLeft = x / TEXTURE_SIZE;
-				const textureRight = x / TEXTURE_SIZE + spriteWidth / TEXTURE_SIZE;
-				const textureTop = y / TEXTURE_SIZE;
-				const textureBottom = y/ TEXTURE_SIZE + spriteHeight / TEXTURE_SIZE;
-				return {
-					index,
-					coordinates: [
-						textureLeft, textureRight, textureTop, textureBottom,
-					],
-				};
-			});
-
 			stock[id].textureData = {
 				flip,
-				textures,
+				textures : null,
 				chunks: typeof(chunks) == 'number' ? [chunks,chunks] : Array.isArray(chunks) ? chunks : [1, 1],
 				verticesMap: makeVerticesMap(spriteWidth, spriteHeight, scale),
 				sentToGPU: false,
 			};
 
-			gl.generateMipmap(gl.TEXTURE_2D);
+			Utils.load(src).then(img => {
+				let textures = [];
+				const { naturalWidth, naturalHeight } = img;
+				const cols = Math.ceil(naturalWidth / spriteWidth);
+				const rows = Math.ceil(naturalHeight / spriteHeight)
+				const ctx = tempCanvas.getContext('2d');
+				tempCanvas.width = spriteWidth; tempCanvas.height = spriteHeight;
+				for (let r = 0; r < rows; r++) {
+					for (let c = 0; c < cols; c++) {
+						let cell = cellCache[`${img.src}_${c}_${r}`];
+						if (!cell) {
+							cell = getTextureCell(spriteWidth, spriteHeight);
+							ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+							ctx.drawImage(img, -c * spriteWidth, -r * spriteHeight);
+							const { data } = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+							let empty = true;
+							for (let p = 0; p < data.length; p += 4) {
+								if (data[p + 3] !== 0) {
+									empty = false;
+									break;
+								}
+							}
+							if (empty) {
+								putBackTextureCell(cell);
+								continue;
+							}
+
+							const glTexture = glTextures[cell.index];
+							if (!glTexture) {
+								console.warn("No more texture slots available.");
+								putBackTextureCell(cell);
+								continue;
+							}
+							gl.bindTexture(gl.TEXTURE_2D, glTexture);
+							if (glTexture.width < TEXTURE_SIZE || glTexture.height < TEXTURE_SIZE) {
+								glTexture.width = TEXTURE_SIZE;
+								glTexture.height = TEXTURE_SIZE;
+								gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, glTexture.width, glTexture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+							}
+
+							gl.texSubImage2D(gl.TEXTURE_2D, 0, cell.x, cell.y, gl.RGBA, gl.UNSIGNED_BYTE, tempCanvas);
+							gl.generateMipmap(gl.TEXTURE_2D);
+							cellCache[`${img.src}_${c}_${r}`] = cell;
+						}
+						textures.push(cell);
+					}
+				}
+
+				textures = textures.map(({ x, y, index }) => {
+					const textureLeft = x / TEXTURE_SIZE;
+					const textureRight = x / TEXTURE_SIZE + spriteWidth / TEXTURE_SIZE;
+					const textureTop = y / TEXTURE_SIZE;
+					const textureBottom = y/ TEXTURE_SIZE + spriteHeight / TEXTURE_SIZE;
+					return {
+						index,
+						coordinates: [
+							textureLeft, textureRight, textureTop, textureBottom,
+						],
+					};
+				});
+				stock[id].textureData.textures = textures;
+			});
 		}
 	}
+
+	const SpriteTypes = {
+		floor: 0,
+		ceiling: 1,
+		left: 2,
+		right: 3,
+		sprite: 4,
+	};
 
 	function makeVerticesMap(width, height, scale) {
 		if (!scale) {
@@ -412,134 +462,95 @@ const Engine = ((document) => {
 		const top = 	height / width * scale[1];
 		const bottom = 	0;
 
-		return {
-			'floor': new Float32Array([
+		return [
+			new Float32Array([
 				left, 	0, top - .5,
 				right, 	0, top - .5,
 				right, 	0, bottom - .5,
 				left, 	0, bottom - .5,
 			]),
-			'ceiling': new Float32Array([
+			new Float32Array([
 				left, 	0, bottom - .5,
 				right, 	0, bottom - .5,
 				right, 	0, top - .5,
 				left, 	0, top - .5,
 			]),
-			'left': new Float32Array([
+			new Float32Array([
 				0, bottom, right,
 				0, bottom, left,
 				0, top, left,
 				0, top, right,
 			]),
-			'right': new Float32Array([
+			new Float32Array([
 				0, bottom, left,
 				0, bottom, right,
 				0, top, right,
 				0, top, left,
 			]),
-			'sprite': new Float32Array([
+			new Float32Array([
 				left, 	bottom, 0,
 				right, 	bottom, 0,
 				right, 	top, 	0,
 				left, 	top, 	0,
 			]),
-			'default': new Float32Array([
-				left, 	bottom, 0,
-				right, 	bottom, 0,
-				right, 	top, 	0,
-				left, 	top, 	0,
-			]),
-		};
+		];
 	}
 
 	function getSlotIndices(slotIndex) {
 		return INDEX_ARRAY_PER_SPRITE.map(value => value + slotIndex * VERTICES_PER_SPRITE);		
 	}
 
-	function drawSprites(renderer, sprites, forceRedraw) {
-		if (sprites.length <= 0) {
-			return;
+	function bufferSprites(gl, sprites, elementSize, spriteFunction) {
+		const byteSize = elementSize * Float32Array.BYTES_PER_ELEMENT;
+		for (let i = 0; i < sprites.length; i++) {
+			const sprite = sprites[i];
+			gl.bufferSubData(gl.ARRAY_BUFFER, sprite.slotIndex * byteSize, spriteFunction(sprite));
 		}
-		let count = 0;
+	}
+
+	function drawSprites(renderer, activeSprites, forceRedraw) {
 		const { 
-			indexBuffer, vertexBuffer, positionBuffer, waveBuffer, frameBuffer,
-			cameraQuat, isSpriteBuffer, cornerBuffer, shaderProgram,
+			gl, cameraQuat, shaderProgram,
+			indexBuffer, vertexBuffer, positionBuffer, waveBuffer,
+			frameBuffer, chunkBuffer, isSpriteBuffer, cornerBuffer,
 		} = renderer;
 
-		sprites.forEach(sprite => {
-			const { textureData } = sprite;
-			if (!textureData) {
-				return;
-			}
-			if (!textureData.sentToGPU) {
-				textureData.sentToGPU = true;
-
-				const { textures, flip, chunks } = textureData;
-				textureData.texIndex = texIndex;
-
-				textures.forEach(({ index, coordinates }, frameIndex) => {
-					let [ left, right, top, bottom ] = coordinates;
-					const texWidth = right - left;
-					const texHeight = bottom - top;
-
-			  		if (flip) {
-			  			const temp = left;
-			  			left = right;
-			  			right = temp;
-			  		}
-
-					textureCoordinates.set([
-						left,   bottom,
-						right,  bottom,
-						right,  top,
-						left,   top,
-					]);
-
-					const glTexturesLocation = gl.getUniformLocation(shaderProgram, `uTextureCoords[${(texIndex + frameIndex) * VERTICES_PER_SPRITE}]`);
-					gl.uniform2fv(glTexturesLocation, textureCoordinates);
-					const glTextureIdLocation = gl.getUniformLocation(shaderProgram, `uTextureInfo[${texIndex + frameIndex}]`);
-					gl.uniform3fv(glTextureIdLocation, new Float32Array([index,...chunks]));
-				});
-				texIndex += textures.length;
-			}
-
-			const needsUpdate = forceRedraw || sprite.slotIndex !== count;
-			sprite.slotIndex = count;
-
+		dirtySprites.length = 0;
+		activeSprites.forEach((sprite, slotIndex) => {
+			const needsUpdate = forceRedraw || sprite.slotIndex !== slotIndex;
 			if (needsUpdate) {
-				const slotIndex = count;
-
-				const vertices = sprite.getVertices();
-				gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-				gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * FLOAT_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT, vertices);
-
-				const position = sprite.getPosition();
-				gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-				gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * FLOAT_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT, position);					
-
-				const wave = sprite.getWave();
-				gl.bindBuffer(gl.ARRAY_BUFFER, waveBuffer);
-				gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * Float32Array.BYTES_PER_ELEMENT, wave);
-
-				const frameData = sprite.getFrameData(textureData.texIndex);
-				gl.bindBuffer(gl.ARRAY_BUFFER, frameBuffer);
-				gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * 4 * Float32Array.BYTES_PER_ELEMENT, frameData);
-
-				const isSprite = sprite.type === "sprite" ? 1 : 0;
-				gl.bindBuffer(gl.ARRAY_BUFFER, isSpriteBuffer);
-				gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * Float32Array.BYTES_PER_ELEMENT, Float32Array.from([isSprite,isSprite,isSprite,isSprite]));
-
-				gl.bindBuffer(gl.ARRAY_BUFFER, cornerBuffer);
-				gl.bufferSubData(gl.ARRAY_BUFFER, slotIndex * VERTICES_PER_SPRITE * Float32Array.BYTES_PER_ELEMENT, CORNERS);
-
-				Engine.debug.draws = (Engine.debug.draws || 0) + 1;
+				sprite.slotIndex = slotIndex;
+				dirtySprites.push(sprite);
 			}
-			count++;
 		});
 
-		Engine.debug.sprites = count;
-		Engine.debug.vertices = count * VERTICES_PER_SPRITE;
-		gl.drawElements(gl.TRIANGLES, count * INDEX_ARRAY_PER_SPRITE.length, gl.UNSIGNED_SHORT, 0);
+		if (dirtySprites.length) {
+			gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE * FLOAT_PER_VERTEX, sprite => sprite.getVertices());
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE * FLOAT_PER_VERTEX, sprite => sprite.getPosition());
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, waveBuffer);
+			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE, sprite => sprite.getWave());
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, frameBuffer);
+			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE * 4, sprite => sprite.getFrameData());
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, isSpriteBuffer);
+			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE, sprite => Utils.get4Floats(sprite.typeIndex === SpriteTypes.sprite ? 1 : 0));
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, chunkBuffer);
+			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE, sprite => Utils.get4Floats(sprite.getChunkIndex()));
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, cornerBuffer);
+			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE, () => CORNERS);
+		}
+
+		Engine.debug.draws = (Engine.debug.draws || 0) + dirtySprites.length;
+		Engine.debug.sprites = activeSprites.length;
+		Engine.debug.vertices = activeSprites.length * VERTICES_PER_SPRITE;
+		gl.drawElements(gl.TRIANGLES, activeSprites.length * INDEX_ARRAY_PER_SPRITE.length, gl.UNSIGNED_SHORT, 0);
 	}
 
 	function createVertexAttributeBuffer(gl, location, numComponents) {
@@ -564,7 +575,7 @@ const Engine = ((document) => {
 
 	function allocateBuffer(renderer, size) {
 		console.log("Reallocate", size);
-		const { gl, programInfo } = renderer;
+		const { gl, programInfo, cache } = renderer;
 
 		if (!renderer.vertexBuffer) {
 			renderer.vertexBuffer = createVertexAttributeBuffer(gl, programInfo.vertexLocation, FLOAT_PER_VERTEX);
@@ -602,6 +613,11 @@ const Engine = ((document) => {
 			renderer.isSpriteBuffer = createVertexAttributeBuffer(gl, programInfo.isSpriteLocation, 1);
 		}
 		resizeBuffer(gl, gl.ARRAY_BUFFER, renderer.isSpriteBuffer, size * VERTICES_PER_SPRITE * Float32Array.BYTES_PER_ELEMENT);
+
+		if (!renderer.chunkBuffer) {
+			renderer.chunkBuffer = createVertexAttributeBuffer(gl, programInfo.chunkLocation, 1);
+		}
+		resizeBuffer(gl, gl.ARRAY_BUFFER, renderer.chunkBuffer, size * VERTICES_PER_SPRITE * Float32Array.BYTES_PER_ELEMENT);
 
 		if (!renderer.cornerBuffer) {
 			renderer.cornerBuffer = createVertexAttributeBuffer(gl, programInfo.cornerLocation, 1);
@@ -648,7 +664,7 @@ const Engine = ((document) => {
 		}
 		stock[id] = {};
 
-		Utils.load(src).then(img => turnImageIntoTexture(id, img, spriteSize, options, gl));
+		turnImageIntoTexture(id, src, spriteSize, options, gl)
 	}
 
 	function loadGame(game) {

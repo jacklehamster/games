@@ -55,8 +55,7 @@ const Game = (() => {
 					pos: ({cam}) => {
 						const [ x, y, z ] = cam.pos;
 
-						vec3.set(pos, -x, -y - 1, -z - cameraDistance);
-						return pos;
+						return vec3.set(pos, -x, -y - 1, -z - cameraDistance);
 					},
 					type: "sprite",
 					fps: ({cam}) => {
