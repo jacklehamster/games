@@ -15,7 +15,7 @@ const Game = (() => {
 		mov: vec3.fromValues(0, 0, -1),
 	};
 
-	const waterSize = 20 + 1;
+	const waterSize = 120 + 1;
 
 	const cameraDistance = 6;
 	const cameraHeight = 1;
