@@ -24,6 +24,9 @@ uniform vec4 uTextureCell[MAX_CHUNKS];
 uniform vec3 uTextureInfo[MAX_CHUNKS];
 
 vec4 getChunkCell(vec4 textureCell, float chunk, float chunkCols, float chunkRows) {
+	if (chunkCols == 1.0 && chunkRows == 1.0) {
+		return textureCell;
+	}
 	float col = mod(chunk, chunkCols);
 	float row = floor(chunk / chunkCols);
 

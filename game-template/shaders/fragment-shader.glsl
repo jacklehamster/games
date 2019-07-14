@@ -1,14 +1,16 @@
 precision mediump float;
 
+const int NUM_TEXTURES = 16;
+
 uniform float now;
-uniform sampler2D uTextureSampler[16];
+uniform sampler2D uTextureSampler[NUM_TEXTURES];
 varying highp vec2 vTextureCoord;
 varying highp float zDist;
 varying highp float textureSlot;
 
 vec4 getTextureColor(float textureSlot, vec2 vTextureCoord) {
 	int textureInt = int(floor(textureSlot));
-	for (int i = 0; i < 16; ++i) {
+	for (int i = 0; i < NUM_TEXTURES; ++i) {
 		if (textureInt == i) {
 			return texture2D(uTextureSampler[i], vTextureCoord);
 		}
@@ -43,7 +45,7 @@ vec4 alterHueSatLum(vec4 color, vec3 vHSV) {
 
 void main(void) {
 	vec4 color = getTextureColor(textureSlot, vTextureCoord);
-	if (color.w <= 0.1) {
+	if (color.w <= 0.0) {
 		discard;
 	}
 	color = alterHueSatLum(color, vec3(1.0, 1.0, max(0.0, .8 + zDist * .4)));

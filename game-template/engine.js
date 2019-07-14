@@ -20,7 +20,7 @@ const Engine = ((document) => {
 
 	const stock = {};
 
-	let mainCanvas, gl, mainGame, renderer;
+	let mainCanvas, gl, mainGame, renderer, sceneIndex;
 
 	const X_POS = 0, Y_POS = 1, Z_POS = 2;
 	const acceleration = .1;
@@ -49,22 +49,23 @@ const Engine = ((document) => {
 			let imageCount = 0;
 			activeSprites.length = 0;
 			sprites.forEach(sprite => {
-				resolve(sprite.options.process);
-				const { id } = sprite.options;
-				const { textureData } = stock[resolve(id)];
+				const definition = evaluate(sprite.definition.preProcess, globalData) || sprite.definition;
+
+				const { textureData } = stock[evaluate(definition.id, globalData)];
 
 				if (textureData && textureData.textures) {
 					imageCount += textureData.textures.length;
 
 					if (sprite.needsRefresh()) {
-						const { followcam, chunk, pos, type, fps, timeOffset, wave, process } = sprite.options;
+						const { chunk, pos, type, fps, timeOffset, wave } = definition;
 						sprite.setTextureData(textureData)
-							.setChunk(resolve(chunk))
-							.setType(resolve(type))
-							.setPosition(resolve(pos))
-							.setWave(resolve(wave) || 0)
-							.setFrameData(resolve(fps) || 0, resolve(timeOffset) || 0);
+							.setType(evaluate(type, globalData))
+							.setPosition(evaluate(pos, globalData))
+							.setChunk(evaluate(chunk, globalData))
+							.setWave(evaluate(wave, globalData) || 0)
+							.setFrameData(evaluate(fps, globalData) || 0, evaluate(timeOffset, globalData) || 0);
 					}
+					evaluate(definition.postProcess, globalData);
 					activeSprites.push(sprite);
 				}
 			});
@@ -202,10 +203,6 @@ const Engine = ((document) => {
 			gl.uniformMatrix4fv(programInfo.cameraRotationLocation, false, cameraRotationMatrix);
 			mat4.copy(cache.cameraRotationMatrix, cameraRotationMatrix);
 		}
-	}
-
-	function resolve(value) {
-		return value && value.constructor === Function ? value(globalData) : value;
 	}
 
 	const globalData = {
@@ -504,7 +501,8 @@ const Engine = ((document) => {
 		const byteSize = elementSize * Float32Array.BYTES_PER_ELEMENT;
 		for (let i = 0; i < sprites.length; i++) {
 			const sprite = sprites[i];
-			gl.bufferSubData(gl.ARRAY_BUFFER, sprite.slotIndex * byteSize, spriteFunction(sprite));
+			const floatArray = spriteFunction(sprite);
+			gl.bufferSubData(gl.ARRAY_BUFFER, sprite.slotIndex * byteSize, floatArray);
 		}
 	}
 
@@ -669,6 +667,7 @@ const Engine = ((document) => {
 
 	function loadGame(game) {
 		mainGame = game;
+		sceneIndex = game.firstScene || Object.keys(game.scenes)[0];
 		const { assets, title, settings } = game;
 		const { background, size } = settings;
 		const [ width, height ] = size;
@@ -680,13 +679,24 @@ const Engine = ((document) => {
 		resizeCanvas(mainCanvas);
 		
 		assets.forEach(setupAsset);
+		refreshScene(game, sceneIndex);
+	}
 
+	function refreshScene(game, sceneIndex) {
+		setupScene(game.scenes[sceneIndex]);
+	}
+
+	function setupScene(scene) {
 		sprites.length = 0;
-		mainGame.sprites.forEach(setupSprite);		
+		scene.spriteDefinitions.forEach(setupSprite);
+	}
+
+	function evaluate(object, param) {
+		return object && object.constructor === Function ? object(param) : object;		
 	}
 
 	function setupAsset(asset) {
-		asset = resolve(asset);
+		asset = evaluate(asset);
 		if (Array.isArray(asset)) {
 			asset.forEach(setupAsset);
 		} else {
@@ -695,12 +705,12 @@ const Engine = ((document) => {
 		}
 	}
 
-	function setupSprite(options) {
-		options = resolve(options);
-		if (Array.isArray(options)) {
-			options.forEach(setupSprite);
+	function setupSprite(definition) {
+		definition = evaluate(definition);
+		if (Array.isArray(definition)) {
+			definition.forEach(setupSprite);
 		} else {
-			sprites.push(Sprite.create().setOptions(options));
+			sprites.push(Sprite.create().setDefinition(definition));
 		}
 	}
 
@@ -743,7 +753,6 @@ const Engine = ((document) => {
 		loadGame,
 		stock,
 		initialize,
-		resolve,
 		debug : {
 			cam,
 		},

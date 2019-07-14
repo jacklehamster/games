@@ -12,7 +12,6 @@ const SpriteTypes = {
 class Sprite {
 	constructor() {
 		this.pos = vec3.create();
-		this.textureCoordinates = new Float32Array(2 * VERTICES_PER_SPRITE);
 		this.wave = new Float32Array(VERTICES_PER_SPRITE);
 		this.frameData = new Float32Array(4 * VERTICES_PER_SPRITE);
 		this.posBuffer = new Float32Array(3 * VERTICES_PER_SPRITE);
@@ -20,14 +19,13 @@ class Sprite {
 	}
 
 	static initialize(sprite) {
-		sprite.options = null;
+		sprite.definition = null;
 		vec3.set(sprite.pos, 0, 0, 0);
 		sprite.textureData = null;
 		sprite.chunkCol = 0;
 		sprite.chunkRow = 0;
 		sprite.type = 'sprite';
 		sprite.typeIndex = SpriteTypes[sprite.type];
-		sprite.textureCoordinates.fill(0);
 		sprite.wave.fill(0);
 		sprite.frameData.fill(0);
 		sprite.posBuffer.fill(0);
@@ -35,10 +33,11 @@ class Sprite {
 		sprite.static = false;
 	}
 
-	setOptions(options) {
-		this.options = options;
+	setDefinition(definition) {
+		this.definition = definition;
 		this.slotIndex = -1;
-		this.static = !Object.values(options).some(value => typeof(value) === 'function');
+		this.static = typeof(definition.static) !== 'undefined' ? definition.static :
+			!Object.values(definition).some(value => typeof(value) === 'function');
 		return this;
 	}
 
