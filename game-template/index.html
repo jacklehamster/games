@@ -48,15 +48,18 @@
 	<script src="lib/grid-slot.js"></script>
 	<script src="lib/image-splitter.js"></script>
 	<script src="lib/texture-manager.js"></script>
+	<script src="lib/keyboard.js"></script>
 	<script src="sprite.js"></script>
-	<script src="keyboard.js"></script>
 	<script src="engine.js"></script>
 	<script src="game.js"></script>
 	<script>
 		document.addEventListener("DOMContentLoaded", e => {
 			const engine = injector.get("engine");
+			engine.start();
 		});
 	</script>	
+
+
 	<body style="margin: 0;">
 		<div class="flex-container">
 			<canvas class="flex-item" id="canvas"></canvas>

@@ -23,4 +23,4 @@ let ImageSplitter;
 	};
 })();
 
-injector.register("image-splitter", [identity(ImageSplitter)]);
+injector.register("image-splitter", identity(ImageSplitter));

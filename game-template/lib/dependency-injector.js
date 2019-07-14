@@ -1,11 +1,13 @@
 class DependencyInjector {
 	constructor() {
 		this.registry = {};
+		this.cache = {};
 	}
 
 	static isClass(v) {
 	  return typeof v === 'function' && /^\s*class\s+/.test(v.toString());
 	}
+
 	register(name, dependencies) {
 		if (Array.isArray(dependencies)) {
 			const func = dependencies.pop();
@@ -20,14 +22,20 @@ class DependencyInjector {
 	}
 
 	get(name) {
+		if (this.cache[name]) {
+			return this.cache[name];
+		}
 		if (this.registry[name]) {
 			const { func, dependencies } = this.registry[name];
 			const args = dependencies.map(arg => this.get(arg));
+			let dependency;
 			if (DependencyInjector.isClass(func)) {
-				return new func(...args);
+				dependency = new func(...args);
 			} else {
-				return func(...args);
+				dependency = func(...args);
 			}
+			this.cache[name] = dependency;
+			return dependency;
 		}
 		throw new Error(`Unable to get ${name}. Dependcy not registered.`);
 	}
