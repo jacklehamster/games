@@ -83,3 +83,5 @@ class Heap {
 		console.assert(h.pop() === 123, "unexpected output");
 	}
 }
+
+injector.register("heap", [identity(Heap)]);

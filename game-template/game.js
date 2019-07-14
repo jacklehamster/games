@@ -342,3 +342,5 @@ const Game = (() => {
 		],
 	};
 })();
+
+injector.register("game", [identity(Game)]);

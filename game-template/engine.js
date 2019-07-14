@@ -1,5 +1,5 @@
-const Engine = ((document) => {
-	const TEXTURE_SIZE = 4096;
+const Engine = (document) => {
+	const TEXTURE_SIZE = injector.get("texture-size");
 	const INDEX_ARRAY_PER_SPRITE = new Uint16Array([
 		0,  1,  2,
 		0,  2,  3,
@@ -30,13 +30,12 @@ const Engine = ((document) => {
 		mov: vec3.create(),
 		pos: vec3.create(),
 	};
+	const debug = { cam };
 
 	const sprites = [];
 	const activeSprites = [];
 	const dirtySprites = [];
 
-	const tempCanvas = document.createElement('canvas');
-				
 	function refresh(now) {
 		if (mainGame && renderer) {
 			globalData.now = now;
@@ -158,7 +157,7 @@ const Engine = ((document) => {
 
 	function showDebugLog() {
 		document.getElementById("debug").style.display = "";
-		document.getElementById("log").innerText = JSON.stringify(Engine.debug, null, '  ');
+		document.getElementById("log").innerText = JSON.stringify(debug, null, '  ');
 	}
 
 	let viewMatrix = null;
@@ -217,25 +216,24 @@ const Engine = ((document) => {
 
 	function setCanvas(canvas) {
 		mainCanvas = canvas;
-		gl = canvas.getContext('webgl', {antialias: false});
-		fetchRenderer(gl).then(r => renderer = r);
+		gl = mainCanvas.getContext('webgl', {antialias: false});
 		initGL(gl);
+		fetchRenderer(gl).then(r => renderer = r);
 	}
 
 	function initGL(gl) {
 		gl.enable(gl.BLEND);
 		gl.enable(gl.DEPTH_TEST);
+		gl.enable(gl.CULL_FACE);
 
+		gl.cullFace(gl.BACK);
 		gl.depthFunc(gl.LEQUAL);
 		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);	
-
-		gl.enable(gl.SAMPLE_COVERAGE);
 	}
 
 	const gridSlot = new GridSlot(TEXTURE_SIZE, TEXTURE_SIZE);
 
 	const glTextures = [];
-	const glTextureIndexBuffers = [];
 
 	function fetchRenderer(gl) {
 		return new Promise((resolve, reject) => {
@@ -267,9 +265,6 @@ const Engine = ((document) => {
 				}).then(() => {
 					resolve(renderer);
 				});
-
-			gl.enable(gl.CULL_FACE);
-			gl.cullFace(gl.BACK);
 		});
 	}
 
@@ -277,16 +272,9 @@ const Engine = ((document) => {
 
 	function turnImageIntoTexture(id, src, spriteSize, options, gl) {
 		if (!glTextures.length) {
-			const textureIds =  new Array(16).fill(null).map((a, index) => {
-				return gl["TEXTURE" + index];
-			});
-
-			textureIds.forEach((tex, index) => {
-				gl.activeTexture(tex);
+			new Array(16).fill(null).map((a, index) => {
 				const glTexture = gl.createTexture();
 				glTextures[index] = glTexture;
-				glTextureIndexBuffers[index] = new Float32Array(VERTICES_PER_SPRITE);
-				glTextureIndexBuffers[index].fill(index);
 
 				glTexture.width = 1;
 				glTexture.height = 1;
@@ -304,66 +292,55 @@ const Engine = ((document) => {
 			stock[id].textureData = {
 				flip,
 				textures : null,
-				chunks: typeof(chunks) == 'number' ? [chunks,chunks] : Array.isArray(chunks) ? chunks : [1, 1],
+				chunks: typeof(chunks) == 'number' ? [chunks,chunks] : Array.isArray(chunks) ? chunks : [ 1, 1 ],
 				verticesMap: makeVerticesMap(spriteWidth, spriteHeight, scale),
 				sentToGPU: false,
 			};
 
 			Utils.load(src).then(img => {
-				let textures = [];
 				const { naturalWidth, naturalHeight } = img;
 				const cols = Math.ceil(naturalWidth / spriteWidth);
-				const rows = Math.ceil(naturalHeight / spriteHeight)
-				const ctx = tempCanvas.getContext('2d');
-				tempCanvas.width = spriteWidth; tempCanvas.height = spriteHeight;
-				for (let r = 0; r < rows; r++) {
-					for (let c = 0; c < cols; c++) {
-						const cellTag = `${img.src}_${c}_${r}`;
-						let cell = cellCache[cellTag];
-						if (!cell) {
-							cell = gridSlot.getSlot(spriteWidth, spriteHeight);
-							ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-							ctx.drawImage(img, -c * spriteWidth, -r * spriteHeight);
-							const { data } = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-							if (Utils.isImageEmpty(ctx)) {	//	image transparent
-								gridSlot.putBackSlot(cell);
-								continue;
-							}
+				const rows = Math.ceil(naturalHeight / spriteHeight);
 
-							const glTexture = glTextures[cell.index];
-							if (!glTexture) {
-								console.warn("No more texture slots available.");
-								putBackTextureCell(cell);
-								continue;
-							}
-							gl.bindTexture(gl.TEXTURE_2D, glTexture);
-							if (glTexture.width < TEXTURE_SIZE || glTexture.height < TEXTURE_SIZE) {
-								glTexture.width = TEXTURE_SIZE;
-								glTexture.height = TEXTURE_SIZE;
-								gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, glTexture.width, glTexture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-							}
+				const textures = [];
+				ImageSplitter.splitImage(img, spriteWidth, spriteHeight, (img, col, row, canvas) => {
+					const cellTag = `${img.src}_${col}_${row}`;
+					let cell = cellCache[cellTag];
+					if (!cell) {
+						cell = gridSlot.getSlot(spriteWidth, spriteHeight);
 
-							gl.texSubImage2D(gl.TEXTURE_2D, 0, cell.x, cell.y, gl.RGBA, gl.UNSIGNED_BYTE, tempCanvas);
-							gl.generateMipmap(gl.TEXTURE_2D);
-							cellCache[cellTag] = cell;
+						const glTexture = glTextures[cell.index];
+						if (!glTexture) {
+							console.warn("No more texture slots available.");
+							gridSlot.putBackSlot(cell);
+							return;
 						}
-						textures.push(cell);
-					}
-				}
+						gl.bindTexture(gl.TEXTURE_2D, glTexture);
+						if (glTexture.width < TEXTURE_SIZE || glTexture.height < TEXTURE_SIZE) {
+							gl.activeTexture(gl[`TEXTURE${cell.index}`]);
+							glTexture.width = glTexture.height = TEXTURE_SIZE;
+							gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, glTexture.width, glTexture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+						}
 
-				textures = textures.map(({ x, y, index }) => {
-					const textureLeft = x / TEXTURE_SIZE;
-					const textureRight = x / TEXTURE_SIZE + spriteWidth / TEXTURE_SIZE;
-					const textureTop = y / TEXTURE_SIZE;
-					const textureBottom = y/ TEXTURE_SIZE + spriteHeight / TEXTURE_SIZE;
+						gl.texSubImage2D(gl.TEXTURE_2D, 0, cell.x, cell.y, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+						gl.generateMipmap(gl.TEXTURE_2D);
+						cellCache[cellTag] = cell;
+					}
+					textures.push(cell);
+				});
+
+				stock[id].textureData.textures = textures.map(({ x, y, index }) => {
+					const textureLeft = 	x / TEXTURE_SIZE;
+					const textureRight = 	x / TEXTURE_SIZE + spriteWidth / TEXTURE_SIZE;
+					const textureTop = 		y / TEXTURE_SIZE;
+					const textureBottom = 	y / TEXTURE_SIZE + spriteHeight / TEXTURE_SIZE;
 					return {
 						index,
 						coordinates: [
 							textureLeft, textureRight, textureTop, textureBottom,
 						],
 					};
-				});
-				stock[id].textureData.textures = textures;
+				});;
 			});
 		}
 	}
@@ -487,9 +464,9 @@ const Engine = ((document) => {
 			bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, () => CORNERS);
 		}
 
-		Engine.debug.draws = (Engine.debug.draws || 0) + dirtySprites.length;
-		Engine.debug.sprites = activeSprites.length;
-		Engine.debug.vertices = activeSprites.length * VERTICES_PER_SPRITE;
+		debug.draws = (debug.draws || 0) + dirtySprites.length;
+		debug.sprites = activeSprites.length;
+		debug.vertices = activeSprites.length * VERTICES_PER_SPRITE;
 		gl.drawElements(gl.TRIANGLES, activeSprites.length * INDEX_ARRAY_PER_SPRITE.length, gl.UNSIGNED_SHORT, 0);
 	}
 
@@ -599,14 +576,11 @@ const Engine = ((document) => {
 
 	function loadImage(id, src, spriteSize, options) {
 		if (stock[id]) {
+			console.warning(`${id} already loaded!.`);
 			return;
 		}
-		if (!options) {
-			options = {};
-		}
 		stock[id] = {};
-
-		turnImageIntoTexture(id, src, spriteSize, options, gl)
+		turnImageIntoTexture(id, src, spriteSize, options || {}, gl)
 	}
 
 	function loadGame(game) {
@@ -695,10 +669,18 @@ const Engine = ((document) => {
 	return {
 		setCanvas,
 		loadGame,
-		stock,
 		initialize,
-		debug : {
-			cam,
-		},
 	};
-})(document);
+};
+
+
+injector.register("engine", [ 
+	"document", "game", "canvas",
+	(document, Game, canvas) => {
+		const engine = Engine(document);
+		engine.initialize();
+		engine.setCanvas(canvas);
+		engine.loadGame(Game);
+		return engine;
+	}
+]);

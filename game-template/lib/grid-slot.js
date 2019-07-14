@@ -70,3 +70,5 @@ class GridSlot {
 		this.gridSlots.push(cell);
 	}
 }
+
+injector.register("grid-slot", ["texture-size", "texture-size", GridSlot]);

@@ -127,3 +127,5 @@ class Utils {
 		return empty;
 	}
 }
+
+injector.register("utils", [identity(Utils)]);

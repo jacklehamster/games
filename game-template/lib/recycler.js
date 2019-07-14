@@ -37,3 +37,5 @@ class Recycler {
 		};
 	}
 }
+
+injector.register("recycler", [identity(Recycler)]);
