@@ -318,20 +318,14 @@ const Engine = ((document) => {
 				tempCanvas.width = spriteWidth; tempCanvas.height = spriteHeight;
 				for (let r = 0; r < rows; r++) {
 					for (let c = 0; c < cols; c++) {
-						let cell = cellCache[`${img.src}_${c}_${r}`];
+						const cellTag = `${img.src}_${c}_${r}`;
+						let cell = cellCache[cellTag];
 						if (!cell) {
 							cell = gridSlot.getSlot(spriteWidth, spriteHeight);
 							ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 							ctx.drawImage(img, -c * spriteWidth, -r * spriteHeight);
 							const { data } = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-							let empty = true;
-							for (let p = 0; p < data.length; p += 4) {
-								if (data[p + 3] !== 0) {
-									empty = false;
-									break;
-								}
-							}
-							if (empty) {
+							if (Utils.isImageEmpty(ctx)) {	//	image transparent
 								gridSlot.putBackSlot(cell);
 								continue;
 							}
@@ -351,7 +345,7 @@ const Engine = ((document) => {
 
 							gl.texSubImage2D(gl.TEXTURE_2D, 0, cell.x, cell.y, gl.RGBA, gl.UNSIGNED_BYTE, tempCanvas);
 							gl.generateMipmap(gl.TEXTURE_2D);
-							cellCache[`${img.src}_${c}_${r}`] = cell;
+							cellCache[cellTag] = cell;
 						}
 						textures.push(cell);
 					}

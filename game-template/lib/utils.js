@@ -111,4 +111,19 @@ class Utils {
 	static get4Floats(num) {
 		return FLOAT_NUMS[num] || temp4Float.fill(num);
 	}
+
+	static isImageEmpty(ctx) {
+		if (ctx.constructor === HTMLCanvasElement) {
+			ctx = ctx.getContext('2d');
+		}
+		const { data } = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+		let empty = true;
+		for (let p = 0; p < data.length; p += 4) {
+			if (data[p + 3] !== 0) {
+				empty = false;
+				break;
+			}
+		}
+		return empty;
+	}
 }
