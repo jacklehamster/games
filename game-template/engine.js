@@ -37,9 +37,6 @@ const Engine = ((document) => {
 
 	const tempCanvas = document.createElement('canvas');
 				
-	let texIndex = 0;
-	const textureCoordinates = new Float32Array(VERTICES_PER_SPRITE * TEXTURE_FLOAT_PER_VERTEX);
-
 	function refresh(now) {
 		if (mainGame && renderer) {
 			globalData.now = now;
@@ -84,6 +81,7 @@ const Engine = ((document) => {
 		}
 	}
 
+	let texIndex = 0;
 	function sendTexturesToGPU({ gl, shaderProgram }) {
 		for (let id in stock) {
 			const { textureData } = stock[id];
@@ -220,7 +218,6 @@ const Engine = ((document) => {
 	function setCanvas(canvas) {
 		mainCanvas = canvas;
 		gl = canvas.getContext('webgl', {antialias: false});
-		Engine.gl = gl;
 		fetchRenderer(gl).then(r => renderer = r);
 		initGL(gl);
 	}
@@ -434,13 +431,27 @@ const Engine = ((document) => {
 		return INDEX_ARRAY_PER_SPRITE.map(value => value + slotIndex * VERTICES_PER_SPRITE);		
 	}
 
-	function bufferSprites(gl, sprites, elementSize, spriteFunction) {
+	function bufferSprites(renderer, sprites, elementSize, spriteFunction) {
+		const { gl, bigFloatArray } = renderer;
 		const byteSize = elementSize * Float32Array.BYTES_PER_ELEMENT;
+
+		let byteIndex = 0;
+		let slotStart = sprites[0].slotIndex;
+		let previousSlot = sprites[0].slotIndex - 1;
+
 		for (let i = 0; i < sprites.length; i++) {
 			const sprite = sprites[i];
 			const floatArray = spriteFunction(sprite);
-			gl.bufferSubData(gl.ARRAY_BUFFER, sprite.slotIndex * byteSize, floatArray);
+			if (previousSlot !== sprite.slotIndex - 1) {
+				gl.bufferSubData(gl.ARRAY_BUFFER, slotStart * byteSize, bigFloatArray.subarray(0, byteIndex));
+				byteIndex = 0;
+				slotStart = sprite.slotIndex;
+			}
+			bigFloatArray.set(floatArray, byteIndex);
+			byteIndex += floatArray.length;
+			previousSlot = sprite.slotIndex;
 		}
+		gl.bufferSubData(gl.ARRAY_BUFFER, slotStart * byteSize, bigFloatArray.subarray(0, byteIndex));
 	}
 
 	function drawSprites(renderer, activeSprites, forceRedraw) {
@@ -461,25 +472,25 @@ const Engine = ((document) => {
 
 		if (dirtySprites.length) {
 			gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE * FLOAT_PER_VERTEX, sprite => sprite.getVertices());
+			bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE * FLOAT_PER_VERTEX, sprite => sprite.getVertices());
 
 			gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE * FLOAT_PER_VERTEX, sprite => sprite.getPosition());
+			bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE * FLOAT_PER_VERTEX, sprite => sprite.getPosition());
 
 			gl.bindBuffer(gl.ARRAY_BUFFER, waveBuffer);
-			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE, sprite => sprite.getWave());
+			bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, sprite => sprite.getWave());
 
 			gl.bindBuffer(gl.ARRAY_BUFFER, frameBuffer);
-			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE * 4, sprite => sprite.getFrameData());
+			bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE * 4, sprite => sprite.getFrameData());
 
 			gl.bindBuffer(gl.ARRAY_BUFFER, isSpriteBuffer);
-			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE, sprite => Utils.get4Floats(sprite.typeIndex === SpriteTypes.sprite ? 1 : 0));
+			bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, sprite => Utils.get4Floats(sprite.typeIndex === SpriteTypes.sprite ? 1 : 0));
 
 			gl.bindBuffer(gl.ARRAY_BUFFER, chunkBuffer);
-			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE, sprite => Utils.get4Floats(sprite.getChunkIndex()));
+			bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, sprite => Utils.get4Floats(sprite.getChunkIndex()));
 
 			gl.bindBuffer(gl.ARRAY_BUFFER, cornerBuffer);
-			bufferSprites(gl, dirtySprites, VERTICES_PER_SPRITE, () => CORNERS);
+			bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, () => CORNERS);
 		}
 
 		Engine.debug.draws = (Engine.debug.draws || 0) + dirtySprites.length;
@@ -559,6 +570,8 @@ const Engine = ((document) => {
 		}
 		resizeBuffer(gl, gl.ARRAY_BUFFER, renderer.cornerBuffer, size * VERTICES_PER_SPRITE * Float32Array.BYTES_PER_ELEMENT);
 
+		// biggest size
+		renderer.bigFloatArray = new Float32Array(size * VERTICES_PER_SPRITE * 4 * Float32Array.BYTES_PER_ELEMENT);
 		renderer.spriteBufferSize = size;
 	}
 
@@ -625,7 +638,7 @@ const Engine = ((document) => {
 
 	function setupScene(scene) {
 		sprites.length = 0;
-		scene.spriteDefinitions.forEach(setupSprite);
+		scene.definitions.forEach(setupSprite);
 	}
 
 	function evaluate(object, param) {

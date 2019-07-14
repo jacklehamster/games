@@ -52,32 +52,33 @@ float getFrame(float time, float fps, float totalFrames) {
 }
 
 void main(void) {
-	float texIndex = aFrame[0];
+	float frameStart = 	aFrame[0];
 	float totalFrames = aFrame[1];
-	float fps = aFrame[2];
-	float timeOffset = aFrame[3];
-	float frame = texIndex + getFrame(now + timeOffset, fps, totalFrames);
+	float fps = 		aFrame[2];
+	float timeOffset = 	aFrame[3];
+	int frame = int(frameStart + getFrame(now + timeOffset, fps, totalFrames));
 
 	vec4 vPos = aVertexPosition;
 
 	//	Make sprite face camera
-	if (aIsSprite == 1.0) {
+	bool isSprite = aIsSprite == 1.0;
+	if (isSprite) {
 		vPos = uCameraRotation * vPos;
 	}
 	vPos.xyz += aPosition;
 
 	//	Apply sin wave
 	if (aWave > 0.0) {
-		vPos.y += getSinWaveOffset(now, aIsSprite == 1.0 ? aPosition : vPos.xyz, aWave);
+		vPos.y += getSinWaveOffset(now, isSprite ? aPosition : vPos.xyz, aWave);
 	}
 
 	vec4 position = uProjectionMatrix * uViewMatrix * vPos;
 	position.y -= (position.z * position.z + position.x * position.x) / 1000.0;
 
-	vec3 textureInfo = uTextureInfo[int(frame)];
-	textureSlot = textureInfo[0];
+	vec3 textureInfo = uTextureInfo[frame];
+	textureSlot = floor(textureInfo[0]);
 	
-	vec4 chunkCell = getChunkCell(uTextureCell[int(frame)], aChunk, textureInfo[1], textureInfo[2]);
+	vec4 chunkCell = getChunkCell(uTextureCell[frame], aChunk, textureInfo[1], textureInfo[2]);
     float left = chunkCell.x;
     float right = chunkCell.y;
     float top = chunkCell.z;

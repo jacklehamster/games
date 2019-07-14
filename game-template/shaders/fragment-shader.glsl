@@ -9,7 +9,7 @@ varying highp float zDist;
 varying highp float textureSlot;
 
 vec4 getTextureColor(float textureSlot, vec2 vTextureCoord) {
-	int textureInt = int(floor(textureSlot));
+	int textureInt = int(textureSlot);
 	for (int i = 0; i < NUM_TEXTURES; ++i) {
 		if (textureInt == i) {
 			return texture2D(uTextureSampler[i], vTextureCoord);

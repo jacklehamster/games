@@ -31,7 +31,7 @@ const Game = (() => {
 		},
 		scenes: {
 			"demo": {
-				spriteDefinitions: [
+				definitions: [
 					penguin => {
 						const pos = vec3.create();
 						const mov = vec3.fromValues(0, 0, -1);
