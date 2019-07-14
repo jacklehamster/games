@@ -235,70 +235,7 @@ const Engine = ((document) => {
 		gl.enable(gl.SAMPLE_COVERAGE);
 	}
 
-	const textureSlots = [
-		{ index: 0, x: 0, y: 0, width: TEXTURE_SIZE, height: TEXTURE_SIZE, last: true, },
-	];
-
-	function splitTex(tex, splitSquareHorizontally) {
-		const { index, x, y, width, height } = tex;
-		if (width > height || width === height && !splitSquareHorizontally) {
-			return [
-				{ index, x, y, width: width/2, height },
-				{ index, x: x + width/2, y, width: width/2, height },
-			];
-		} else if(width < height || width === height && splitSquareHorizontally) {
-			return [
-				{ index, x, y, width, height: height/2 },
-				{ index, x, y: y + height/2, width, height: height/2 },
-			];
-		}
-	}
-
-	function fit(w,h,texture) {
-		return w<=texture.width && h<=texture.height;
-	}
-
-	function compareTexture(texInfo1, texInfo2) {
-		const area1 = texInfo1.width * texInfo1.height;
-		const area2 = texInfo2.width * texInfo2.height;
-		return area1 - area2;
-	}
-
-	function getTextureCell(w, h) {
-		textureSlots.sort(compareTexture);
-		for (let i = 0; i < textureSlots.length; i++) {
-			let tex = textureSlots[i];
-			if (fit(w, h, tex)) {
-				if (tex.last) {
-					textureSlots.push({
-						index: tex.index+1,
-						x: tex.x, y: tex.y,
-						width: tex.width, height: tex.height,
-						last: true,
-					});
-				}
-
-				textureSlots[i] = textureSlots[textureSlots.length-1];
-				textureSlots.pop();
-				while(true) {
-					const [ tex1, tex2 ] = splitTex(tex, w > h);
-
-					if (!fit(w, h, tex1)) {
-						return tex;
-					} else {
-						textureSlots.push(tex2);
-						tex = tex1;
-					}
-				}
-				break;
-			}
-		}
-		return null;
-	}
-
-	function putBackTextureCell(cell) {
-		textureSlots.push(cell);
-	}
+	const gridSlot = new GridSlot(TEXTURE_SIZE, TEXTURE_SIZE);
 
 	const glTextures = [];
 	const glTextureIndexBuffers = [];
@@ -386,7 +323,7 @@ const Engine = ((document) => {
 					for (let c = 0; c < cols; c++) {
 						let cell = cellCache[`${img.src}_${c}_${r}`];
 						if (!cell) {
-							cell = getTextureCell(spriteWidth, spriteHeight);
+							cell = gridSlot.getSlot(spriteWidth, spriteHeight);
 							ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 							ctx.drawImage(img, -c * spriteWidth, -r * spriteHeight);
 							const { data } = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
@@ -398,7 +335,7 @@ const Engine = ((document) => {
 								}
 							}
 							if (empty) {
-								putBackTextureCell(cell);
+								gridSlot.putBackSlot(cell);
 								continue;
 							}
 
