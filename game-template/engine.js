@@ -51,14 +51,6 @@ injector.register("engine", [
 		const glTextures = [];
 		const cellCache = {	};
 
-		const SpriteTypes = {
-			floor: 0,
-			ceiling: 1,
-			left: 2,
-			right: 3,
-			sprite: 4,
-		};
-
 		class Engine {
 			constructor() {
 				this.loadGame(mainGame);
@@ -93,35 +85,30 @@ injector.register("engine", [
 
 					this.refreshMove(mainGame);
 
-					let imageCount = 0;
 					activeSprites.length = 0;
 					sprites.forEach(sprite => {
-						const definition = this.evaluate(sprite.definition.preProcess, globalData) || sprite.definition;
-
-						const definitionId = this.evaluate(definition.id, globalData);
-						const textureData = textureManager.getTextureData(definitionId);
-
-						if (textureData && textureData.textures) {
-							imageCount += textureData.textures.length;
-
-							if (sprite.needsRefresh()) {
-								const { chunk, pos, type, fps, timeOffset, wave } = definition;
-								sprite.setTextureData(textureData)
-									.setType(this.evaluate(type, globalData))
-									.setPosition(this.evaluate(pos, globalData))
-									.setChunk(this.evaluate(chunk, globalData))
-									.setWave(this.evaluate(wave, globalData) || 0)
-									.setFrameData(this.evaluate(fps, globalData) || 0, this.evaluate(timeOffset, globalData) || 0);
+						if (sprite.needsRefresh()) {
+							const definition = this.evaluate(sprite.definition.preProcess, globalData) || sprite.definition;
+							const { chunk, pos, type, fps, timeOffset, wave, textureIndex, id } = definition;
+							const textureData = textureManager.getTextureDataByIndex(this.evaluate(textureIndex, globalData))
+								|| textureManager.getTextureData(this.evaluate(id, globalData));
+							if (!textureData.textures) {
+								return;
 							}
+							sprite.setTextureData(textureData)
+								.setPosition(this.evaluate(pos, globalData))
+								.setChunk(this.evaluate(chunk, globalData))
+								.setWave(this.evaluate(wave, globalData) || 0)
+								.setFrameData(this.evaluate(fps, globalData) || 0, this.evaluate(timeOffset, globalData) || 0);
 							this.evaluate(definition.postProcess, globalData);
-							activeSprites.push(sprite);
 						}
+						activeSprites.push(sprite);
 					});
 
 					if (activeSprites.length) {
 						gl.uniform1f(renderer.programInfo.nowLocation, now);
 						this.refreshMatrices(renderer);			
-						const bufferResized = this.ensureBuffer(renderer, imageCount);
+						const bufferResized = this.ensureBuffer(renderer, activeSprites.length);
 						textureManager.sendTexturesToGPU(renderer.shaderProgram);
 						this.drawSprites(renderer, activeSprites, bufferResized);
 					}
@@ -322,7 +309,7 @@ injector.register("engine", [
 					this.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE * 4, sprite => sprite.getFrameData());
 
 					gl.bindBuffer(gl.ARRAY_BUFFER, isSpriteBuffer);
-					this.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, sprite => Utils.get4Floats(sprite.typeIndex === SpriteTypes.sprite ? 1 : 0));
+					this.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, sprite => Utils.get4Floats(sprite.typeIndex === Sprite.SpriteTypes.sprite ? 1 : 0));
 
 					gl.bindBuffer(gl.ARRAY_BUFFER, chunkBuffer);
 					this.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, sprite => Utils.get4Floats(sprite.getChunkIndex()));
@@ -436,10 +423,6 @@ injector.register("engine", [
 			}
 
 			loadImage(id, src, spriteSize, options) {
-				if (textureManager.getTextureData(id)) {
-					console.warning(`${id} already loaded!.`);
-					return;
-				}
 				textureManager.turnImageIntoTexture(id, src, spriteSize, options || {});
 			}
 

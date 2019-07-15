@@ -1,6 +1,6 @@
 injector.register("game", [
-	"utils",
-	(Utils) => {
+	"utils", "texture-manager",
+	(Utils, textureManager) => {
 		const penguinScale = [1, .9];
 		const penguin_sprites = [
 		    {id:'penguin-down',		src:'assets/penguin-down.png',		scale: penguinScale,	flip:false,	},
@@ -38,18 +38,22 @@ injector.register("game", [
 							const mov = vec3.fromValues(0, 0, -1);
 							let moving = false;
 
+							const angleToTextureIndex = penguin_sprites.map(({id}) => {
+								return textureManager.getTextureData(id).index;
+							});
+
 							return {
 								preProcess: ({cam}) => {
 									const [ x, y, z ] = cam.mov;
 									moving = x !== 0 || y !== 0 || z !== 0;
 								},
-								id: ({cam}) => {
+								textureIndex: ({cam}) => {
 									if (moving) {
 										mov.set(Utils.getRelativeDirection(cam.rotation, cam.mov));
 									}
 									const turn = Utils.getCameraAngle(mov, cam.rotation);
-								    const angleIndex = Utils.getAngleIndex(turn, penguin_sprites.length);
-								    return penguin_sprites[angleIndex].id;
+								    const angleIndex = Utils.getAngleIndex(turn, angleToTextureIndex.length);
+								    return angleToTextureIndex[angleIndex];
 								},
 								pos: ({cam}) => {
 									const [ x, y, z ] = cam.pos;

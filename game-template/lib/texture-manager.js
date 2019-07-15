@@ -15,6 +15,7 @@ class TextureManager {
 		});
 		this.gridSlot = gridSlot;
 		this.textureData = {};
+		this.textureDataArray = [];
 		this.Utils = Utils;
 		this.ImageSplitter = ImageSplitter;
 		this.TEXTURE_SIZE = TEXTURE_SIZE;
@@ -69,16 +70,18 @@ class TextureManager {
 
 	turnImageIntoTexture(id, src, spriteSize, options) {
 		const { gl, gridSlot, glTextures, Utils, ImageSplitter, TEXTURE_SIZE, cellCache } = this;
-		if (!this.textureData[id]) {
+		const data = this.getTextureData(id);
+
+		if (!data.initialized) {
 			const [ spriteWidth, spriteHeight ] = spriteSize;
 			const { chunks, scale, flip } = options;
-			this.textureData[id]= {
-				flip,
-				textures : null,
-				chunks: typeof(chunks) == 'number' ? [chunks,chunks] : Array.isArray(chunks) ? chunks : [ 1, 1 ],
-				verticesMap: TextureManager.makeVerticesMap(spriteWidth, spriteHeight, scale),
-				sentToGPU: false,
-			};
+
+			data.initialized = true;
+			data.flip = flip;
+			data.textures = null;
+			data.chunks = typeof(chunks) == 'number' ? [chunks,chunks] : Array.isArray(chunks) ? chunks : [ 1, 1 ];
+			data.verticesMap = TextureManager.makeVerticesMap(spriteWidth, spriteHeight, scale);
+			data.sentToGPU = false;
 
 			Utils.load(src).then(img => {
 				const { naturalWidth, naturalHeight } = img;
@@ -112,7 +115,7 @@ class TextureManager {
 					textures.push(cell);
 				});
 
-				this.textureData[id].textures = textures.map(({ x, y, index }) => {
+				data.textures = textures.map(({ x, y, index }) => {
 					const textureLeft = 	x / TEXTURE_SIZE;
 					const textureRight = 	x / TEXTURE_SIZE + spriteWidth / TEXTURE_SIZE;
 					const textureTop = 		y / TEXTURE_SIZE;
@@ -129,7 +132,20 @@ class TextureManager {
 	}
 
 	getTextureData(id) {
+		if (!this.textureData[id]) {
+			this.textureDataArray.push(this.textureData[id] = {
+				index: this.textureDataArray.length,
+				textures: null,
+			});
+		}
 		return this.textureData[id];
+	}
+
+	getTextureDataByIndex(index) {
+		if (index === undefined) {
+			return null;
+		}
+		return this.textureDataArray[index];
 	}
 
 	sendTexturesToGPU(shaderProgram) {
@@ -144,14 +160,14 @@ class TextureManager {
 
 				textures.forEach(({ index, coordinates }, frameIndex) => {
 			  		if (flip) {
-			  			const temp = coordinates[0];
-			  			coordinates[0] = coordinates[1];
-			  			coordinates[1] = temp;
+			  			coordinates = [
+			  				coordinates[1], coordinates[0], coordinates[2], coordinates[3],
+			  			];
 			  		}
-
-			  		const glTextureCellLocation = gl.getUniformLocation(shaderProgram, `uTextureCell[${this.texIndex + frameIndex}]`);
+		  			const framePosition = this.texIndex + frameIndex;
+			  		const glTextureCellLocation = gl.getUniformLocation(shaderProgram, `uTextureCell[${framePosition}]`);
 			  		gl.uniform4fv(glTextureCellLocation, new Float32Array(coordinates));
-					const glTextureIdLocation = gl.getUniformLocation(shaderProgram, `uTextureInfo[${this.texIndex + frameIndex}]`);
+					const glTextureIdLocation = gl.getUniformLocation(shaderProgram, `uTextureInfo[${framePosition}]`);
 					gl.uniform3fv(glTextureIdLocation, new Float32Array([index,...chunks]));
 				});
 				this.texIndex += textures.length;

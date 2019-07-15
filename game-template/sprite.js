@@ -1,6 +1,6 @@
 injector.register("sprite", [ 
-	"utils", "recycler",
-	(Utils, Recycler) => {
+	"utils", "recycler", "texture-manager",
+	(Utils, Recycler, textureManager) => {
 		const FLOAT_PER_VERTEX 			= 3;	//	x,y,z
 		const VERTICES_PER_SPRITE 		= 4;	//	4 corners
 
@@ -41,6 +41,7 @@ injector.register("sprite", [
 				this.slotIndex = -1;
 				this.static = typeof(definition.static) !== 'undefined' ? definition.static :
 					!Object.values(definition).some(value => typeof(value) === 'function');
+				this.setType(definition.type);
 				return this;
 			}
 
@@ -148,6 +149,8 @@ injector.register("sprite", [
 				return this.wave;
 			}
 		}
+
+		Sprite.SpriteTypes = SpriteTypes;
 
 		Recycler.wrap(Sprite, Sprite.initialize);		
 		return Sprite;
