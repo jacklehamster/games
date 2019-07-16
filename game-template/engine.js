@@ -50,26 +50,38 @@ injector.register("engine", [
 		const glTextures = [];
 		const cellCache = {	};
 
+		let gamePaused = false;
+
 		class Engine {
 			constructor() {
 				this.loadGame(mainGame);
 				this.initGL(gl);
 				this.initializeRenderer();
 
-				addEventListener("resize", e => {
-					this.resizeCanvas(mainCanvas);
-				});
+				addEventListener("resize", () => this.resizeCanvas(mainCanvas));
+				addEventListener("focus", () => this.refreshPause());
+				addEventListener("blur", () => this.refreshPause());
 			}
 
 			start() {
 				this.createLoop(now => this.refresh(now));
 			}
 
+			refreshPause() {
+				if (gamePaused === document.hasFocus()) {
+					gamePaused = !document.hasFocus();
+					if (!gamePaused) {
+						this.start();
+					}
+				}
+			}
+
 			createLoop(callback) {
-				const self = this;
 				function step(timestamp) {
-					callback(timestamp);
-				    requestAnimationFrame(step);
+					if (!gamePaused) {
+						callback(timestamp);
+					    requestAnimationFrame(step);
+					}
 				}
 				requestAnimationFrame(step);
 			}
@@ -79,7 +91,7 @@ injector.register("engine", [
 			}
 
 			refresh(now) {
-				if (mainGame && renderer) {
+				if (mainGame && renderer && !gamePaused) {
 					globalData.now = now;
 
 					this.refreshMove(mainGame);
