@@ -73,7 +73,7 @@ void main(void) {
 	}
 
 	vec4 position = uProjectionMatrix * uViewMatrix * vPos;
-	position.y -= (position.z * position.z + position.x * position.x) / 1000.0;
+	position.y -= (position.z * position.z + position.x * position.x) / 100.0;
 
 	vec3 textureInfo = uTextureInfo[frame];
 	textureSlot = floor(textureInfo[0]);

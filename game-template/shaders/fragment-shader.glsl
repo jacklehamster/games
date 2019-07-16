@@ -48,6 +48,6 @@ void main(void) {
 	if (color.w <= 0.0) {
 		discard;
 	}
-	color = alterHueSatLum(color, vec3(1.0, 1.0, min(1.1,max(0.0, .8 + zDist * .3))));
+	color = alterHueSatLum(color, vec3(1.0, 1.0, min(1.2,max(0.0, .8 + zDist * .3))));
 	gl_FragColor = color;
 }

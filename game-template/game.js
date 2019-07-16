@@ -1,6 +1,31 @@
 injector.register("game", [
 	"utils", "texture-manager",
 	(Utils, textureManager) => {
+
+		function lake(id, size, x, y, z) {
+			return () => {
+				return new Array(size * size).fill(null).map((n, index) => {
+					const col = index % size;
+					const row = Math.floor(index / size);
+					const dx = col - size / 2;
+					const dy = row - size / 2;
+					if (dx * dx + dy * dy > (size / 2) * (size / 2)) {
+						return null;
+					}
+
+					return {
+						id,
+						chunk: [ col, row ],
+						pos: [ x + 10 * (col - size/2) / size, y, z + 10 * (row - size/2) / size ],
+						type: "floor",
+						timeOffset: Math.floor(Math.random()*10000),
+						fps: 3,
+						wave: Float32Array.from([1,1,1,1]),
+					};
+				}).filter(a => a);
+			};
+		}
+
 		const penguinScale = [1, .9];
 		const penguin_sprites = [
 		    {id:'penguin-down',		src:'assets/penguin-down.png',		scale: penguinScale,	flip:false,	},
@@ -13,7 +38,7 @@ injector.register("game", [
 		    {id:'penguin-bot-left',	src:'assets/penguin-bot-left.png',	scale: penguinScale,	flip:false, },
 		];
 
-		const waterSize = 40 + 1;
+		const waterSize = 30 + 1;
 		const groundSize = 10;
 		const groundLevel = -1;
 
@@ -45,7 +70,7 @@ injector.register("game", [
 							});
 
 							return {
-								preProcess: ({cam}) => {
+								process: ({cam}) => {
 									const [ x, y, z ] = cam.mov;
 									moving = x !== 0 || y !== 0 || z !== 0;
 								},
@@ -278,27 +303,7 @@ injector.register("game", [
 							],
 							"type": "sprite"
 						},
-						water => {
-							return new Array(waterSize * waterSize).fill(null).map((n, index) => {
-								const col = index % waterSize;
-								const row = Math.floor(index / waterSize);
-								const dx = col - waterSize / 2;
-								const dy = row - waterSize / 2;
-								if (dx * dx + dy * dy > (waterSize / 2) * (waterSize / 2)) {
-									return null;
-								}
-
-								return {
-									id: "water",
-									chunk: [ col, row ],
-									pos: [ 10 * (col - waterSize/2) / waterSize, +groundLevel+.2, 10 * (row - waterSize/2) / waterSize ],
-									type: "floor",
-									timeOffset: Math.floor(Math.random()*10000),
-									fps: 3,
-									wave: Float32Array.from([1,1,1,1]),
-								};
-							}).filter(a => a);
-						},
+						lake("water", waterSize, 0, groundLevel + .2, 0),
 						iceground => {
 							return new Array(groundSize * groundSize).fill(null).map((n, index) => {
 								const col = index % groundSize;

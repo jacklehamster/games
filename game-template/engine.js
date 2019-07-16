@@ -30,7 +30,10 @@ injector.register("engine", [
 			mov: vec3.create(),
 			pos: vec3.create(),
 		};
-		const debug = { cam };
+		const globalData = {
+			now: 0, cam,
+		};
+		const debug = { globalData };
 
 		const sprites = [];
 		const activeSprites = [];
@@ -41,10 +44,6 @@ injector.register("engine", [
 		let viewMatrix = null;
 		let projectionMatrix = null;
 		let cameraRotationMatrix = null;
-
-		const globalData = {
-			now: 0, cam,
-		};
 
 		const gridSlot = new GridSlot(TEXTURE_SIZE, TEXTURE_SIZE);
 
@@ -69,7 +68,7 @@ injector.register("engine", [
 			createLoop(callback) {
 				const self = this;
 				function step(timestamp) {
-					callback(performance.now());
+					callback(timestamp);
 				    requestAnimationFrame(step);
 				}
 				requestAnimationFrame(step);
@@ -88,8 +87,8 @@ injector.register("engine", [
 					activeSprites.length = 0;
 					sprites.forEach(sprite => {
 						if (sprite.needsRefresh()) {
-							const definition = this.evaluate(sprite.definition.preProcess, globalData) || sprite.definition;
-							const { chunk, pos, type, fps, timeOffset, wave, textureIndex, id } = definition;
+							this.evaluate(sprite.definition.process, globalData);
+							const { chunk, pos, type, fps, timeOffset, wave, textureIndex, id } = sprite.definition;
 							const textureData = textureManager.getTextureDataByIndex(this.evaluate(textureIndex, globalData))
 								|| textureManager.getTextureData(this.evaluate(id, globalData));
 							if (!textureData.textures) {
@@ -100,7 +99,6 @@ injector.register("engine", [
 								.setChunk(this.evaluate(chunk, globalData))
 								.setWave(this.evaluate(wave, globalData) || 0)
 								.setFrameData(this.evaluate(fps, globalData) || 0, this.evaluate(timeOffset, globalData) || 0);
-							this.evaluate(definition.postProcess, globalData);
 						}
 						activeSprites.push(sprite);
 					});

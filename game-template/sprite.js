@@ -14,7 +14,6 @@ injector.register("sprite", [
 
 		class Sprite {
 			constructor() {
-				this.pos = vec3.create();
 				this.wave = new Float32Array(VERTICES_PER_SPRITE);
 				this.frameData = new Float32Array(4 * VERTICES_PER_SPRITE);
 				this.posBuffer = new Float32Array(3 * VERTICES_PER_SPRITE);
@@ -23,10 +22,10 @@ injector.register("sprite", [
 
 			static initialize(sprite) {
 				sprite.definition = null;
-				vec3.set(sprite.pos, 0, 0, 0);
 				sprite.textureData = null;
 				sprite.chunkCol = 0;
 				sprite.chunkRow = 0;
+				sprite.chunkIndex = 0;
 				sprite.type = 'sprite';
 				sprite.typeIndex = SpriteTypes[sprite.type];
 				sprite.wave.fill(0);
@@ -50,8 +49,7 @@ injector.register("sprite", [
 			}
 
 			setPosition(pos) {
-				if (!vec3.exactEquals(this.pos, pos)) {
-					this.pos.set(pos);
+				if (!vec3.exactEquals(this.posBuffer, pos)) {
 					for (let i = 0; i < VERTICES_PER_SPRITE; i++) {
 						this.posBuffer.set(pos, i * 3);
 					}
@@ -72,9 +70,16 @@ injector.register("sprite", [
 			setTextureData(textureData) {
 				if (this.textureData !== textureData) {
 					this.textureData = textureData;
+					this.updateChunkIndex();
 					this.slotIndex = -1;
 				}
 				return this;
+			}
+
+			updateChunkIndex() {
+				const { chunks } = this.textureData;
+				const [ chunkCols, chunkRows ] = chunks;
+				this.chunkIndex = (this.chunkCol % chunkCols) + (this.chunkRow % chunkRows) * chunkCols;				
 			}
 
 			setType(type) {
@@ -99,15 +104,14 @@ injector.register("sprite", [
 				if (chunkCol != this.chunkCol || chunkRow != this.chunkRow) {
 					this.chunkCol = chunkCol;
 					this.chunkRow = chunkRow;
+					this.updateChunkIndex();
 					this.slotIndex = -1;
 				}
 				return this;
 			}
 
 			getChunkIndex() {
-				const { chunks } = this.textureData;
-				const [ chunkCols, chunkRows ] = chunks;
-				return (this.chunkCol % chunkCols) + (this.chunkRow % chunkRows) * chunkCols;
+				return this.chunkIndex;
 			}
 
 			setWave(wave) {
