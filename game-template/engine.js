@@ -1,6 +1,6 @@
 injector.register("engine", [ 
-	"game", "canvas", "gl", "utils", "keyboard", "texture-manager", "sprite",
-	(mainGame, mainCanvas, gl, Utils, Keyboard, textureManager, Sprite) => {
+	"game", "canvas", "gl", "utils", "keyboard", "texture-manager", "sprite", "camera",
+	(mainGame, mainCanvas, gl, Utils, Keyboard, textureManager, Sprite, Camera) => {
 		const TEXTURE_SIZE = injector.get("texture-size");
 		const INDEX_ARRAY_PER_SPRITE = new Uint16Array([
 			0,  1,  2,
@@ -17,22 +17,21 @@ injector.register("engine", [
 		const vec3temp = vec3.create(), vec3temp2 = vec3.create();
 
 		const CORNERS = Float32Array.from([0, 1, 2, 3 ]);
+		const CORNERS_FUNC = () => CORNERS;
 
 		const SIZE_INCREASE = 500;
 
 		let renderer, sceneIndex;
 
-		const X_POS = 0, Y_POS = 1, Z_POS = 2;
-		const acceleration = .1;
+		const ACCELERATION = .1;
+		const MOVE_SPEED = .12;
 
-		const cam = {
-			rotation: 0,
-			mov: vec3.create(),
-			pos: vec3.create(),
-		};
+		const cam = new Camera();
+
 		const globalData = {
 			now: 0, cam,
 		};
+
 		const debug = { globalData };
 
 		const sprites = [];
@@ -45,12 +44,10 @@ injector.register("engine", [
 		let projectionMatrix = null;
 		let cameraRotationMatrix = null;
 
-		const gridSlot = new GridSlot(TEXTURE_SIZE, TEXTURE_SIZE);
-
 		const glTextures = [];
 		const cellCache = {	};
 
-		let gamePaused = false;
+		let gamePaused = true;
 
 		class Engine {
 			constructor() {
@@ -64,12 +61,14 @@ injector.register("engine", [
 			}
 
 			start() {
+				gamePaused = false;
 				this.createLoop(now => this.refresh(now));
 			}
 
 			refreshPause() {
-				if (gamePaused === document.hasFocus()) {
-					gamePaused = !document.hasFocus();
+				const focused = document.hasFocus();
+				if (gamePaused === focused) {
+					gamePaused = !focused;
 					if (!gamePaused) {
 						this.start();
 					}
@@ -99,20 +98,25 @@ injector.register("engine", [
 					activeSprites.length = 0;
 					sprites.forEach(sprite => {
 						if (sprite.needsRefresh()) {
-							this.evaluate(sprite.definition.process, globalData);
-							const { chunk, pos, type, fps, timeOffset, wave, textureIndex, id } = sprite.definition;
-							const textureData = textureManager.getTextureDataByIndex(this.evaluate(textureIndex, globalData))
-								|| textureManager.getTextureData(this.evaluate(id, globalData));
-							if (!textureData.textures) {
+							const { definition } = sprite;
+							this.evaluate(definition.process, globalData, sprite);
+							const { id, textureIndex } = definition;
+							const textureData = textureManager.getTextureDataByIndex(this.evaluate(textureIndex, globalData, sprite))
+								|| textureManager.getTextureData(this.evaluate(id, globalData, sprite));
+							if (textureData.textures === null) {
 								return;
 							}
+							const { chunk, pos, type, fps, timeOffset, wave, hidden } = definition;
 							sprite.setTextureData(textureData)
-								.setPosition(this.evaluate(pos, globalData))
-								.setChunk(this.evaluate(chunk, globalData))
-								.setWave(this.evaluate(wave, globalData) || 0)
-								.setFrameData(this.evaluate(fps, globalData) || 0, this.evaluate(timeOffset, globalData) || 0);
+								.setHidden(this.evaluate(hidden, globalData, sprite))
+								.setPosition(this.evaluate(pos, globalData, sprite))
+								.setChunk(this.evaluate(chunk, globalData, sprite))
+								.setWave(this.evaluate(wave, globalData, sprite) || 0)
+								.setFrameData(this.evaluate(fps, globalData, sprite) || 0, this.evaluate(timeOffset, globalData, sprite) || 0);
 						}
-						activeSprites.push(sprite);
+						if (sprite.isVisible()) {
+							activeSprites.push(sprite);
+						}
 					});
 
 					if (activeSprites.length) {
@@ -120,7 +124,8 @@ injector.register("engine", [
 						this.refreshMatrices(renderer);			
 						const bufferResized = this.ensureBuffer(renderer, activeSprites.length);
 						textureManager.sendTexturesToGPU(renderer.shaderProgram);
-						this.drawSprites(renderer, activeSprites, bufferResized);
+						this.processSprites(renderer, activeSprites, bufferResized);
+						gl.drawElements(gl.TRIANGLES, activeSprites.length * INDEX_ARRAY_PER_SPRITE.length, gl.UNSIGNED_SHORT, 0);
 					}
 				}
 
@@ -132,30 +137,33 @@ injector.register("engine", [
 			refreshMove({ settings, camera }) {
 				const { ax, ay, rot } = Keyboard.getActions();
 				const { mov, pos } = cam;
-				mov[X_POS] = (mov[X_POS] - ax * acceleration) * .5;
-				mov[Z_POS] = (mov[Z_POS] + ay * acceleration) * .5;
-				if (Math.abs(mov[X_POS]) < .001) {
-					mov[X_POS] = 0;
-				}
-				if (Math.abs(mov[Z_POS]) < .001) {
-					mov[Z_POS] = 0;
-				}
+				cam.addMove(- ax * ACCELERATION, 0, ay * ACCELERATION);
+				cam.decelerate();
 
 				if (rot) {
-					cam.rotation += rot * acceleration * .5;
+					cam.rotate(rot * ACCELERATION * .5);
 					lastRot = rot;
 				} else if (lastRot) {
 					const { angleStep } = settings;
 					const goal = lastRot < 0 ? Math.floor(cam.rotation / angleStep) * angleStep :
 						Math.ceil(cam.rotation / angleStep) * angleStep;
-					cam.rotation += (goal - cam.rotation) /8;
+					cam.rotate((goal - cam.rotation) /8);
 					if (Math.abs(cam.rotation - goal) < .01) {
 						lastRot = 0;
 					}
 				}
 
-				const directionVector = Utils.getRelativeDirection(cam.rotation, mov);
-				vec3.add(pos, pos, directionVector);
+				const directionVector = cam.getRelativeDirection();
+				const [ preX, , preZ ] = pos;
+				pos[0] += directionVector[0] * MOVE_SPEED;
+				pos[1] += directionVector[1] * MOVE_SPEED;
+				pos[2] += directionVector[2] * MOVE_SPEED;
+
+				if (Math.floor(preX) !== Math.floor(pos[0]) || Math.floor(preZ) !== Math.floor(pos[2])) {
+					if (Utils.debug) {
+						debug.mapCell = (pos.map(Math.floor));
+					}
+				}
 
 				if (viewMatrix) {
 					const { scale } = settings;
@@ -181,7 +189,7 @@ injector.register("engine", [
 				document.getElementById("log").innerText = JSON.stringify(debug, null, '  ');
 			}
 
-			refreshMatrices({ cache, programInfo, cameraQuat }) {
+			refreshMatrices({ cache, programInfo }) {
 				if (!projectionMatrix) {
 					projectionMatrix = mat4.create();
 					const fieldOfView = 45 * Math.PI / 180;   // in radians
@@ -191,10 +199,10 @@ injector.register("engine", [
 					gl.uniformMatrix4fv(programInfo.projectionLocation, false, projectionMatrix);
 					cache.projectionMatrix = mat4.create();
 				}
-				if (!mat4.exactEquals(projectionMatrix, cache.projectionMatrix)) {
-					gl.uniformMatrix4fv(programInfo.projectionLocation, false, projectionMatrix);
-					mat4.copy(cache.projectionMatrix, projectionMatrix);
-				}
+				// if (!mat4.exactEquals(projectionMatrix, cache.projectionMatrix)) {
+				// 	gl.uniformMatrix4fv(programInfo.projectionLocation, false, projectionMatrix);
+				// 	mat4.copy(cache.projectionMatrix, projectionMatrix);
+				// }
 
 				if (!viewMatrix) {
 					const [ x, y, z ] = vec3.fromValues(0, 0, 0);
@@ -256,6 +264,7 @@ injector.register("engine", [
 								cameraRotationLocation:     gl.getUniformLocation(shaderProgram, 'uCameraRotation'),
 								nowLocation: 				gl.getUniformLocation(shaderProgram, 'now'),
 							};
+							gl.uniform1iv(gl.getUniformLocation(shaderProgram, 'uTextureSampler'), new Array(16).fill(null).map((a, index) => index));		
 						}).then(() => {
 							resolve(renderer);
 						});
@@ -266,7 +275,7 @@ injector.register("engine", [
 				return INDEX_ARRAY_PER_SPRITE.map(value => value + slotIndex * VERTICES_PER_SPRITE);		
 			}
 
-			bufferSprites(renderer, sprites, elementSize, spriteFunction) {
+			static bufferSprites(renderer, sprites, elementSize, spriteFunction) {
 				const { gl, bigFloatArray } = renderer;
 				const byteSize = elementSize * Float32Array.BYTES_PER_ELEMENT;
 
@@ -289,49 +298,62 @@ injector.register("engine", [
 				gl.bufferSubData(gl.ARRAY_BUFFER, slotStart * byteSize, bigFloatArray.subarray(0, byteIndex));
 			}
 
-			drawSprites(renderer, activeSprites, forceRedraw) {
+			processSprites(renderer, activeSprites, forceRedraw) {
+				if (forceRedraw) {
+					activeSprites.forEach((sprite, slotIndex) => {
+						if (sprite.slotIndex !== slotIndex) {
+							sprite.slotIndex = slotIndex;
+						}
+					});
+					this.prepareSprites(renderer, activeSprites);
+				} else {
+					dirtySprites.length = 0;
+					activeSprites.forEach((sprite, slotIndex) => {
+						const needsUpdate = forceRedraw || sprite.slotIndex !== slotIndex;
+						if (needsUpdate) {
+							sprite.slotIndex = slotIndex;
+							dirtySprites.push(sprite);
+						}
+					});
+					this.prepareSprites(renderer, dirtySprites);
+				}
+			}
+
+			prepareSprites(renderer, dirtySprites) {
 				const { 
-					gl, cameraQuat, shaderProgram,
+					gl,
 					indexBuffer, vertexBuffer, positionBuffer, waveBuffer,
 					frameBuffer, chunkBuffer, isSpriteBuffer, cornerBuffer,
 				} = renderer;
 
-				dirtySprites.length = 0;
-				activeSprites.forEach((sprite, slotIndex) => {
-					const needsUpdate = forceRedraw || sprite.slotIndex !== slotIndex;
-					if (needsUpdate) {
-						sprite.slotIndex = slotIndex;
-						dirtySprites.push(sprite);
-					}
-				});
-
 				if (dirtySprites.length) {
 					gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-					this.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE * FLOAT_PER_VERTEX, sprite => sprite.getVertices());
+					Engine.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE * FLOAT_PER_VERTEX, Sprite.getVertices);
 
 					gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-					this.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE * FLOAT_PER_VERTEX, sprite => sprite.getPosition());
+					Engine.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE * FLOAT_PER_VERTEX, Sprite.getPosition);
 
 					gl.bindBuffer(gl.ARRAY_BUFFER, waveBuffer);
-					this.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, sprite => sprite.getWave());
+					Engine.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, Sprite.getWave);
 
 					gl.bindBuffer(gl.ARRAY_BUFFER, frameBuffer);
-					this.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE * 4, sprite => sprite.getFrameData());
+					Engine.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE * 4, Sprite.getFrameData);
 
 					gl.bindBuffer(gl.ARRAY_BUFFER, isSpriteBuffer);
-					this.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, sprite => Utils.get4Floats(sprite.typeIndex === Sprite.SpriteTypes.sprite ? 1 : 0));
+					Engine.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, Sprite.isSprite);
 
 					gl.bindBuffer(gl.ARRAY_BUFFER, chunkBuffer);
-					this.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, sprite => Utils.get4Floats(sprite.getChunkIndex()));
+					Engine.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, Sprite.getChunkIndex);
 
 					gl.bindBuffer(gl.ARRAY_BUFFER, cornerBuffer);
-					this.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, () => CORNERS);
+					Engine.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, CORNERS_FUNC);
 				}
 
-				debug.draws = (debug.draws || 0) + dirtySprites.length;
-				debug.sprites = activeSprites.length;
-				debug.vertices = activeSprites.length * VERTICES_PER_SPRITE;
-				gl.drawElements(gl.TRIANGLES, activeSprites.length * INDEX_ARRAY_PER_SPRITE.length, gl.UNSIGNED_SHORT, 0);
+				if (Utils.debug) {
+					debug.draws = (debug.draws || 0) + dirtySprites.length;
+					debug.sprites = activeSprites.length;
+					debug.vertices = activeSprites.length * VERTICES_PER_SPRITE;
+				}
 			}
 
 			createVertexAttributeBuffer(gl, location, numComponents) {
@@ -426,8 +448,8 @@ injector.register("engine", [
 						}
 						ratio = 1/div;
 					}
-					canvas.style.width = width * ratio + 'px';
-					canvas.style.height = height * ratio + 'px';	
+					canvas.style.width = `${width * ratio}px`;
+					canvas.style.height = `${height * ratio}px`;	
 					gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 				}
 			}
@@ -457,11 +479,11 @@ injector.register("engine", [
 
 			setupScene(scene) {
 				sprites.length = 0;
-				scene.definitions.forEach(definition => this.setupSprite(definition));
+				scene.spriteDefinitions.forEach(definition => this.setupSprite(definition));
 			}
 
-			evaluate(object, param) {
-				return object && object.constructor === Function ? object(param) : object;		
+			evaluate(object, ...params) {
+				return object && object.constructor === Function ? object(...params) : object;		
 			}
 
 			setupAsset(asset) {

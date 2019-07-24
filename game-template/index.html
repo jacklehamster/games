@@ -49,16 +49,17 @@
 	<script src="lib/image-splitter.js"></script>
 	<script src="lib/texture-manager.js"></script>
 	<script src="lib/keyboard.js"></script>
+	<script src="lib/worldmap.js"></script>
+	<script src="lib/camera.js"></script>
 	<script src="sprite.js"></script>
 	<script src="engine.js"></script>
 	<script src="game.js"></script>
 	<script>
 		document.addEventListener("DOMContentLoaded", e => {
-			const engine = injector.get("engine");
+			const [ engine ] = injector.get("engine");
 			engine.start();
 		});
-	</script>	
-
+	</script>
 
 	<body style="margin: 0;">
 		<div class="flex-container">
@@ -71,4 +72,5 @@
 			<pre id="log"></pre>
 		</div>
 	</body>
+	<script src="test/test.js"></script>
 </html>

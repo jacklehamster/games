@@ -5,6 +5,8 @@ const temp4Float = new Float32Array(4);
 const FLOAT_NUMS = new Array(100).fill(null).map((a, index) => {
 	return Float32Array.from([index, index, index, index]);
 });
+const ANGLE_RANGE = Math.PI * 2;
+const DEG_90 = Math.PI / 2;
 
 class Utils {
 	static get debug() {
@@ -75,25 +77,40 @@ class Utils {
 	}
 
 	static getAngleIndex(rad, range) {
-		const angleRange = Math.PI * 2;
-		rad = ((rad % angleRange) + angleRange) % angleRange;
-      	return Math.floor(rad * range / angleRange + .5) % range;
+		rad %= ANGLE_RANGE;
+		if (rad < 0) {
+			rad += ANGLE_RANGE;
+		}
+      	return Math.floor(rad * range / ANGLE_RANGE + .5) % range;
 	}
 
-    static getCameraAngle(direction, rotation) {
-    	const [ x,,z ] = direction;
-		const angle = Math.atan2(-z, x) - Math.PI / 2;
-		return angle + rotation;
+	static getDirectionAngle(mov) {
+    	const [ x,,z ] = mov;
+		return Math.atan2(-z, x);
 	}
 
-	static getRelativeDirection (turn, mov) {
+    static getCameraAngle(directionAngle, rotation) {
+		return directionAngle - DEG_90 + rotation;
+	}
+
+	static getRelativeDirection (turn, mov, normalizeValue) {
 		const [dx, dy, dz] = mov;
 	    const sin = Math.sin(turn);
 	    const cos = Math.cos(turn);
 	    const rdx = (cos * dx - sin * dz);
 	    const rdz = (sin * dx + cos * dz);
 	    vec3.set(tempVec3, rdx, dy, rdz);
+	    if (normalizeValue) {
+	    	vec3.normalize(tempVec3, tempVec3);
+	    }
 	    return tempVec3;
+	}
+
+	static set3(vector, x, y, z) {
+		vector[0] = x;
+		vector[1] = y;
+		vector[2] = z;
+		return vector;
 	}
 
 	static arrayEqual(arr1, arr2) {

@@ -5,11 +5,12 @@ injector.register("sprite", [
 		const VERTICES_PER_SPRITE 		= 4;	//	4 corners
 
 		const SpriteTypes = {
-			floor: 0,
-			ceiling: 1,
-			left: 2,
-			right: 3,
-			sprite: 4,
+			floor: 		0,
+			ceiling: 	1,
+			left: 		2,
+			right: 		3,
+			wall:       4,
+			sprite: 	5,
 		};
 
 		class Sprite {
@@ -21,18 +22,20 @@ injector.register("sprite", [
 			}
 
 			static initialize(sprite) {
+				sprite.type = 'sprite';
 				sprite.definition = null;
 				sprite.textureData = null;
 				sprite.chunkCol = 0;
 				sprite.chunkRow = 0;
-				sprite.chunkIndex = 0;
-				sprite.type = 'sprite';
-				sprite.typeIndex = SpriteTypes[sprite.type];
+				sprite.chunkIndex = Utils.get4Floats(0);
 				sprite.wave.fill(0);
 				sprite.frameData.fill(0);
 				sprite.posBuffer.fill(0);
 				sprite.slotIndex = -1;
 				sprite.static = false;
+				sprite.vertices = null;
+				sprite.isSprite = Utils.get4Floats(1);
+				sprite.hidden = false;
 			}
 
 			setDefinition(definition) {
@@ -58,19 +61,19 @@ injector.register("sprite", [
 				return this;
 			}
 
-			getPosition() {
-				return this.posBuffer;
-			}
-
-			getVertices() {
-				const { textureData, typeIndex } = this;
-				return textureData.verticesMap[typeIndex];
-			}
-			
 			setTextureData(textureData) {
 				if (this.textureData !== textureData) {
 					this.textureData = textureData;
 					this.updateChunkIndex();
+					this.updateVertices();
+					this.slotIndex = -1;
+				}
+				return this;
+			}
+
+			setHidden(hidden) {
+				if (this.hidden !== hidden) {
+					this.hidden = hidden;
 					this.slotIndex = -1;
 				}
 				return this;
@@ -79,13 +82,22 @@ injector.register("sprite", [
 			updateChunkIndex() {
 				const { chunks } = this.textureData;
 				const [ chunkCols, chunkRows ] = chunks;
-				this.chunkIndex = (this.chunkCol % chunkCols) + (this.chunkRow % chunkRows) * chunkCols;				
+				const chunk = (this.chunkCol % chunkCols) + (this.chunkRow % chunkRows) * chunkCols;
+				this.chunkIndex = Utils.get4Floats(chunk);				
+			}
+
+			updateVertices() {
+				const { textureData, type } = this;
+				if (textureData) {
+					this.vertices = textureData.verticesMap[SpriteTypes[type]];
+				}
 			}
 
 			setType(type) {
 				if (this.type !== type) {
 					this.type = type;
-					this.typeIndex = SpriteTypes[type];
+					this.isSprite = Utils.get4Floats(type === 'sprite' ? 1 : 0);
+					this.updateVertices();
 					this.slotIndex = -1;
 				}
 				return this;
@@ -108,10 +120,6 @@ injector.register("sprite", [
 					this.slotIndex = -1;
 				}
 				return this;
-			}
-
-			getChunkIndex() {
-				return this.chunkIndex;
 			}
 
 			setWave(wave) {
@@ -141,16 +149,36 @@ injector.register("sprite", [
 				return this;
 			}
 
-			getFrameData() {
-				const { texIndex } = this.textureData;
-				for (let i = 0; i < VERTICES_PER_SPRITE; i++) {
-					this.frameData[i * 4] = texIndex;
-				}
-				return this.frameData;
+			isVisible() {
+				return !this.hidden;
 			}
 
-			getWave() {
-				return this.wave;
+			static getPosition(sprite) {
+				return sprite.posBuffer;
+			}
+
+			static getVertices(sprite) {
+				return sprite.vertices;
+			}
+			
+			static getChunkIndex(sprite) {
+				return sprite.chunkIndex;
+			}
+
+			static getFrameData(sprite) {
+				const { texIndex } = sprite.textureData;
+				for (let i = 0; i < VERTICES_PER_SPRITE; i++) {
+					sprite.frameData[i * 4] = texIndex;
+				}
+				return sprite.frameData;
+			}
+
+			static getWave(sprite) {
+				return sprite.wave;
+			}
+
+			static isSprite(sprite) {
+				return sprite.isSprite;
 			}
 		}
 

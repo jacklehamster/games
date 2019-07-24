@@ -7,16 +7,17 @@ injector.register("game", [
 				return new Array(size * size).fill(null).map((n, index) => {
 					const col = index % size;
 					const row = Math.floor(index / size);
-					const dx = col - size / 2;
-					const dy = row - size / 2;
-					if (dx * dx + dy * dy > (size / 2) * (size / 2)) {
+					const midSize = size / 2;
+					const dx = col - midSize;
+					const dy = row - midSize;
+					if (dx * dx + dy * dy > midSize * midSize) {
 						return null;
 					}
 
 					return {
 						id,
 						chunk: [ col, row ],
-						pos: [ x + 10 * (col - size/2) / size, y, z + 10 * (row - size/2) / size ],
+						pos: [ x + 10 * (col - midSize) / size, y, z + 10 * (row - midSize) / size ],
 						type: "floor",
 						timeOffset: Math.floor(Math.random()*10000),
 						fps: 3,
@@ -59,36 +60,39 @@ injector.register("game", [
 			},
 			scenes: {
 				"demo": {
-					definitions: [
+					spriteDefinitions: [
 						penguin => {
 							const pos = vec3.create();
-							const mov = vec3.fromValues(0, 0, -1);
-							let moving = false;
+							let movDirection = Utils.getDirectionAngle(vec3.fromValues(0, 0, -1));
+							let previousMoveDirection = -Number.MAX_VALUE;
+							let previousCamRotation = -Number.MAX_VALUE;
+							let textureIndex = -1;
 
 							const angleToTextureIndex = penguin_sprites.map(({id}) => {
 								return textureManager.getTextureData(id).index;
 							});
 
 							return {
-								process: ({cam}) => {
-									const [ x, y, z ] = cam.mov;
-									moving = x !== 0 || y !== 0 || z !== 0;
-								},
 								textureIndex: ({cam}) => {
-									if (moving) {
-										mov.set(Utils.getRelativeDirection(cam.rotation, cam.mov));
+									if (cam.moving) {
+										movDirection = cam.getMovDirection();
 									}
-									const turn = Utils.getCameraAngle(mov, cam.rotation);
-								    const angleIndex = Utils.getAngleIndex(turn, angleToTextureIndex.length);
-								    return angleToTextureIndex[angleIndex];
+									if (movDirection !== previousMoveDirection || previousCamRotation !== cam.rotation) {
+										const turn = Utils.getCameraAngle(movDirection, cam.rotation);
+									    const angleIndex = Utils.getAngleIndex(turn, angleToTextureIndex.length);
+									    textureIndex = angleToTextureIndex[angleIndex];
+										previousMoveDirection = movDirection;
+										previousCamRotation = cam.rotation;
+									}
+									return textureIndex;
 								},
 								pos: ({cam}) => {
 									const [ x, y, z ] = cam.pos;
-									return vec3.set(pos, -x, -y + groundLevel, -z - cameraDistance);
+									return Utils.set3(pos, -x, -y + groundLevel, -z - cameraDistance);
 								},
 								type: "sprite",
 								fps: ({cam}) => {
-									return moving ? 10 : 0;
+									return cam.moving ? 10 : 0;
 								},
 								wave: 0,
 							};
@@ -294,14 +298,37 @@ injector.register("game", [
 							],
 							"type": "ceiling"
 						},
+						landscape => {
+							const pos = vec3.create();
+							return {
+								id: "background",
+								chunk: [
+									0, 0,
+								],
+								pos: ({cam}) => {
+									const [ x, y, z ] = cam.pos;
+									return Utils.set3(pos, -x, -y + groundLevel + 60, -z - cameraDistance - 300);
+								},
+								type: "sprite",
+							};
+						},
 						{
-							"id": "test",
-							"pos": [
+							id: "test",
+							pos: [
 								0,
 								-1,
 								-6.5
 							],
-							"type": "sprite"
+							type: "sprite",
+							hidden: ({cam}, sprite) => {
+								const { definition } = sprite;
+								const [ x0, y0, z0 ] = cam.pos;
+								const [ x1, y1, z1 ] = definition.pos;
+								const dx = x0 - x1;
+								const dz = z0 - z1;
+								const hidden = dx*dx + dz*dz > 1000;
+								return hidden;
+							},
 						},
 						lake("water", waterSize, 0, groundLevel + .2, 0),
 						iceground => {
@@ -365,6 +392,15 @@ injector.register("game", [
 					options: {
 						scale: 10 / waterSize,
 						chunks: Math.max(1, Math.floor(waterSize / 10)),
+					},
+				},
+				{
+					id: 'background',
+					src: 'assets/landscape.jpg',
+					spriteSize: [2560, 978],
+					options: {
+						chunks: 8,
+						scale: 80,
 					},
 				},
 			],

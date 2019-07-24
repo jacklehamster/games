@@ -14,19 +14,21 @@ const Keyboard = (() => {
 	class Keyboard {
 		static makeKeys() {
 			const callback = this.callback;
-			const keys = [];
+			const keys = new Array(256).fill(false);
 			document.addEventListener('keydown', e => {
-				if (!keys[e.keyCode]) {
-					keys[e.keyCode] = true;
-					Keyboard.callback(e.keyCode, true, keys);
+				const { keyCode } = e;
+				if (!keys[keyCode]) {
+					keys[keyCode] = true;
+					Keyboard.callback(keyCode, true, keys);
 				}
 				e.preventDefault();
 			});
 
 			document.addEventListener('keyup', e => {
-				if (keys[e.keyCode]) {
-					keys[e.keyCode] = false;
-					Keyboard.callback(e.keyCode, false, keys);
+				const { keyCode } = e;
+				if (keys[keyCode]) {
+					keys[keyCode] = false;
+					Keyboard.callback(keyCode, false, keys);
 				}
 				e.preventDefault();
 			});
@@ -66,9 +68,7 @@ const Keyboard = (() => {
 	}
 
 	Keyboard.keys = Keyboard.makeKeys();
-	Keyboard.callback = (code, down, keys) => {
-	//	console.log(code, down);
-	};
+	Keyboard.callback = (code, down, keys) => {};
 
 	injector.register("keyboard", identity(Keyboard));
 	return Keyboard;

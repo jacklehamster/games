@@ -1,7 +1,6 @@
-let ImageSplitter;
-(() => {
+const ImageSplitter = (() => {
 	const canvas = document.createElement('canvas');
-	ImageSplitter = class {
+	class ImageSplitter {
 		static splitImage(img, spriteWidth, spriteHeight, callback) {
 			const { naturalWidth, naturalHeight } = img;
 			const cols = Math.ceil(naturalWidth / spriteWidth);
@@ -21,6 +20,7 @@ let ImageSplitter;
 			}		
 		}
 	};
+	return ImageSplitter;
 })();
 
 injector.register("image-splitter", identity(ImageSplitter));
