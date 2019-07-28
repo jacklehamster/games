@@ -20,7 +20,7 @@ const ImageSplitter = (() => {
 			}		
 		}
 	};
+	injector.register("image-splitter", identity(ImageSplitter));
+
 	return ImageSplitter;
 })();
-
-injector.register("image-splitter", identity(ImageSplitter));

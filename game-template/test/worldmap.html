@@ -106,7 +106,7 @@
 						area.update({left, right, top, bottom});
 					}
 
-					const { elementHash, leftLine, rightLine, topLine, bottomLine } = area;
+					const { elementHash, lineIndexRange } = area;
 					context.fillStyle = "#FF9999";
 					for (let e in elementHash) {
 						const { x, y, width, height } = elementHash[e];
@@ -115,16 +115,16 @@
 
 					context.beginPath();
 					context.strokeStyle = "#00FF00";
-					const leftPos = wm.lineGroups[WorldMap.VERTICAL][leftLine].position;
+					const leftPos = wm.lineGroups[WorldMap.VERTICAL][lineIndexRange.left].position;
 					context.moveTo(leftPos, 0);
 					context.lineTo(leftPos, canvas.height);
-					const rightPos = wm.lineGroups[WorldMap.VERTICAL][rightLine].position;
+					const rightPos = wm.lineGroups[WorldMap.VERTICAL][lineIndexRange.right].position;
 					context.moveTo(rightPos, 0);
 					context.lineTo(rightPos, canvas.height);
-					const topPos = wm.lineGroups[WorldMap.HORIZONTAL][topLine].position;
+					const topPos = wm.lineGroups[WorldMap.HORIZONTAL][lineIndexRange.top].position;
 					context.moveTo(0, topPos);
 					context.lineTo(canvas.width, topPos);
-					const bottomPos = wm.lineGroups[WorldMap.HORIZONTAL][bottomLine].position;
+					const bottomPos = wm.lineGroups[WorldMap.HORIZONTAL][lineIndexRange.bottom].position;
 					context.moveTo(0, bottomPos);
 					context.lineTo(canvas.width, bottomPos);
 					context.stroke();

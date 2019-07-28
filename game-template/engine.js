@@ -1,6 +1,6 @@
 injector.register("engine", [ 
-	"game", "canvas", "gl", "utils", "keyboard", "texture-manager", "sprite", "camera",
-	(mainGame, mainCanvas, gl, Utils, Keyboard, textureManager, Sprite, Camera) => {
+	"game", "gl", "utils", "keyboard", "texture-manager", "sprite", "camera",
+	(mainGame, gl, Utils, Keyboard, textureManager, Sprite, Camera) => {
 		const TEXTURE_SIZE = injector.get("texture-size");
 		const INDEX_ARRAY_PER_SPRITE = new Uint16Array([
 			0,  1,  2,
@@ -23,7 +23,8 @@ injector.register("engine", [
 
 		let renderer, sceneIndex;
 
-		const ACCELERATION = .1;
+		const ACCELERATION = .5;
+		const ROTATION_SPEED = .1;
 		const MOVE_SPEED = .12;
 
 		const cam = new Camera();
@@ -54,8 +55,6 @@ injector.register("engine", [
 				this.loadGame(mainGame);
 				this.initGL(gl);
 				this.initializeRenderer();
-
-				addEventListener("resize", () => this.resizeCanvas(mainCanvas));
 				addEventListener("focus", () => this.refreshPause());
 				addEventListener("blur", () => this.refreshPause());
 			}
@@ -94,39 +93,7 @@ injector.register("engine", [
 					globalData.now = now;
 
 					this.refreshMove(mainGame);
-
-					activeSprites.length = 0;
-					sprites.forEach(sprite => {
-						if (sprite.needsRefresh()) {
-							const { definition } = sprite;
-							this.evaluate(definition.process, globalData, sprite);
-							const { id, textureIndex } = definition;
-							const textureData = textureManager.getTextureDataByIndex(this.evaluate(textureIndex, globalData, sprite))
-								|| textureManager.getTextureData(this.evaluate(id, globalData, sprite));
-							if (textureData.textures === null) {
-								return;
-							}
-							const { chunk, pos, type, fps, timeOffset, wave, hidden } = definition;
-							sprite.setTextureData(textureData)
-								.setHidden(this.evaluate(hidden, globalData, sprite))
-								.setPosition(this.evaluate(pos, globalData, sprite))
-								.setChunk(this.evaluate(chunk, globalData, sprite))
-								.setWave(this.evaluate(wave, globalData, sprite) || 0)
-								.setFrameData(this.evaluate(fps, globalData, sprite) || 0, this.evaluate(timeOffset, globalData, sprite) || 0);
-						}
-						if (sprite.isVisible()) {
-							activeSprites.push(sprite);
-						}
-					});
-
-					if (activeSprites.length) {
-						gl.uniform1f(renderer.programInfo.nowLocation, now);
-						this.refreshMatrices(renderer);			
-						const bufferResized = this.ensureBuffer(renderer, activeSprites.length);
-						textureManager.sendTexturesToGPU(renderer.shaderProgram);
-						this.processSprites(renderer, activeSprites, bufferResized);
-						gl.drawElements(gl.TRIANGLES, activeSprites.length * INDEX_ARRAY_PER_SPRITE.length, gl.UNSIGNED_SHORT, 0);
-					}
+					this.refreshSprites(now);
 				}
 
 				if (Utils.debug) {
@@ -134,14 +101,46 @@ injector.register("engine", [
 				}
 			}
 
-			refreshMove({ settings, camera }) {
+			refreshSprites(now) {
+				activeSprites.length = 0;
+				sprites.forEach(sprite => {
+					if (sprite.needsRefresh()) {
+						const { id, textureIndex,
+							chunk, pos, type, fps, timeOffset, wave, hidden } = sprite.definition;
+						const textureData = textureManager.getTextureDataByIndex(this.evaluate(textureIndex, globalData, sprite))
+							|| textureManager.getTextureData(this.evaluate(id, globalData, sprite));
+						if (textureData.textures === null) {
+							return;
+						}
+						sprite.setTextureData(textureData)
+							.setHidden(this.evaluate(hidden, globalData, sprite))
+							.setPosition(this.evaluate(pos, globalData, sprite))
+							.setChunk(this.evaluate(chunk, globalData, sprite))
+							.setWave(this.evaluate(wave, globalData, sprite) || 0)
+							.setFrameData(this.evaluate(fps, globalData, sprite) || 0, this.evaluate(timeOffset, globalData, sprite) || 0);
+					}
+					if (sprite.isVisible()) {
+						activeSprites.push(sprite);
+					}
+				});
+
+				if (activeSprites.length) {
+					gl.uniform1f(renderer.programInfo.nowLocation, now);
+					this.refreshMatrices(renderer);			
+					const bufferResized = this.ensureBuffer(renderer, activeSprites.length);
+					textureManager.sendTexturesToGPU(renderer.shaderProgram);
+					this.processSprites(renderer, activeSprites, bufferResized);
+					gl.drawElements(gl.TRIANGLES, activeSprites.length * INDEX_ARRAY_PER_SPRITE.length, gl.UNSIGNED_SHORT, 0);
+				}
+			}
+
+			refreshMove({ settings, cameraSettings, onMove }) {
 				const { ax, ay, rot } = Keyboard.getActions();
 				const { mov, pos } = cam;
 				cam.addMove(- ax * ACCELERATION, 0, ay * ACCELERATION);
-				cam.decelerate();
 
 				if (rot) {
-					cam.rotate(rot * ACCELERATION * .5);
+					cam.rotate(rot * ROTATION_SPEED * .5);
 					lastRot = rot;
 				} else if (lastRot) {
 					const { angleStep } = settings;
@@ -154,7 +153,7 @@ injector.register("engine", [
 				}
 
 				const directionVector = cam.getRelativeDirection();
-				const [ preX, , preZ ] = pos;
+				const [ preX, preY, preZ ] = pos;
 				pos[0] += directionVector[0] * MOVE_SPEED;
 				pos[1] += directionVector[1] * MOVE_SPEED;
 				pos[2] += directionVector[2] * MOVE_SPEED;
@@ -167,11 +166,11 @@ injector.register("engine", [
 
 				if (viewMatrix) {
 					const { scale } = settings;
-					const h = camera.height || 0;
+					const h = cameraSettings.height || 0;
 					const { cameraQuat } = renderer;
 					const turn = cam.rotation;
 					const tilt = h/2;
-					const zOffset = -camera.distance || 0;
+					const zOffset = -cameraSettings.distance || 0;
 					quat.rotateY(cameraQuat, quat.rotateX(cameraQuat, IDENTITY_QUAT, tilt), turn);
 					mat4.fromRotationTranslationScaleOrigin(viewMatrix, cameraQuat, ZERO_VEC3,
 						vec3.set(vec3temp2, scale, scale, scale), vec3.set(vec3temp, 0, h, zOffset));			
@@ -181,6 +180,10 @@ injector.register("engine", [
 					if (cameraRotationMatrix) {
 						mat4.fromQuat(cameraRotationMatrix, cameraQuat);
 					}
+				}
+
+				if (onMove) {
+					onMove(vec3.set(vec3temp, preX, preY, preZ), pos);
 				}
 			}
 
@@ -193,7 +196,7 @@ injector.register("engine", [
 				if (!projectionMatrix) {
 					projectionMatrix = mat4.create();
 					const fieldOfView = 45 * Math.PI / 180;   // in radians
-					const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+					const aspect = gl.canvas.width / gl.canvas.height;
 					const zNear = 0.1, zFar = 1000.0;
 					mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
 					gl.uniformMatrix4fv(programInfo.projectionLocation, false, projectionMatrix);
@@ -436,24 +439,6 @@ injector.register("engine", [
 				return buffer;
 			}
 
-			resizeCanvas(canvas) {
-				if (canvas) {
-					const { offsetWidth, offsetHeight } = canvas.parentElement.parentElement;
-					const { width, height } = canvas;
-					let ratio = Math.floor(Math.min(offsetWidth / width, offsetHeight / height));
-					if (ratio < 1) {
-						let div = 1;
-						while (1/div * width > offsetWidth || 1/div * height > offsetHeight) {
-							div+= .5;
-						}
-						ratio = 1/div;
-					}
-					canvas.style.width = `${width * ratio}px`;
-					canvas.style.height = `${height * ratio}px`;	
-					gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-				}
-			}
-
 			loadImage(id, src, spriteSize, options) {
 				textureManager.turnImageIntoTexture(id, src, spriteSize, options || {});
 			}
@@ -465,10 +450,10 @@ injector.register("engine", [
 				const [ width, height ] = size;
 				
 				document.title = title;
-				mainCanvas.width = width;
-				mainCanvas.height = height;
-				mainCanvas.style.background = background;
-				this.resizeCanvas(mainCanvas);
+				gl.canvas.width = width;
+				gl.canvas.height = height;
+				gl.canvas.style.background = background;
+				gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 				assets.forEach(asset => this.setupAsset(asset));
 				this.refreshScene(game, sceneIndex);
 			}

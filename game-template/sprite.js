@@ -80,8 +80,7 @@ injector.register("sprite", [
 			}
 
 			updateChunkIndex() {
-				const { chunks } = this.textureData;
-				const [ chunkCols, chunkRows ] = chunks;
+				const [ chunkCols, chunkRows ] = this.textureData.chunks;
 				const chunk = (this.chunkCol % chunkCols) + (this.chunkRow % chunkRows) * chunkCols;
 				this.chunkIndex = Utils.get4Floats(chunk);				
 			}

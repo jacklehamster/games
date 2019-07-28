@@ -40,7 +40,7 @@ class DependencyInjector {
 				this.cache[name] = dependency;
 				return dependency;
 			}
-			throw new Error(`Unable to get ${name}. Dependcy not registered.`);
+			throw new Error(`Unable to get ${name}. Dependency not registered.`);
 		});
 	}
 }

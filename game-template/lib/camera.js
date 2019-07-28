@@ -1,6 +1,15 @@
 const Camera = (() => {
 	const X_POS = 0, Y_POS = 1, Z_POS = 2;
 	const EMPTY_VEC3 = vec3.create();
+	const MAX_SPEED = 2;
+
+	function clamp(num, min, max) {
+		return num < min ? min : num > max ? max : num;
+	}
+
+	function almostZero(num) {
+		return Math.abs(num) < 0.005;
+	}
 
 	class Camera {
 		constructor() {
@@ -15,34 +24,39 @@ const Camera = (() => {
 
 		setMove(x, y, z) {
 			const { mov } = this;
+			x = clamp(x, -MAX_SPEED, MAX_SPEED);
+			y = clamp(y, -MAX_SPEED, MAX_SPEED);
+			z = clamp(z, -MAX_SPEED, MAX_SPEED);
 			if (mov[X_POS] !== x || mov[Y_POS] !== y || mov[Z_POS] !== z) {
 				mov[X_POS] = x;
 				mov[Y_POS] = y;
 				mov[Z_POS] = z;
+				if (almostZero(mov[X_POS])) {
+					mov[X_POS] = 0;
+				}
+				if (almostZero(mov[Y_POS])) {
+					mov[Y_POS] = 0;
+				}
+				if (almostZero(mov[Z_POS])) {
+					mov[Z_POS] = 0;
+				}
+
 				this.relativeDirectionDirty = true;
-				this.moving = true;
+				if (mov[X_POS] === 0 && mov[Y_POS] === 0 && mov[Z_POS] === 0) {
+					this.moving = false;
+				} else {
+					this.moving = true;
+				}
 			}
 		}
 
 		addMove(x, y, z) {
 			const { mov } = this;
-			this.setMove(mov[X_POS] + x, mov[Y_POS] + y, mov[Z_POS] + z);
-		}
-
-		decelerate() {
-			const { mov } = this;
-			if (this.moving) {
-				mov[X_POS] /= 2;
-				mov[Y_POS] /= 2;
-				mov[Z_POS] /= 2;
-				if (Math.abs(mov[X_POS]) < .005 && Math.abs(mov[Y_POS]) < .005 && Math.abs(mov[Z_POS]) < .005) {
-					mov[X_POS] = 0;
-					mov[Y_POS] = 0;
-					mov[Z_POS] = 0;
-					this.relativeDirection = EMPTY_VEC3;
-					this.moving = false;
-				}
-			}
+			this.setMove(
+				x ? mov[X_POS] + x : mov[X_POS] / 2,
+				y ? mov[Y_POS] + y : mov[Y_POS] / 2,
+				z ? mov[Z_POS] + z : mov[Z_POS] / 2,
+			);
 		}
 
 		setRotation(value) {

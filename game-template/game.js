@@ -1,6 +1,6 @@
 injector.register("game", [
-	"utils", "texture-manager",
-	(Utils, textureManager) => {
+	"utils", "canvas", "texture-manager", "worldmap", "canvas-resizer",
+	(Utils, canvas, textureManager, WorldMap, CanvasResizer) => {
 
 		function lake(id, size, x, y, z) {
 			return () => {
@@ -45,6 +45,20 @@ injector.register("game", [
 
 		const cameraDistance = 6;
 		const cameraHeight = 1;
+		const rangeSize = 5;
+
+		const worldmap = new WorldMap();
+
+		worldmap.add({
+			id: "center",
+			range: { left: -5, right: 5, top: -5, bottom: 5 },
+		});
+		let area = worldmap.getArea({ left: 0, right: 0, top: 0, bottom: 0 });
+		area.addCallback((type, element, range, oldRange) => {
+//			console.log(type, element, range, oldRange);
+		});
+
+		const canvasResizer = new CanvasResizer(canvas);
 
 		return {
 			title: "Penguin Quest",
@@ -54,10 +68,11 @@ injector.register("game", [
 				scale: .5,
 				angleStep: Math.PI / 4,
 			},
-			camera: {
+			cameraSettings: {
 				height: cameraHeight,
 				distance: cameraDistance,
 			},
+			onMove: area.makeRangeAutoUpdate(rangeSize),
 			scenes: {
 				"demo": {
 					spriteDefinitions: [

@@ -1,6 +1,6 @@
 const cache = {};
 const canDebug = location.search.indexOf("debug") >= 0;
-const tempVec3 = vec3.create();
+const tempVec3 = vec3.create(), temp2Vec3 = vec3.create();
 const temp4Float = new Float32Array(4);
 const FLOAT_NUMS = new Array(100).fill(null).map((a, index) => {
 	return Float32Array.from([index, index, index, index]);
@@ -97,9 +97,9 @@ class Utils {
 		const [dx, dy, dz] = mov;
 	    const sin = Math.sin(turn);
 	    const cos = Math.cos(turn);
-	    const rdx = (cos * dx - sin * dz);
-	    const rdz = (sin * dx + cos * dz);
-	    vec3.set(tempVec3, rdx, dy, rdz);
+	    tempVec3[0] = cos * dx - sin * dz;
+	    tempVec3[1] = dy;
+	    tempVec3[2] = sin * dx + cos * dz;
 	    if (normalizeValue) {
 	    	vec3.normalize(tempVec3, tempVec3);
 	    }
@@ -142,6 +142,25 @@ class Utils {
 			}
 		}
 		return empty;
+	}
+
+	static getCell(pos) {
+		return Utils.set3(temp2Vec3,
+			Math.floor(pos[0]),
+			Math.floor(pos[1]),
+			Math.floor(pos[2]),
+		);		
+	}
+
+	static checkNewCell(pre, pos) {
+		let newCell = null;
+		for (let i = 0; i < 3; i++) {
+			if (Math.floor(pre[i]) !== Math.floor(pos[i])) {
+				newCell = Utils.getCell(pos);
+				break;
+			}
+		}
+		return newCell;
 	}
 }
 

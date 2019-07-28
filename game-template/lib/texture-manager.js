@@ -100,40 +100,39 @@ const TextureManager = (() => {
 						const cellTag = `${img.src}_${col}_${row}`;
 						let cell = cellCache[cellTag];
 						if (!cell) {
-							cell = gridSlot.getSlot(spriteWidth, spriteHeight);
+							const slot = gridSlot.getSlot(spriteWidth, spriteHeight);
+							const { x, y, index } = slot;
 
-							const glTexture = glTextures[cell.index];
+							const glTexture = glTextures[index];
 							if (!glTexture) {
 								console.warn("No more texture slots available.");
-								gridSlot.putBackSlot(cell);
+								gridSlot.putBackSlot(slot);
 								return;
 							}
-							gl.activeTexture(gl[`TEXTURE${cell.index}`]);
+							gl.activeTexture(gl[`TEXTURE${index}`]);
 							gl.bindTexture(gl.TEXTURE_2D, glTexture);
 							if (glTexture.width < TEXTURE_SIZE || glTexture.height < TEXTURE_SIZE) {
 								glTexture.width = glTexture.height = TEXTURE_SIZE;
 								gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, glTexture.width, glTexture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 							}
 
-							gl.texSubImage2D(gl.TEXTURE_2D, 0, cell.x, cell.y, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+							gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
 							gl.generateMipmap(gl.TEXTURE_2D);
-							cellCache[cellTag] = cell;
+							const textureLeft = 	x / TEXTURE_SIZE;
+							const textureRight = 	x / TEXTURE_SIZE + spriteWidth / TEXTURE_SIZE;
+							const textureTop = 		y / TEXTURE_SIZE;
+							const textureBottom = 	y / TEXTURE_SIZE + spriteHeight / TEXTURE_SIZE;
+							cellCache[cellTag] = cell = {
+								index,
+								coordinates: [
+									textureLeft, textureRight, textureTop, textureBottom,
+								],
+							};
 						}
 						textures.push(cell);
 					});
 
-					data.textures = textures.map(({ x, y, index }) => {
-						const textureLeft = 	x / TEXTURE_SIZE;
-						const textureRight = 	x / TEXTURE_SIZE + spriteWidth / TEXTURE_SIZE;
-						const textureTop = 		y / TEXTURE_SIZE;
-						const textureBottom = 	y / TEXTURE_SIZE + spriteHeight / TEXTURE_SIZE;
-						return {
-							index,
-							coordinates: [
-								textureLeft, textureRight, textureTop, textureBottom,
-							],
-						};
-					});;
+					data.textures = textures;
 				});
 			}		
 		}

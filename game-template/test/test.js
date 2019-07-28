@@ -32,6 +32,34 @@
 		"canvas": canvas => {
 			console.assert(canvas.constructor===HTMLCanvasElement);
 		},
+		"keyboard": Keyboard => {
+			const Keyboard_W = 87;
+			let lastCall = null;
+			Keyboard.setOnKey((keyCode, isDown, keys) => {
+				lastCall = [keyCode, isDown, keys];
+			});
+			document.dispatchEvent(new KeyboardEvent('keydown',{keyCode:Keyboard_W}));
+			console.assert(lastCall[0] === 87);
+			console.assert(lastCall[1]);
+			console.assert(Keyboard.keys[87]);
+			console.assert(Keyboard.keys.filter(a=>a).length === 1);
+			Keyboard.clear();
+		},
+		"image-splitter": ImageSplitter => {
+			const img = new Image();
+			img.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAAGElEQVQIW2P4DwcMDAxAfBvMAhEQMYgcACEHG8ELxtbPAAAAAElFTkSuQmCC";
+			img.addEventListener("load", e => {
+				const calls = [];
+				ImageSplitter.splitImage(img, 2, 1, (img, c, r, canvas) => {
+					calls.push([img, c, r, canvas]);
+				});
+				console.assert(calls.length === 6);
+				console.assert(calls.every(([img, c, r, canvas]) => canvas.width === 2 && canvas.height === 1));
+			});
+		},
+		"canvas-resizer": CanvasResizer => {
+
+		},
 	};
 
 

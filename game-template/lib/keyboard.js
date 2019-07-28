@@ -1,4 +1,4 @@
-const Keyboard = (() => {
+const KeyboardHandler = (() => {
 	const actions = { ax:0, ay:0, a:0 };
 	const LEFT = 37;
 	const RIGHT = 39;
@@ -11,37 +11,37 @@ const Keyboard = (() => {
 	const Q = 81;
 	const E = 69;
 
-	class Keyboard {
-		static makeKeys() {
-			const callback = this.callback;
-			const keys = new Array(256).fill(false);
-			document.addEventListener('keydown', e => {
-				const { keyCode } = e;
-				if (!keys[keyCode]) {
-					keys[keyCode] = true;
-					Keyboard.callback(keyCode, true, keys);
-				}
-				e.preventDefault();
-			});
+	function makeKeys() {
+		const callback = this.callback;
+		const keys = new Array(256).fill(false);
+		document.addEventListener('keydown', e => {
+			const { keyCode } = e;
+			if (!keys[keyCode]) {
+				keys[keyCode] = true;
+				KeyboardHandler.callback(keyCode, true, keys);
+			}
+			e.preventDefault();
+		});
 
-			document.addEventListener('keyup', e => {
-				const { keyCode } = e;
-				if (keys[keyCode]) {
-					keys[keyCode] = false;
-					Keyboard.callback(keyCode, false, keys);
-				}
-				e.preventDefault();
-			});
-			return keys;
-		}
+		document.addEventListener('keyup', e => {
+			const { keyCode } = e;
+			if (keys[keyCode]) {
+				keys[keyCode] = false;
+				KeyboardHandler.callback(keyCode, false, keys);
+			}
+			e.preventDefault();
+		});
+		return keys;
+	}
 
+	class KeyboardHandler {
 		static setOnKey(fun) {
-			Keyboard.callback = fun;
+			KeyboardHandler.callback = fun;
 		}
 
 		static getActions() {
 			let ax = 0, ay = 0, rot = 0;
-			const { keys } = Keyboard;
+			const { keys } = KeyboardHandler;
 			if(keys[DOWN] || keys[S]) {
 				ay--;
 			}
@@ -65,12 +65,16 @@ const Keyboard = (() => {
 			actions.rot = rot;
 			return actions;
 		}
+
+		static clear() {
+			KeyboardHandler.keys.forEach((dummy,index,keys) => keys[index] = false);
+		}
 	}
 
-	Keyboard.keys = Keyboard.makeKeys();
-	Keyboard.callback = (code, down, keys) => {};
+	KeyboardHandler.keys = makeKeys();
+	KeyboardHandler.callback = (code, down, keys) => {};
 
-	injector.register("keyboard", identity(Keyboard));
-	return Keyboard;
+	injector.register("keyboard", identity(KeyboardHandler));
+	return KeyboardHandler;
 })();
 

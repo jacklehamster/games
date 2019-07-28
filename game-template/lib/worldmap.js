@@ -5,6 +5,8 @@ const WorldMap = (() => {
 	const BEFORE = 0;
 	const AFTER = 1;
 
+	let tempRange = { left: 0, right: 0, top: 0, bottom: 0 };
+
 	class Line {
 		constructor(position) {
 			this.elementHashes = [
@@ -35,46 +37,65 @@ const WorldMap = (() => {
 		}
 	}
 
+	const ADD = "add";
+	const REMOVE = "remove";
+	const UPDATE = "update";
+
 	class Area {
 		constructor(worldmap, left, right, top, bottom) {
-			this.left = left;
-			this.right = right;
-			this.top = top;
-			this.bottom = bottom;
-			this.leftLine = 0;
-			this.rightLine = 0;
-			this.topLine = 0;
-			this.bottomLine = 0
+			this.range = {
+				left, right, top, bottom,
+			};
+			this.lineIndexRange = {
+				left: 0, right: 0, top: 0, bottom: 0,
+			};
 			this.worldmap = worldmap;
 			this.elementHash = {};
+			this.callbacks = [];
 		}
 
 		checkElement(element, left, right, top, bottom) {
-			if (Area.intersect(element, left, right, top, bottom)) {
-				this.elementHash[element.id] = element;
+			if (Area.intersect(element.range, left, right, top, bottom)) {
+				if (!this.elementHash[element.id]) {
+					this.addElement(element);
+				}
 			} else {
 				this.removeElement(element);
 			}
 		}
 
-		static intersect(element, left, right, top, bottom) {
-			const range = element.range;
-			return range.left <= right && range.right >= left
-				&& range.top <= bottom && range.bottom >= top;
+		static intersect(range, left, right, top, bottom) {
+			return range.left <= right && range.right >= left && range.top <= bottom && range.bottom >= top;
+		}
+
+		addElement(element) {
+			this.elementHash[element.id] = element;	
+			this.callbacks.forEach(callback => {
+				callback(ADD, element, this.range);
+			});
 		}
 
 		removeElement(element) {
 			const { id } = element;
 			if (this.elementHash[id]) {
 				delete this.elementHash[id];
+				this.callbacks.forEach(callback => {
+					callback(REMOVE, element);
+				});
 			}
 		}
 
+		updateElement(element, oldRange) {
+			this.callbacks.forEach(callback => {
+				callback(UPDATE, element, this.range, oldRange);
+			});
+		}
+
 		setLines(leftLine, rightLine, topLine, bottomLine) {
-			this.leftLine = leftLine;
-			this.rightLine = rightLine;
-			this.topLine = topLine;
-			this.bottomLine = bottomLine;
+			this.lineIndexRange.left = leftLine;
+			this.lineIndexRange.right = rightLine;
+			this.lineIndexRange.top = topLine;
+			this.lineIndexRange.bottom = bottomLine;
 		}
 
 		getElements() {
@@ -82,22 +103,23 @@ const WorldMap = (() => {
 		}
 
 		update(range) {
+			const oldRange = { ... this.range };
 			const { left, right, top, bottom } = range;
 			const verticleLines = this.worldmap.lineGroups[VERTICAL];
-			if (left < this.left) {
-				for (let l = this.leftLine; l >= 0; l--) {
+			if (left < this.range.left) {
+				for (let l = this.lineIndexRange.left; l >= 0; l--) {
 					const { position, elementHashes } = verticleLines[l];
 					const elementsNew = elementHashes[BEFORE];
 					for (let e in elementsNew) {
 						this.checkElement(elementsNew[e], left, right, top, bottom);
 					}
-					this.leftLine = l;
+					this.lineIndexRange.left = l;
 					if (position < left) {
 						break;
 					}
 				}
-			} else if (left > this.left) {
-				for (let l = this.leftLine; l < verticleLines.length; l++) {
+			} else if (left > this.range.left) {
+				for (let l = this.lineIndexRange.left; l < verticleLines.length; l++) {
 					const { position, elementHashes } = verticleLines[l];
 					if (position > left) {
 						break;
@@ -106,24 +128,24 @@ const WorldMap = (() => {
 					for (let e in elementsGone) {
 						this.removeElement(elementsGone[e]);
 					}
-					this.leftLine = l;
+					this.lineIndexRange.left = l;
 				}
 			}
-			this.left = left;
-			if (right > this.right) {
-				for (let l = this.rightLine; l < verticleLines.length; l++) {
+			this.range.left = left;
+			if (right > this.range.right) {
+				for (let l = this.lineIndexRange.right; l < verticleLines.length; l++) {
 					const { position, elementHashes } = verticleLines[l];
 					const elementsNew = elementHashes[AFTER];
 					for (let e in elementsNew) {
 						this.checkElement(elementsNew[e], left, right, top, bottom);
 					}
-					this.rightLine = l;
+					this.lineIndexRange.right = l;
 					if (position > right) {
 						break;
 					}
 				}
-			} else if (right < this.right) {
-				for (let l = this.rightLine; l >=0; l--) {
+			} else if (right < this.range.right) {
+				for (let l = this.lineIndexRange.right; l >=0; l--) {
 					const { position, elementHashes } = verticleLines[l];
 					if (position < right) {
 						break;
@@ -132,27 +154,27 @@ const WorldMap = (() => {
 					for (let e in elementsGone) {
 						this.removeElement(elementsGone[e]);
 					}
-					this.rightLine = l;
+					this.lineIndexRange.right = l;
 				}
 
 			}
-			this.right = right;
+			this.range.right = right;
 
 			const horizontalLines = this.worldmap.lineGroups[HORIZONTAL];
-			if (top < this.top) {
-				for (let l = this.topLine; l >= 0; l--) {
+			if (top < this.range.top) {
+				for (let l = this.lineIndexRange.top; l >= 0; l--) {
 					const { position, elementHashes } = horizontalLines[l];
 					const elementsNew = elementHashes[BEFORE];
 					for (let e in elementsNew) {
 						this.checkElement(elementsNew[e], left, right, top, bottom);
 					}
-					this.topLine = l;
+					this.lineIndexRange.top = l;
 					if (position < top) {
 						break;
 					}
 				}
-			} else if (top > this.top) {
-				for (let l = this.topLine; l < horizontalLines.length; l++) {
+			} else if (top > this.range.top) {
+				for (let l = this.lineIndexRange.top; l < horizontalLines.length; l++) {
 					const { position, elementHashes } = horizontalLines[l];
 					if (position > top) {
 						break;
@@ -161,24 +183,24 @@ const WorldMap = (() => {
 					for (let e in elementsGone) {
 						this.removeElement(elementsGone[e]);
 					}
-					this.topLine = l;
+					this.lineIndexRange.top = l;
 				}
 			}
-			this.top = top;
-			if (bottom > this.bottom) {
-				for (let l = this.bottomLine; l < horizontalLines.length; l++) {
+			this.range.top = top;
+			if (bottom > this.range.bottom) {
+				for (let l = this.lineIndexRange.bottom; l < horizontalLines.length; l++) {
 					const { position, elementHashes } = horizontalLines[l];
 					const elementsNew = elementHashes[AFTER];
 					for (let e in elementsNew) {
 						this.checkElement(elementsNew[e], left, right, top, bottom);
 					}
-					this.bottomLine = l;
+					this.lineIndexRange.bottom = l;
 					if (position > bottom) {
 						break;
 					}
 				}
-			} else if (bottom < this.bottom) {
-				for (let l = this.bottomLine; l >= 0; l--) {
+			} else if (bottom < this.range.bottom) {
+				for (let l = this.lineIndexRange.bottom; l >= 0; l--) {
 					const { position, elementHashes } = horizontalLines[l];
 					if (position < bottom) {
 						break;
@@ -187,11 +209,44 @@ const WorldMap = (() => {
 					for (let e in elementsGone) {
 						this.removeElement(elementsGone[e]);
 					}
-					this.bottomLine = l;
+					this.lineIndexRange.bottom = l;
 				}
 			}
-			this.bottom = bottom;
+			this.range.bottom = bottom;
+
+			const elements = this.getElements();
+			for (let id in elements) {
+				this.updateElement(elements[id], oldRange);
+			}
 		}
+
+		addCallback(callback) {
+			this.callbacks.push(callback);
+
+			const elements = this.getElements();
+			for (let id in elements) {
+				callback(ADD, elements[id], this.range);
+			}
+		}
+
+		removeCallback(callback) {
+			this.callbacks = this.callbacks.filter(c => c !== callback);
+		}
+
+		makeRangeAutoUpdate(rangeSize) {
+			const area = this;
+			return (from, to) => {
+				const newCell = Utils.checkNewCell(from, to);
+				if (newCell) {
+					const [ x, y, z ] = newCell;
+					tempRange.left = x - rangeSize;
+					tempRange.right = x + rangeSize;
+					tempRange.top = z - rangeSize;
+					tempRange.bottom = z + rangeSize;
+					area.update(tempRange);
+				}
+			};
+		}				
 	}
 
 	const INFINITY_RANGE = { 
