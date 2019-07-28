@@ -43,15 +43,18 @@ class GridSlot {
 	}
 
 	static compareSlot(slot1, slot2) {
-		// const minSize1 = Math.min(slot1.width, slot1.height);
-		// const minSize2 = Math.min(slot2.width, slot2.height);
-		// if (minSize1 !== minSize2) {
-		// 	return minSize1 - minSize2;
-		// }
-
 		const area1 = slot1.width * slot1.height;
 		const area2 = slot2.width * slot2.height;
-		return area1 - area2;
+		if (area1 !== area2) {
+			return area1 - area2;
+		}
+		const minSize1 = Math.min(slot1.width, slot1.height);
+		const minSize2 = Math.min(slot2.width, slot2.height);
+		if (minSize1 !== minSize2) {
+			return minSize1 - minSize2;
+		}
+
+		return 0;
 	}
 
 	getSlot(w, h) {
@@ -113,7 +116,6 @@ class GridSlot {
 				return { index, x, y, width, height };				
 			}
 		}
-		console.log(cell1, cell2);
 		return null;
 	}
 

@@ -21,6 +21,8 @@ injector.register("engine", [
 
 		const SIZE_INCREASE = 500;
 
+		const canProjectionMatrixChange = false;
+
 		let renderer, sceneIndex;
 
 		const ACCELERATION = .5;
@@ -202,10 +204,10 @@ injector.register("engine", [
 					gl.uniformMatrix4fv(programInfo.projectionLocation, false, projectionMatrix);
 					cache.projectionMatrix = mat4.create();
 				}
-				// if (!mat4.exactEquals(projectionMatrix, cache.projectionMatrix)) {
-				// 	gl.uniformMatrix4fv(programInfo.projectionLocation, false, projectionMatrix);
-				// 	mat4.copy(cache.projectionMatrix, projectionMatrix);
-				// }
+				if (canProjectionMatrixChange && !mat4.exactEquals(projectionMatrix, cache.projectionMatrix)) {
+					gl.uniformMatrix4fv(programInfo.projectionLocation, false, projectionMatrix);
+					mat4.copy(cache.projectionMatrix, projectionMatrix);
+				}
 
 				if (!viewMatrix) {
 					const [ x, y, z ] = vec3.fromValues(0, 0, 0);

@@ -60,6 +60,9 @@
 		"canvas-resizer": CanvasResizer => {
 
 		},
+		"grid-slot": GridSlot => {
+
+		},
 	};
 
 
