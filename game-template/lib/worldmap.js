@@ -54,13 +54,14 @@ const WorldMap = (() => {
 			this.callbacks = [];
 		}
 
-		checkElement(element, left, right, top, bottom) {
+		checkElement(element, range) {
+			const { left, right, top, bottom } = range;
 			if (Area.intersect(element.range, left, right, top, bottom)) {
 				if (!this.elementHash[element.id]) {
-					this.addElement(element);
+					this.addElement(element, range);
 				}
 			} else {
-				this.removeElement(element);
+				this.removeElement(element, range);
 			}
 		}
 
@@ -68,26 +69,26 @@ const WorldMap = (() => {
 			return range.left <= right && range.right >= left && range.top <= bottom && range.bottom >= top;
 		}
 
-		addElement(element) {
+		addElement(element, range) {
 			this.elementHash[element.id] = element;	
 			this.callbacks.forEach(callback => {
-				callback(ADD, element, this.range);
+				callback(ADD, element, range);
 			});
 		}
 
-		removeElement(element) {
+		removeElement(element, range) {
 			const { id } = element;
 			if (this.elementHash[id]) {
 				delete this.elementHash[id];
 				this.callbacks.forEach(callback => {
-					callback(REMOVE, element);
+					callback(REMOVE, element, range);
 				});
 			}
 		}
 
-		updateElement(element, oldRange) {
+		updateElement(element, range, oldRange) {
 			this.callbacks.forEach(callback => {
-				callback(UPDATE, element, this.range, oldRange);
+				callback(UPDATE, element, range, oldRange);
 			});
 		}
 
@@ -111,7 +112,7 @@ const WorldMap = (() => {
 					const { position, elementHashes } = verticleLines[l];
 					const elementsNew = elementHashes[BEFORE];
 					for (let e in elementsNew) {
-						this.checkElement(elementsNew[e], left, right, top, bottom);
+						this.checkElement(elementsNew[e], range);
 					}
 					this.lineIndexRange.left = l;
 					if (position < left) {
@@ -126,18 +127,19 @@ const WorldMap = (() => {
 					}
 					const elementsGone = elementHashes[BEFORE];
 					for (let e in elementsGone) {
-						this.removeElement(elementsGone[e]);
+						this.removeElement(elementsGone[e], range);
 					}
 					this.lineIndexRange.left = l;
 				}
 			}
 			this.range.left = left;
+
 			if (right > this.range.right) {
 				for (let l = this.lineIndexRange.right; l < verticleLines.length; l++) {
 					const { position, elementHashes } = verticleLines[l];
 					const elementsNew = elementHashes[AFTER];
 					for (let e in elementsNew) {
-						this.checkElement(elementsNew[e], left, right, top, bottom);
+						this.checkElement(elementsNew[e], range);
 					}
 					this.lineIndexRange.right = l;
 					if (position > right) {
@@ -152,7 +154,7 @@ const WorldMap = (() => {
 					}
 					const elementsGone = elementHashes[AFTER];
 					for (let e in elementsGone) {
-						this.removeElement(elementsGone[e]);
+						this.removeElement(elementsGone[e], range);
 					}
 					this.lineIndexRange.right = l;
 				}
@@ -166,7 +168,7 @@ const WorldMap = (() => {
 					const { position, elementHashes } = horizontalLines[l];
 					const elementsNew = elementHashes[BEFORE];
 					for (let e in elementsNew) {
-						this.checkElement(elementsNew[e], left, right, top, bottom);
+						this.checkElement(elementsNew[e], range);
 					}
 					this.lineIndexRange.top = l;
 					if (position < top) {
@@ -181,18 +183,19 @@ const WorldMap = (() => {
 					}
 					const elementsGone = elementHashes[BEFORE];
 					for (let e in elementsGone) {
-						this.removeElement(elementsGone[e]);
+						this.removeElement(elementsGone[e], range);
 					}
 					this.lineIndexRange.top = l;
 				}
 			}
 			this.range.top = top;
+
 			if (bottom > this.range.bottom) {
 				for (let l = this.lineIndexRange.bottom; l < horizontalLines.length; l++) {
 					const { position, elementHashes } = horizontalLines[l];
 					const elementsNew = elementHashes[AFTER];
 					for (let e in elementsNew) {
-						this.checkElement(elementsNew[e], left, right, top, bottom);
+						this.checkElement(elementsNew[e], range);
 					}
 					this.lineIndexRange.bottom = l;
 					if (position > bottom) {
@@ -207,7 +210,7 @@ const WorldMap = (() => {
 					}
 					const elementsGone = elementHashes[AFTER];
 					for (let e in elementsGone) {
-						this.removeElement(elementsGone[e]);
+						this.removeElement(elementsGone[e], range);
 					}
 					this.lineIndexRange.bottom = l;
 				}
@@ -216,7 +219,7 @@ const WorldMap = (() => {
 
 			const elements = this.getElements();
 			for (let id in elements) {
-				this.updateElement(elements[id], oldRange);
+				this.updateElement(elements[id], range, oldRange);
 			}
 		}
 
@@ -302,13 +305,6 @@ const WorldMap = (() => {
 			}
 		}
 
-		static incrementElementCount(element, inc, elementsCount) {
-			if (!elementsCount[element.id]) {
-				elementsCount[element.id] = { element, count: 0, };
-			}
-			elementsCount[element.id].count += inc;
-		}
-
 		static iterate(lines, start, end, checkCallback) {
 			let startLine = null, endLine = null;
 			for (let l = 0; l < lines.length; l++) {
@@ -336,7 +332,7 @@ const WorldMap = (() => {
 			const area = new Area(this, left, right, top, bottom);
 			const elementsCount = {};
 			const [ leftLine, rightLine ] = WorldMap.iterate(this.lineGroups[VERTICAL], left, right, element => {
-				area.checkElement(element, left, right, top, bottom);
+				area.checkElement(element, range);
 			});
 			const [ topLine, bottomLine ] = WorldMap.iterate(this.lineGroups[HORIZONTAL], top, bottom, element => {
 				//	no need to check. Previous iterate does that.

@@ -1,6 +1,6 @@
 injector.register("engine", [ 
-	"game", "gl", "utils", "keyboard", "texture-manager", "sprite", "camera",
-	(mainGame, gl, Utils, Keyboard, textureManager, Sprite, Camera) => {
+	"gl", "utils", "keyboard", "texture-manager", "sprite", "camera",
+	(gl, Utils, Keyboard, textureManager, Sprite, Camera) => {
 		const TEXTURE_SIZE = injector.get("texture-size");
 		const INDEX_ARRAY_PER_SPRITE = new Uint16Array([
 			0,  1,  2,
@@ -23,7 +23,7 @@ injector.register("engine", [
 
 		const canProjectionMatrixChange = false;
 
-		let renderer, sceneIndex;
+		let renderer;
 
 		const ACCELERATION = .5;
 		const ROTATION_SPEED = .1;
@@ -54,7 +54,6 @@ injector.register("engine", [
 
 		class Engine {
 			constructor() {
-				this.loadGame(mainGame);
 				this.initGL(gl);
 				this.initializeRenderer();
 				addEventListener("focus", () => this.refreshPause());
@@ -91,10 +90,10 @@ injector.register("engine", [
 			}
 
 			refresh(now) {
-				if (mainGame && renderer && !gamePaused) {
+				if (renderer && !gamePaused) {
 					globalData.now = now;
 
-					this.refreshMove(mainGame);
+					this.refreshMove();
 					this.refreshSprites(now);
 				}
 
@@ -136,16 +135,31 @@ injector.register("engine", [
 				}
 			}
 
-			refreshMove({ settings, cameraSettings, onMove }) {
+			setSize(width, height) {
+				gl.viewport(0, 0, width, height);
+			}
+
+			setCameraSettings({ height, distance }) {
+				this.cameraDistance = distance;
+				this.cameraHeight = height;
+			}
+
+			setMoveSettings({ angleStep, scale, onMove }) {
+				this.moveSettings = {
+					angleStep, scale, onMove,
+				};
+			}
+
+			refreshMove() {
 				const { ax, ay, rot } = Keyboard.getActions();
 				const { mov, pos } = cam;
+				const { angleStep, scale, onMove } = this.moveSettings;
 				cam.addMove(- ax * ACCELERATION, 0, ay * ACCELERATION);
 
 				if (rot) {
 					cam.rotate(rot * ROTATION_SPEED * .5);
 					lastRot = rot;
 				} else if (lastRot) {
-					const { angleStep } = settings;
 					const goal = lastRot < 0 ? Math.floor(cam.rotation / angleStep) * angleStep :
 						Math.ceil(cam.rotation / angleStep) * angleStep;
 					cam.rotate((goal - cam.rotation) /8);
@@ -155,11 +169,11 @@ injector.register("engine", [
 					}
 				}
 
-				const directionVector = cam.getRelativeDirection();
+				const [ directionX, directionY, directionZ ] = cam.getRelativeDirection();
 				const [ preX, preY, preZ ] = pos;
-				pos[0] += directionVector[0] * MOVE_SPEED;
-				pos[1] += directionVector[1] * MOVE_SPEED;
-				pos[2] += directionVector[2] * MOVE_SPEED;
+				pos[0] += directionX * MOVE_SPEED;
+				pos[1] += directionY * MOVE_SPEED;
+				pos[2] += directionZ * MOVE_SPEED;
 
 				if (Math.floor(preX) !== Math.floor(pos[0]) || Math.floor(preZ) !== Math.floor(pos[2])) {
 					if (Utils.debug) {
@@ -168,12 +182,11 @@ injector.register("engine", [
 				}
 
 				if (viewMatrix) {
-					const { scale } = settings;
-					const h = cameraSettings.height || 0;
+					const h = this.cameraHeight || 0;
 					const { cameraQuat } = renderer;
 					const turn = cam.rotation;
 					const tilt = h/2;
-					const zOffset = -cameraSettings.distance || 0;
+					const zOffset = -this.cameraDistance || 0;
 					quat.rotateY(cameraQuat, quat.rotateX(cameraQuat, IDENTITY_QUAT, tilt), turn);
 					mat4.fromRotationTranslationScaleOrigin(viewMatrix, cameraQuat, ZERO_VEC3,
 						vec3.set(vec3temp2, scale, scale, scale), vec3.set(vec3temp, 0, h, zOffset));			
@@ -446,21 +459,6 @@ injector.register("engine", [
 				textureManager.turnImageIntoTexture(id, src, spriteSize, options || {});
 			}
 
-			loadGame(game) {
-				sceneIndex = game.firstScene || Object.keys(game.scenes)[0];
-				const { assets, title, settings } = game;
-				const { background, size } = settings;
-				const [ width, height ] = size;
-				
-				document.title = title;
-				gl.canvas.width = width;
-				gl.canvas.height = height;
-				gl.canvas.style.background = background;
-				gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-				assets.forEach(asset => this.setupAsset(asset));
-				this.refreshScene(game, sceneIndex);
-			}
-
 			refreshScene(game, sceneIndex) {
 				this.setupScene(game.scenes[sceneIndex]);
 			}
@@ -524,7 +522,7 @@ injector.register("engine", [
 			}
 		}
 
-		return new Engine();
+		return Engine;
 	}
 ]);
 

@@ -52,13 +52,13 @@
 	<script src="lib/worldmap.js"></script>
 	<script src="lib/camera.js"></script>
 	<script src="lib/canvas-resizer.js"></script>
-	<script src="sprite.js"></script>
-	<script src="engine.js"></script>
+	<script src="lib/engine.js"></script>
+	<script src="lib/sprite.js"></script>
 	<script src="game.js"></script>
 	<script>
 		document.addEventListener("DOMContentLoaded", e => {
-			const [ engine ] = injector.get("engine");
-			engine.start();
+			const [ game ] = injector.get("game");
+			game.start();
 		});
 	</script>
 

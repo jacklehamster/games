@@ -1,6 +1,6 @@
 injector.register("game", [
-	"utils", "canvas", "texture-manager", "worldmap", "canvas-resizer",
-	(Utils, canvas, textureManager, WorldMap, CanvasResizer) => {
+	"utils", "canvas", "texture-manager", "worldmap", "canvas-resizer", "engine",
+	(Utils, canvas, textureManager, WorldMap, CanvasResizer, Engine) => {
 
 		function lake(id, size, x, y, z) {
 			return () => {
@@ -53,27 +53,114 @@ injector.register("game", [
 		worldmap.add({
 			id: "center",
 			range: { left: -5, right: 5, top: -5, bottom: 5 },
+			sprite: {
+				id: "test",
+				pos: [ 0, -1, -6.5 ],
+				type: "sprite",
+			},
 		});
 		let area = worldmap.getArea({ left: 0, right: 0, top: 0, bottom: 0 });
 		area.addCallback((type, element, range, oldRange) => {
-//			console.log(type, element, range, oldRange);
+//			console.log(type, element, range, oldRange, element.sprite);
 		});
 
 		const canvasResizer = new CanvasResizer(canvas);
+		const engine = new Engine();
 
-		return {
+		function setupEngine(engine, game, assets) {
+			const sceneIndex = game.firstScene || Object.keys(game.scenes)[0];
+			const { title, settings, cameraSettings, moveSettings } = game;
+			const { background, size } = settings;
+			const [ width, height ] = size;
+			
+			document.title = title;
+			canvas.width = width;
+			canvas.height = height;
+			canvas.style.background = background;
+
+			engine.setSize(canvas.width, canvas.height);
+			engine.setupAsset(assets);
+			engine.refreshScene(game, sceneIndex);	
+			engine.setCameraSettings(cameraSettings);
+			engine.setMoveSettings(moveSettings);	
+			engine.start();	
+		}
+
+		const assets = [
+			penguin => {
+				const spriteSize = [64, 64];
+				return penguin_sprites.map(({ id, src, scale, flip }) => {
+					return {
+						id, src, spriteSize,
+						options: {
+							scale, flip,
+						},
+					};
+				});
+			},
+			{
+				id: 'test',
+				src: 'assets/32x64.png',
+				spriteSize: [32, 64],
+				options: {
+					scale: 2,
+				},
+			},
+			{
+				id: 'icewall',
+				src: 'assets/icewall.jpg',
+				spriteSize: [800, 800],
+				options: {
+					chunks: 8,
+				},
+			},
+			{
+				id: 'icefloor',
+				src: 'assets/icefloor.jpg',
+				spriteSize: [800, 800],
+				options: {
+					chunks: 8,
+					scale: 4,
+				},
+			},
+			{
+				id: 'water',
+				src: 'assets/water.png',
+				spriteSize: [32, 32],
+				options: {
+					scale: 10 / waterSize,
+					chunks: Math.max(1, Math.floor(waterSize / 10)),
+				},
+			},
+			{
+				id: 'background',
+				src: 'assets/landscape.jpg',
+				spriteSize: [2560, 978],
+				options: {
+					chunks: 8,
+					scale: 80,
+				},
+			},
+		];
+
+
+
+		const game = {
+			start: () => setupEngine(engine, game, assets),
 			title: "Penguin Quest",
 			settings: {
 				size: [ 4096, 2160 ],
 				background: "#DDEEFF",
+			},
+			moveSettings: {
 				scale: .5,
 				angleStep: Math.PI / 4,
+				onMove: area.makeRangeAutoUpdate(rangeSize),
 			},
 			cameraSettings: {
 				height: cameraHeight,
 				distance: cameraDistance,
 			},
-			onMove: area.makeRangeAutoUpdate(rangeSize),
 			scenes: {
 				"demo": {
 					spriteDefinitions: [
@@ -328,24 +415,6 @@ injector.register("game", [
 								type: "sprite",
 							};
 						},
-						{
-							id: "test",
-							pos: [
-								0,
-								-1,
-								-6.5
-							],
-							type: "sprite",
-							hidden: ({cam}, sprite) => {
-								const { definition } = sprite;
-								const [ x0, y0, z0 ] = cam.pos;
-								const [ x1, y1, z1 ] = definition.pos;
-								const dx = x0 - x1;
-								const dz = z0 - z1;
-								const hidden = dx*dx + dz*dz > 1000;
-								return hidden;
-							},
-						},
 						lake("water", waterSize, 0, groundLevel + .2, 0),
 						iceground => {
 							return new Array(groundSize * groundSize).fill(null).map((n, index) => {
@@ -364,62 +433,8 @@ injector.register("game", [
 					],
 				},
 			},
-			assets: [
-				penguin => {
-					const spriteSize = [64, 64];
-					return penguin_sprites.map(({ id, src, scale, flip }) => {
-						return {
-							id, src, spriteSize,
-							options: {
-								scale, flip,
-							},
-						};
-					});
-				},
-				{
-					id: 'test',
-					src: 'assets/32x64.png',
-					spriteSize: [32, 64],
-					options: {
-						scale: 2,
-					},
-				},
-				{
-					id: 'icewall',
-					src: 'assets/icewall.jpg',
-					spriteSize: [800, 800],
-					options: {
-						chunks: 8,
-					},
-				},
-				{
-					id: 'icefloor',
-					src: 'assets/icefloor.jpg',
-					spriteSize: [800, 800],
-					options: {
-						chunks: 8,
-						scale: 4,
-					},
-				},
-				{
-					id: 'water',
-					src: 'assets/water.png',
-					spriteSize: [32, 32],
-					options: {
-						scale: 10 / waterSize,
-						chunks: Math.max(1, Math.floor(waterSize / 10)),
-					},
-				},
-				{
-					id: 'background',
-					src: 'assets/landscape.jpg',
-					spriteSize: [2560, 978],
-					options: {
-						chunks: 8,
-						scale: 80,
-					},
-				},
-			],
+			assets,
 		};
+		return game;
 	}
 ]);
