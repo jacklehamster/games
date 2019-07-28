@@ -149,7 +149,8 @@ injector.register("engine", [
 					const goal = lastRot < 0 ? Math.floor(cam.rotation / angleStep) * angleStep :
 						Math.ceil(cam.rotation / angleStep) * angleStep;
 					cam.rotate((goal - cam.rotation) /8);
-					if (Math.abs(cam.rotation - goal) < .01) {
+					if (Math.abs(cam.rotation - goal) < .001) {
+						cam.setRotation(goal);
 						lastRot = 0;
 					}
 				}

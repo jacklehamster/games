@@ -4,6 +4,7 @@ injector.register("game", [
 
 		function lake(id, size, x, y, z) {
 			return () => {
+				const wave = Float32Array.from([1,1,1,1]);
 				return new Array(size * size).fill(null).map((n, index) => {
 					const col = index % size;
 					const row = Math.floor(index / size);
@@ -21,7 +22,7 @@ injector.register("game", [
 						type: "floor",
 						timeOffset: Math.floor(Math.random()*10000),
 						fps: 3,
-						wave: Float32Array.from([1,1,1,1]),
+						wave,
 					};
 				}).filter(a => a);
 			};
