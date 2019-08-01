@@ -35,7 +35,6 @@ injector.register("sprite", [
 				sprite.static = false;
 				sprite.vertices = null;
 				sprite.isSprite = Utils.get4Floats(1);
-				sprite.hidden = false;
 			}
 
 			setDefinition(definition) {
@@ -48,7 +47,11 @@ injector.register("sprite", [
 			}
 
 			needsRefresh() {
-				return !this.static || this.slotIndex < 0;
+				return !this.static || this.slotIndex < 0 || this.textureData.empty;
+			}
+			
+			makeDirty() {
+				this.slotIndex = -1;
 			}
 
 			setPosition(pos) {
@@ -71,17 +74,15 @@ injector.register("sprite", [
 				return this;
 			}
 
-			setHidden(hidden) {
-				if (this.hidden !== hidden) {
-					this.hidden = hidden;
-					this.slotIndex = -1;
-				}
-				return this;
-			}
-
 			updateChunkIndex() {
 				const [ chunkCols, chunkRows ] = this.textureData.chunks;
-				const chunk = (this.chunkCol % chunkCols) + (this.chunkRow % chunkRows) * chunkCols;
+				let chunkCol = this.chunkCol;
+				let chunkRow = this.chunkRow;
+				chunkCol %= chunkCols;
+				if (chunkCol < 0) chunkCol += chunkCols;
+				chunkRow %= chunkRows;
+				if (chunkRow < 0) chunkRow += chunkRows; 
+				const chunk = chunkCol + chunkRow * chunkCols;
 				this.chunkIndex = Utils.get4Floats(chunk);				
 			}
 
@@ -122,6 +123,7 @@ injector.register("sprite", [
 			}
 
 			setWave(wave) {
+				//	[botleft, botright, topright, topleft]
 				if (wave.constructor === Number) {
 					if (this.wave[0] != wave) {
 						this.wave.fill(wave);
@@ -146,10 +148,6 @@ injector.register("sprite", [
 					this.slotIndex = -1;
 				}
 				return this;
-			}
-
-			isVisible() {
-				return !this.hidden;
 			}
 
 			static getPosition(sprite) {
@@ -178,6 +176,14 @@ injector.register("sprite", [
 
 			static isSprite(sprite) {
 				return sprite.isSprite;
+			}
+
+			onRecycle() {
+				this.slotIndex = -1;
+			}
+			
+			isRecycled() {
+				return this.recycled;
 			}
 		}
 

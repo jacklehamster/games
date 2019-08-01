@@ -24,17 +24,29 @@
 class Recycler {
 	static wrap(classObj, initFunction) {
 		const bin = [];
+		if (!initFunction) {
+			initFunction = () => {};
+		}
 		classObj.create = function() {
-			const obj = bin.length ? bin.pop() : new classObj();
+			const isNew = !bin.length;
+			const obj = !isNew ? bin.pop() : new classObj();
 			initFunction(obj, ... arguments);
 			obj.recycled = false;
+			obj.isNew = isNew;
 			return obj;
 		};	
 
 		classObj.prototype.recycle = function() {
 			bin.push(this);
 			this.recycled = true;
+			if (this.onRecycle) {
+				this.onRecycle();
+			}
 		};
+	}
+
+	static isRecycled(element) {
+		return element.recycled;
 	}
 }
 

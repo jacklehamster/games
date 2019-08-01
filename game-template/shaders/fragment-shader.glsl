@@ -4,9 +4,11 @@ const int NUM_TEXTURES = 16;
 
 uniform float now;
 uniform sampler2D uTextureSampler[NUM_TEXTURES];
+uniform vec4 background;
 varying highp vec2 vTextureCoord;
 varying highp float zDist;
 varying highp float textureSlot;
+varying highp float isOpaque;
 
 vec4 getTextureColor(float textureSlot, vec2 vTextureCoord) {
 	int textureInt = int(textureSlot);
@@ -45,9 +47,10 @@ vec4 alterHueSatLum(vec4 color, vec3 vHSV) {
 
 void main(void) {
 	vec4 color = getTextureColor(textureSlot, vTextureCoord);
-	if (color.w <= 0.0) {
+	if (isOpaque < 1.0 && color.w <= 0.0) {
 		discard;
 	}
 	color = alterHueSatLum(color, vec3(1.0, 1.0, min(1.2,max(0.0, .8 + zDist * .3))));
+    color = mix(color, background, min(1.0, zDist * .3));
 	gl_FragColor = color;
 }

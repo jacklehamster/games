@@ -4,7 +4,13 @@ injector.register("game", [
 
 		function lake(id, size, x, y, z) {
 			return () => {
+				//	[botleft, botright, topright, topleft]				
 				const wave = Float32Array.from([1,1,1,1]);
+				const waveLeftShore = Float32Array.from([0,1,1,0]);
+				const waveRightShore = Float32Array.from([1,0,0,1]);
+				const waveTopShore = Float32Array.from([1,1,0,0]);
+				const waveBottomShore = Float32Array.from([0,0,1,1]);
+
 				return new Array(size * size).fill(null).map((n, index) => {
 					const col = index % size;
 					const row = Math.floor(index / size);
@@ -22,7 +28,12 @@ injector.register("game", [
 						type: "floor",
 						timeOffset: Math.floor(Math.random()*10000),
 						fps: 3,
-						wave,
+						wave: 
+							col <= 1 ? waveLeftShore :
+							col >= size - 1 ? waveRightShore :
+							row <= 1 ? waveTopShore :
+							row >= size - 1 ? waveBottomShore :
+							wave,
 					};
 				}).filter(a => a);
 			};
@@ -46,44 +57,155 @@ injector.register("game", [
 
 		const cameraDistance = 6;
 		const cameraHeight = 1;
-		const rangeSize = 5;
+		const horizonRangeSize = 90;
+		const areaMapArraySize = horizonRangeSize * 2;
 
 		const worldmap = new WorldMap();
 
+		let count = 0;
+
 		worldmap.add({
-			id: "center",
-			range: { left: -5, right: 5, top: -5, bottom: 5 },
+			range: WorldMap.makeRange(0, -6.5, 5),
+			unique: true,
+			onUpdate: null,
 			sprite: {
 				id: "test",
 				pos: [ 0, -1, -6.5 ],
 				type: "sprite",
 			},
+		}, {
+			range: WorldMap.makeRange(0, -6.5, 1000),
+			map: Utils.makeDoubleArray(areaMapArraySize, areaMapArraySize),
+			step: 8,
+			onUpdate: (element, type, col, row) => {
+				const { map, sprite } = element;
+				let mapcol = col % areaMapArraySize; if (mapcol < 0) mapcol += areaMapArraySize;
+				let maprow = row % areaMapArraySize; if (maprow < 0) maprow += areaMapArraySize;
+
+				switch(type) {
+					case WorldMap.ADD: {
+						if (!map[mapcol][maprow]) {
+							const { id, type } = sprite;
+							const spriteInstance = engine.addSprite({
+								id, type, chunk: [ -col, -row ], pos: [ -col, groundLevel, -row ],
+							});
+							map[mapcol][maprow] = spriteInstance;
+						}
+						break;
+					}
+					case WorldMap.REMOVE: {
+						const spriteInstance = map[mapcol][maprow];
+						if (spriteInstance) {
+							engine.removeSprite(spriteInstance);
+							delete map[mapcol][maprow];
+						}							
+						break;
+					}
+				}
+			},
+			sprite: {
+				id: "icefloor",
+				type: "floor",
+				chunk: [ 0, 0 ],
+				pos: [ 0, groundLevel, 0 ],
+			},
+		}, {
+			range: WorldMap.makeRange(0, -6.5, 1000),
+			map: Utils.makeDoubleArray(areaMapArraySize, areaMapArraySize),
+			step: 3,
+			onUpdate: (element, type, col, row) => {
+				const { map, sprite } = element;
+				if ((col * 7 ^ row * 13) % 33 !== 0) {
+					return;
+				}
+
+				let mapcol = col % areaMapArraySize; if (mapcol < 0) mapcol += areaMapArraySize;
+				let maprow = row % areaMapArraySize; if (maprow < 0) maprow += areaMapArraySize;
+
+				switch(type) {
+					case WorldMap.ADD: {
+						if (!map[mapcol][maprow]) {
+							const { id, type } = sprite;
+							const spriteInstance = engine.addSprite({
+								id, type, chunk: [ -col, -row ], pos: [ -col, groundLevel, -row ],
+							});
+							map[mapcol][maprow] = spriteInstance;
+						}
+						break;						
+					}
+					case WorldMap.REMOVE: {
+						const spriteInstance = map[mapcol][maprow];
+						if (spriteInstance) {
+							engine.removeSprite(spriteInstance);
+							delete map[mapcol][maprow];
+						}							
+						break;
+					}
+				}
+			},
+			sprite: {
+				id: "crystal-wall",
+				type: "wall",
+				chunk: [ 0, 0 ],
+				pos: [ 0, groundLevel, 0 ],
+			},
 		});
 		let area = worldmap.getArea({ left: 0, right: 0, top: 0, bottom: 0 });
-		area.addCallback((type, element, range, oldRange) => {
-//			console.log(type, element, range, oldRange, element.sprite);
-		});
-
 		const canvasResizer = new CanvasResizer(canvas);
 		const engine = new Engine();
 
 		function setupEngine(engine, game, assets) {
 			const sceneIndex = game.firstScene || Object.keys(game.scenes)[0];
 			const { title, settings, cameraSettings, moveSettings } = game;
-			const { background, size } = settings;
-			const [ width, height ] = size;
+			const [ width, height ] = settings.size;
 			
 			document.title = title;
 			canvas.width = width;
 			canvas.height = height;
-			canvas.style.background = background;
+			canvas.style.background = "#" + (0x1000000 | settings.background).toString(16).substr(1);
 
+			engine.setBackground(settings.background);
 			engine.setSize(canvas.width, canvas.height);
 			engine.setupAsset(assets);
 			engine.refreshScene(game, sceneIndex);	
 			engine.setCameraSettings(cameraSettings);
 			engine.setMoveSettings(moveSettings);	
 			engine.start();	
+
+			area.addCallback((type, element, range, oldRange) => {
+				if (element.sprite) {
+					switch (type) {
+						case WorldMap.ADD:
+							if (element.unique) {
+								element.spriteInstance = engine.addSprite(element.sprite);
+							}
+							if (element.onUpdate) {
+								Utils.applyCellDiff(range, oldRange, element.step, (x, y) => {
+									element.onUpdate(element, WorldMap.ADD, x, y);
+								});
+							}
+							break;
+						case WorldMap.REMOVE:
+							if (element.spriteInstance) {
+								engine.removeSprite(element.spriteInstance);
+								delete engine.spriteInstance;							
+							}
+							break;
+						case WorldMap.UPDATE:
+							if (element.onUpdate) {	
+								Utils.applyCellDiff(range, oldRange, element.step, (x, y) => {
+									element.onUpdate(element, WorldMap.ADD, x, y);
+								});
+
+								Utils.applyCellDiff(oldRange, range, element.step, (x, y) => {
+									element.onUpdate(element, WorldMap.REMOVE, x, y);
+								});
+							}
+							break;
+					}
+				}
+			});
+
 		}
 
 		const assets = [
@@ -115,12 +237,21 @@ injector.register("game", [
 				},
 			},
 			{
+				id: 'crystal-wall',
+				src: 'assets/crystal-wall.jpg',
+				spriteSize: [512, 512],
+				options: {
+					chunks: 1,
+					scale: 4,
+				},
+			},
+			{
 				id: 'icefloor',
 				src: 'assets/icefloor.jpg',
 				spriteSize: [800, 800],
 				options: {
 					chunks: 8,
-					scale: 4,
+					scale: 8,
 				},
 			},
 			{
@@ -143,19 +274,17 @@ injector.register("game", [
 			},
 		];
 
-
-
 		const game = {
 			start: () => setupEngine(engine, game, assets),
 			title: "Penguin Quest",
 			settings: {
 				size: [ 4096, 2160 ],
-				background: "#DDEEFF",
+				background: 0xE0F0FF,
 			},
 			moveSettings: {
 				scale: .5,
 				angleStep: Math.PI / 4,
-				onMove: area.makeRangeAutoUpdate(rangeSize),
+				onMove: area.makeRangeAutoUpdate(horizonRangeSize),
 			},
 			cameraSettings: {
 				height: cameraHeight,
@@ -297,110 +426,6 @@ injector.register("game", [
 							],
 							"type": "right"
 						},
-						{
-							"id": "icefloor",
-							"chunk": [
-								0,
-								1
-							],
-							"pos": [
-								0,
-								-1,
-								-6
-							],
-							"type": "floor"
-						},
-						{
-							"id": "icefloor",
-							"chunk": [
-								0,
-								1
-							],
-							"pos": [
-								0,
-								-1,
-								-6
-							],
-							"type": "ceiling"
-						},
-						{
-							"id": "icefloor",
-							"chunk": [
-								0,
-								1
-							],
-							"pos": [
-								0,
-								0,
-								-6
-							],
-							"type": "floor"
-						},
-						{
-							"id": "icefloor",
-							"chunk": [
-								0,
-								1
-							],
-							"pos": [
-								0,
-								0,
-								-6
-							],
-							"type": "ceiling"
-						},
-						{
-							"id": "icefloor",
-							"chunk": [
-								0,
-								2
-							],
-							"pos": [
-								0,
-								-1,
-								-5
-							],
-							"type": "floor"
-						},
-						{
-							"id": "icefloor",
-							"chunk": [
-								0,
-								0
-							],
-							"pos": [
-								0,
-								-1,
-								-5
-							],
-							"type": "ceiling"
-						},
-						{
-							"id": "icefloor",
-							"chunk": [
-								0,
-								2
-							],
-							"pos": [
-								0,
-								0,
-								-5
-							],
-							"type": "floor"
-						},
-						{
-							"id": "icefloor",
-							"chunk": [
-								0,
-								0
-							],
-							"pos": [
-								0,
-								0,
-								-5
-							],
-							"type": "ceiling"
-						},
 						landscape => {
 							const pos = vec3.create();
 							return {
@@ -416,20 +441,6 @@ injector.register("game", [
 							};
 						},
 						lake("water", waterSize, 0, groundLevel + .2, 0),
-						iceground => {
-							return new Array(groundSize * groundSize).fill(null).map((n, index) => {
-								const col = index % groundSize;
-								const row = Math.floor(index / groundSize);
-								const dx = col - groundSize / 2;
-								const dy = row - groundSize / 2;
-								return {
-									id: "icefloor",
-									chunk: [ col, row ],
-									pos: [ (col - groundSize / 2) * 4, groundLevel, (row - groundSize / 2) * 4 ],
-									type: "floor",
-								};
-							}).filter(a => a);;
-						},
 					],
 				},
 			},

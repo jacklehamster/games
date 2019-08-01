@@ -129,19 +129,20 @@ class Utils {
 		return FLOAT_NUMS[num] || temp4Float.fill(num);
 	}
 
-	static isImageEmpty(ctx) {
+	static getImagePixelInfo(ctx) {
 		if (ctx.constructor === HTMLCanvasElement) {
 			ctx = ctx.getContext('2d');
 		}
 		const { data } = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-		let empty = true;
+		let empty = true, opaque = true;
 		for (let p = 0; p < data.length; p += 4) {
 			if (data[p + 3] !== 0) {
 				empty = false;
-				break;
+			} else {
+				opaque = false;
 			}
 		}
-		return empty;
+		return { empty, opaque };
 	}
 
 	static getCell(pos) {
@@ -155,12 +156,37 @@ class Utils {
 	static checkNewCell(pre, pos) {
 		let newCell = null;
 		for (let i = 0; i < 3; i++) {
-			if (Math.floor(pre[i]) !== Math.floor(pos[i])) {
+			if (!pre || Math.floor(pre[i]) !== Math.floor(pos[i])) {
 				newCell = Utils.getCell(pos);
 				break;
 			}
 		}
 		return newCell;
+	}
+
+	static intersect(range, left, right, top, bottom) {
+		return range.left <= right && range.right >= left && range.top <= bottom && range.bottom >= top;
+	}
+
+	static inside(range, x, y) {
+		return x >= range.left && x <= range.right && y >= range.top && y <= range.bottom;
+	}
+
+	static applyCellDiff(range, oldRange, step, callback) {
+		if (!step || step < 0) {
+			step = 1;
+		}
+		for (let y = Math.floor(range.top / step) * step; y <= range.bottom; y+= step) {
+			for (let x = Math.floor(range.left / step) * step; x <= range.right; x+= step) {
+				if (!oldRange || !Utils.inside(oldRange, x, y)) {
+					callback(x, y);
+				}
+			}
+		}
+	}
+
+	static makeDoubleArray(cols, rows) {
+		return new Array(cols).fill(null).map(a => new Array(rows));
 	}
 }
 

@@ -75,6 +75,10 @@ const TextureManager = (() => {
 			];
 		}
 
+		static getEmptyTextureData() {
+			return EMPTY_TEXTURE_DATA;
+		}
+
 		turnImageIntoTexture(id, src, spriteSize, options) {
 			const { gl, gridSlot, glTextures, Utils, ImageSplitter, TEXTURE_SIZE, cellCache } = this;
 			const data = this.getTextureData(id);
@@ -96,7 +100,7 @@ const TextureManager = (() => {
 					const rows = Math.ceil(naturalHeight / spriteHeight);
 
 					const textures = [];
-					ImageSplitter.splitImage(img, spriteWidth, spriteHeight, (img, col, row, canvas) => {
+					ImageSplitter.splitImage(img, spriteWidth, spriteHeight, (img, col, row, canvas, { opaque }) => {
 						const cellTag = `${img.src}_${col}_${row}`;
 						let cell = cellCache[cellTag];
 						if (!cell) {
@@ -127,6 +131,7 @@ const TextureManager = (() => {
 								coordinates: [
 									textureLeft, textureRight, textureTop, textureBottom,
 								],
+								opaque,
 							};
 						}
 						textures.push(cell);
@@ -164,7 +169,7 @@ const TextureManager = (() => {
 					const { textures, flip, chunks } = data;
 					data.texIndex = this.texIndex;
 
-					textures.forEach(({ index, coordinates }, frameIndex) => {
+					textures.forEach(({ index, coordinates, opaque }, frameIndex) => {
 				  		if (flip) {
 				  			coordinates = [
 				  				coordinates[1], coordinates[0], coordinates[2], coordinates[3],
@@ -174,13 +179,23 @@ const TextureManager = (() => {
 				  		const glTextureCellLocation = gl.getUniformLocation(shaderProgram, `uTextureCell[${framePosition}]`);
 				  		gl.uniform4fv(glTextureCellLocation, new Float32Array(coordinates));
 						const glTextureIdLocation = gl.getUniformLocation(shaderProgram, `uTextureInfo[${framePosition}]`);
-						gl.uniform3fv(glTextureIdLocation, new Float32Array([index,...chunks]));
+						gl.uniform4fv(glTextureIdLocation, new Float32Array([index, chunks[0], chunks[1], opaque ? 1 : 0]));
 					});
 					this.texIndex += textures.length;
 				}
 			}
 		}
 	}
+
+	const EMPTY_TEXTURE_DATA = {
+		initialized: true,
+		flip: false,
+		chunks: [1, 1],
+		verticesMap: TextureManager.makeVerticesMap(0, 0, 1),
+		sentToGPU: true,
+		textures: [],
+		empty: true,
+	};
 
 	injector.register("texture-manager", [ "gl", "grid-slot", "utils", "image-splitter", "texture-size", TextureManager ]);
 

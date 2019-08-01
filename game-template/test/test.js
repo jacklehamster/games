@@ -57,6 +57,18 @@
 				console.assert(calls.every(([img, c, r, canvas]) => canvas.width === 2 && canvas.height === 1));
 			});
 		},
+		"recycler": Recycler => {
+			class TempClass {
+				static initialize(item, value) {
+					item.initializeValue = value;
+				}
+			}
+
+			Recycler.wrap(TempClass, TempClass.initialize);
+			const item = TempClass.create("test");
+			console.assert(item.constructor === TempClass);
+			console.assert(item.initializeValue === "test");
+		},
 		"canvas-resizer": CanvasResizer => {
 
 		},

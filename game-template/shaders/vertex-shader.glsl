@@ -19,9 +19,10 @@ uniform mat4 uCameraRotation;
 varying highp vec2 vTextureCoord;
 varying highp float zDist;
 varying highp float textureSlot;
+varying highp float isOpaque;
 
 uniform vec4 uTextureCell[MAX_CHUNKS];
-uniform vec3 uTextureInfo[MAX_CHUNKS];
+uniform vec4 uTextureInfo[MAX_CHUNKS];
 
 vec4 getChunkCell(vec4 textureCell, float chunk, float chunkCols, float chunkRows) {
 	if (chunkCols == 1.0 && chunkRows == 1.0) {
@@ -75,10 +76,11 @@ void main(void) {
 	vec4 position = uProjectionMatrix * uViewMatrix * vPos;
 	position.y -= (position.z * position.z + position.x * position.x) / 100.0;
 
-	vec3 textureInfo = uTextureInfo[frame];
+	vec4 textureInfo = uTextureInfo[frame];
 	textureSlot = floor(textureInfo[0]);
 	
 	vec4 chunkCell = getChunkCell(uTextureCell[frame], aChunk, textureInfo[1], textureInfo[2]);
+	isOpaque = textureInfo[3];
     float left = chunkCell.x;
     float right = chunkCell.y;
     float top = chunkCell.z;

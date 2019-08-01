@@ -1,4 +1,6 @@
-const WorldMap = (() => {
+injector.register("worldmap", [ 
+	"utils",
+	(Utils) => {
 
 	const HORIZONTAL = 0;
 	const VERTICAL = 1;
@@ -31,15 +33,16 @@ const WorldMap = (() => {
 		}
 
 		removeElement(element) {
+			const { elementHashes } = this;
 			const { id } = element;
 			delete elementHashes[BEFORE][id];
 			delete elementHashes[AFTER][id];
 		}
 	}
 
-	const ADD = "add";
-	const REMOVE = "remove";
-	const UPDATE = "update";
+	const ADD = 1;
+	const REMOVE = 2;
+	const UPDATE = 3;
 
 	class Area {
 		constructor(worldmap, left, right, top, bottom) {
@@ -56,17 +59,13 @@ const WorldMap = (() => {
 
 		checkElement(element, range) {
 			const { left, right, top, bottom } = range;
-			if (Area.intersect(element.range, left, right, top, bottom)) {
+			if (Utils.intersect(element.range, left, right, top, bottom)) {
 				if (!this.elementHash[element.id]) {
 					this.addElement(element, range);
 				}
 			} else {
 				this.removeElement(element, range);
 			}
-		}
-
-		static intersect(range, left, right, top, bottom) {
-			return range.left <= right && range.right >= left && range.top <= bottom && range.bottom >= top;
 		}
 
 		addElement(element, range) {
@@ -238,14 +237,16 @@ const WorldMap = (() => {
 
 		makeRangeAutoUpdate(rangeSize) {
 			const area = this;
+			let first = true;
 			return (from, to) => {
-				const newCell = Utils.checkNewCell(from, to);
+				const newCell = Utils.checkNewCell(first ? null : from, to);
+				first = false;
 				if (newCell) {
 					const [ x, y, z ] = newCell;
-					tempRange.left = x - rangeSize;
-					tempRange.right = x + rangeSize;
-					tempRange.top = z - rangeSize;
-					tempRange.bottom = z + rangeSize;
+					tempRange.left = x - rangeSize / 2;
+					tempRange.right = x + rangeSize / 2;
+					tempRange.top = z - rangeSize / 2;
+					tempRange.bottom = z + rangeSize / 2;
 					area.update(tempRange);
 				}
 			};
@@ -265,15 +266,21 @@ const WorldMap = (() => {
 				[new Line(Number.NEGATIVE_INFINITY), new Line(Number.POSITIVE_INFINITY)],
 				[new Line(Number.NEGATIVE_INFINITY), new Line(Number.POSITIVE_INFINITY)],
 			];
+			this.idCount = 1;
 		}
 
-		add(element) {
-			const { range } = element; 
-			const { left, right, top, bottom } = range ? range : INFINITY_RANGE;
-			this.findLineOrCreate(left, VERTICAL).addElement(element, 0, 1);
-			this.findLineOrCreate(right, VERTICAL).addElement(element, 1, 0);
-			this.findLineOrCreate(top, HORIZONTAL).addElement(element, 0, 1);
-			this.findLineOrCreate(bottom, HORIZONTAL).addElement(element, 1, 0);
+		add(...elements) {
+			elements.forEach(element => {
+				const { range } = element; 
+				const { left, right, top, bottom } = range ? range : INFINITY_RANGE;
+				if (!element.id) {
+					element.id = this.idCount++;
+				}
+				this.findLineOrCreate(left, VERTICAL).addElement(element, 0, 1);
+				this.findLineOrCreate(right, VERTICAL).addElement(element, 1, 0);
+				this.findLineOrCreate(top, HORIZONTAL).addElement(element, 0, 1);
+				this.findLineOrCreate(bottom, HORIZONTAL).addElement(element, 1, 0);
+			});
 		}
 
 		findLineOrCreate(position, VERTICAL_OR_HORIZONTAL) {
@@ -341,10 +348,21 @@ const WorldMap = (() => {
 			area.setLines(leftLine, rightLine, topLine, bottomLine);
 			return area;
 		}
+
+		static makeRange(x, y, size) {
+			return {
+				left: x - size / 2,
+				right: x + size / 2,
+				top: y - size / 2,
+				bottom: y + size / 2,
+			};
+		}
 	}
 	WorldMap.HORIZONTAL = HORIZONTAL;
 	WorldMap.VERTICAL = VERTICAL;
+	WorldMap.ADD = ADD;
+	WorldMap.REMOVE = REMOVE;
+	WorldMap.UPDATE = UPDATE;
 
-	injector.register("worldmap", [identity(WorldMap)]);
 	return WorldMap;
-})();
+}]);

@@ -27,7 +27,7 @@ injector.register("engine", [
 
 		const ACCELERATION = .5;
 		const ROTATION_SPEED = .1;
-		const MOVE_SPEED = .12;
+		const MOVE_SPEED = .15;
 
 		const cam = new Camera();
 
@@ -38,7 +38,6 @@ injector.register("engine", [
 		const debug = { globalData };
 
 		const sprites = [];
-		const activeSprites = [];
 		const dirtySprites = [];
 
 		let lastRot = 0;
@@ -51,6 +50,7 @@ injector.register("engine", [
 		const cellCache = {	};
 
 		let gamePaused = true;
+		let background = 0xffffff;
 
 		class Engine {
 			constructor() {
@@ -92,9 +92,9 @@ injector.register("engine", [
 			refresh(now) {
 				if (renderer && !gamePaused) {
 					globalData.now = now;
-
 					this.refreshMove();
-					this.refreshSprites(now);
+					const realSpritesCount = this.reorderSprites();
+					this.refreshSprites(now, sprites, realSpritesCount);
 				}
 
 				if (Utils.debug) {
@@ -102,37 +102,55 @@ injector.register("engine", [
 				}
 			}
 
-			refreshSprites(now) {
-				activeSprites.length = 0;
-				sprites.forEach(sprite => {
-					if (sprite.needsRefresh()) {
-						const { id, textureIndex,
-							chunk, pos, type, fps, timeOffset, wave, hidden } = sprite.definition;
-						const textureData = textureManager.getTextureDataByIndex(this.evaluate(textureIndex, globalData, sprite))
-							|| textureManager.getTextureData(this.evaluate(id, globalData, sprite));
-						if (textureData.textures === null) {
-							return;
+			refreshSprites(now, sprites, count) {
+				if (count) {
+					for (let i = 0; i < count; i++) {
+						const sprite = sprites[i];
+						if (sprite.needsRefresh()) {
+							const { id, textureIndex, chunk, pos, type, fps, timeOffset, wave } = sprite.definition;
+							const textureData = textureManager.getTextureDataByIndex(this.evaluate(textureIndex, globalData, sprite))
+								|| textureManager.getTextureData(this.evaluate(id, globalData, sprite));
+							if (textureData.textures === null) {
+								sprite.setTextureData(TextureManager.getEmptyTextureData());
+							} else {
+								sprite.setTextureData(textureData)
+									.setPosition(this.evaluate(pos, globalData, sprite))
+									.setChunk(this.evaluate(chunk, globalData, sprite))
+									.setWave(this.evaluate(wave, globalData, sprite) || 0)
+									.setFrameData(this.evaluate(fps, globalData, sprite) || 0, this.evaluate(timeOffset, globalData, sprite) || 0);
+							}
 						}
-						sprite.setTextureData(textureData)
-							.setHidden(this.evaluate(hidden, globalData, sprite))
-							.setPosition(this.evaluate(pos, globalData, sprite))
-							.setChunk(this.evaluate(chunk, globalData, sprite))
-							.setWave(this.evaluate(wave, globalData, sprite) || 0)
-							.setFrameData(this.evaluate(fps, globalData, sprite) || 0, this.evaluate(timeOffset, globalData, sprite) || 0);
 					}
-					if (sprite.isVisible()) {
-						activeSprites.push(sprite);
-					}
-				});
 
-				if (activeSprites.length) {
 					gl.uniform1f(renderer.programInfo.nowLocation, now);
 					this.refreshMatrices(renderer);			
-					const bufferResized = this.ensureBuffer(renderer, activeSprites.length);
+					const didBufferResized = this.ensureBuffer(renderer, count);
 					textureManager.sendTexturesToGPU(renderer.shaderProgram);
-					this.processSprites(renderer, activeSprites, bufferResized);
-					gl.drawElements(gl.TRIANGLES, activeSprites.length * INDEX_ARRAY_PER_SPRITE.length, gl.UNSIGNED_SHORT, 0);
+					this.processSprites(renderer, sprites, count, didBufferResized);
+					gl.drawElements(gl.TRIANGLES, count * INDEX_ARRAY_PER_SPRITE.length, gl.UNSIGNED_SHORT, 0);
 				}
+			}
+			
+			reorderSprites() {
+				//	put recycled sprites on top. Return number of real sprites
+				let topRealSpriteIndex = -1;
+				for (let i = sprites.length-1; i >= 0; i--) {
+					if (!sprites[i].isRecycled()) {
+						topRealSpriteIndex = i;
+						break;
+					}
+				}
+
+				for (let i = topRealSpriteIndex-1; i >= 0; i--) {
+					if (sprites[i].isRecycled()) {
+						const temp = sprites[i];
+						sprites[i] = sprites[topRealSpriteIndex];
+						sprites[i].makeDirty();
+						sprites[topRealSpriteIndex] = temp;
+						topRealSpriteIndex --;
+					}
+				}
+				return topRealSpriteIndex + 1;
 			}
 
 			setSize(width, height) {
@@ -282,12 +300,27 @@ injector.register("engine", [
 								viewLocation: 				gl.getUniformLocation(shaderProgram, 'uViewMatrix'),
 								cameraRotationLocation:     gl.getUniformLocation(shaderProgram, 'uCameraRotation'),
 								nowLocation: 				gl.getUniformLocation(shaderProgram, 'now'),
+								backgroundLocation:         gl.getUniformLocation(shaderProgram, 'background'),
 							};
-							gl.uniform1iv(gl.getUniformLocation(shaderProgram, 'uTextureSampler'), new Array(16).fill(null).map((a, index) => index));		
+							gl.uniform1iv(gl.getUniformLocation(shaderProgram, 'uTextureSampler'), new Array(16).fill(null).map((a, index) => index));
+							const r = ((background / 256 / 256) % 256) / 256;
+							const g = ((background / 256) % 256) / 256;
+							const b = ((background) % 256) / 256;
+							gl.uniform4f(renderer.programInfo.backgroundLocation, r, g, b, 1);
 						}).then(() => {
 							resolve(renderer);
 						});
 				});
+			}
+
+			setBackground(bg) {
+				background = bg;
+				if(renderer) {
+					const r = ((background / 256 / 256) % 256) / 256;
+					const g = ((background / 256) % 256) / 256;
+					const b = ((background) % 256) / 256;
+					gl.uniform4f(renderer.programInfo.backgroundLocation, r, g, b, 1);
+				}
 			}
 
 			getSlotIndices(slotIndex) {
@@ -300,10 +333,9 @@ injector.register("engine", [
 
 				let byteIndex = 0;
 				let slotStart = sprites[0].slotIndex;
-				let previousSlot = sprites[0].slotIndex - 1;
+				let previousSlot = slotStart - 1;
 
-				for (let i = 0; i < sprites.length; i++) {
-					const sprite = sprites[i];
+				sprites.forEach(sprite => {
 					const floatArray = spriteFunction(sprite);
 					if (previousSlot !== sprite.slotIndex - 1) {
 						gl.bufferSubData(gl.ARRAY_BUFFER, slotStart * byteSize, bigFloatArray.subarray(0, byteIndex));
@@ -313,27 +345,24 @@ injector.register("engine", [
 					bigFloatArray.set(floatArray, byteIndex);
 					byteIndex += floatArray.length;
 					previousSlot = sprite.slotIndex;
-				}
+				});
 				gl.bufferSubData(gl.ARRAY_BUFFER, slotStart * byteSize, bigFloatArray.subarray(0, byteIndex));
 			}
 
-			processSprites(renderer, activeSprites, forceRedraw) {
+			processSprites(renderer, sprites, count, forceRedraw) {
 				if (forceRedraw) {
-					activeSprites.forEach((sprite, slotIndex) => {
-						if (sprite.slotIndex !== slotIndex) {
-							sprite.slotIndex = slotIndex;
-						}
-					});
-					this.prepareSprites(renderer, activeSprites);
+					sprites.forEach((sprite, slotIndex) => sprite.slotIndex = slotIndex);
+					this.prepareSprites(renderer, sprites);
 				} else {
 					dirtySprites.length = 0;
-					activeSprites.forEach((sprite, slotIndex) => {
-						const needsUpdate = forceRedraw || sprite.slotIndex !== slotIndex;
+					for (let i = 0; i < count; i++) {
+						const sprite = sprites[i];
+						const needsUpdate = sprite.slotIndex !== i;
 						if (needsUpdate) {
-							sprite.slotIndex = slotIndex;
+							sprite.slotIndex = i;
 							dirtySprites.push(sprite);
-						}
-					});
+						}						
+					}
 					this.prepareSprites(renderer, dirtySprites);
 				}
 			}
@@ -369,9 +398,10 @@ injector.register("engine", [
 				}
 
 				if (Utils.debug) {
-					debug.draws = (debug.draws || 0) + dirtySprites.length;
-					debug.sprites = activeSprites.length;
-					debug.vertices = activeSprites.length * VERTICES_PER_SPRITE;
+					debug.draws = dirtySprites.length;
+					debug.totalDraws = (debug.totalDraws || 0) + debug.draws;
+					debug.spriteCount = sprites.length;
+					debug.verticesCount = sprites.length * VERTICES_PER_SPRITE;
 				}
 			}
 
@@ -487,8 +517,20 @@ injector.register("engine", [
 				if (Array.isArray(definition)) {
 					definition.forEach(definition => this.setupSprite(definition));
 				} else {
-					sprites.push(Sprite.create().setDefinition(definition));
+					this.addSprite(definition);
 				}
+			}
+
+			addSprite(definition) {
+				const sprite = Sprite.create().setDefinition(definition);
+				if (sprite.isNew) {
+					sprites.push(sprite);
+				}
+				return sprite;
+			}
+
+			removeSprite(sprite) {
+				sprite.recycle();
 			}
 
 			initShaderProgram(gl, vsSource, fsSource) {

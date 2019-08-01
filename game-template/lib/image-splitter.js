@@ -13,8 +13,9 @@ const ImageSplitter = (() => {
 				for (let c = 0; c < cols; c++) {
 					ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 					ctx.drawImage(img, -c * spriteWidth, -r * spriteHeight);
-					if (!Utils.isImageEmpty(ctx)) {	//	image transparent
-						callback(img, c, r, canvas);
+					const { opaque, empty } = Utils.getImagePixelInfo(ctx);
+					if (!empty) {	//	image transparent
+						callback(img, c, r, canvas, { opaque });
 					}
 				}
 			}		
