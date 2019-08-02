@@ -70,17 +70,17 @@ const Camera = (() => {
 			this.setRotation(this.rotation + value);
 		}
 
-		getRelativeDirection() {
+		getRelativeDirection(vec3temp) {
 			if (this.relativeDirectionDirty) {
-				this.relativeDirection = Utils.getRelativeDirection(this.rotation, this.mov, true);
+				this.relativeDirection = Utils.getRelativeDirection(this.rotation, this.mov, true, vec3temp);
 				this.movDirection = Utils.getDirectionAngle(this.relativeDirection);
 				this.relativeDirectionDirty = false;
 			}
 			return this.relativeDirection;
 		}
 
-		getMovDirection() {
-			this.getRelativeDirection();
+		getMovDirection(vec3temp) {
+			this.getRelativeDirection(vec3temp);
 			return this.movDirection;
 		}
 	}

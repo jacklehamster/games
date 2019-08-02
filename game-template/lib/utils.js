@@ -94,17 +94,17 @@ class Utils {
 		return directionAngle - DEG_90 + rotation;
 	}
 
-	static getRelativeDirection (turn, mov, normalizeValue) {
+	static getRelativeDirection (turn, mov, normalizeValue, vec3temp) {
 		const [dx, dy, dz] = mov;
 	    const sin = Math.sin(turn);
 	    const cos = Math.cos(turn);
-	    tempVec3[0] = cos * dx - sin * dz;
-	    tempVec3[1] = dy;
-	    tempVec3[2] = sin * dx + cos * dz;
+	    vec3temp[0] = cos * dx - sin * dz;
+	    vec3temp[1] = dy;
+	    vec3temp[2] = sin * dx + cos * dz;
 	    if (normalizeValue) {
-	    	vec3.normalize(tempVec3, tempVec3);
+	    	vec3.normalize(vec3temp, vec3temp);
 	    }
-	    return tempVec3;
+	    return vec3temp;
 	}
 
 	static set3(vector, x, y, z) {
@@ -146,19 +146,19 @@ class Utils {
 		return { empty, opaque };
 	}
 
-	static getCell(pos) {
-		return Utils.set3(temp2Vec3,
+	static getCell(pos, tempVec3) {
+		return Utils.set3(tempVec3,
 			Math.floor(pos[0]),
 			Math.floor(pos[1]),
 			Math.floor(pos[2]),
 		);		
 	}
 
-	static checkNewCell(pre, pos) {
+	static checkNewCell(pre, pos, tempVec3) {
 		let newCell = null;
 		for (let i = 0; i < 3; i++) {
 			if (!pre || Math.floor(pre[i]) !== Math.floor(pos[i])) {
-				newCell = Utils.getCell(pos);
+				newCell = Utils.getCell(pos, tempVec3);
 				break;
 			}
 		}

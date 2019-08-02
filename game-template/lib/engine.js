@@ -1,6 +1,6 @@
 injector.register("engine", [ 
-	"gl", "utils", "keyboard", "texture-manager", "sprite", "camera",
-	(gl, Utils, Keyboard, textureManager, Sprite, Camera) => {
+	"gl", "utils", "keyboard", "texture-manager", "sprite", "camera", "pool",
+	(gl, Utils, Keyboard, textureManager, Sprite, Camera, Pool) => {
 		const TEXTURE_SIZE = injector.get("texture-size");
 		const INDEX_ARRAY_PER_SPRITE = new Uint16Array([
 			0,  1,  2,
@@ -14,7 +14,7 @@ injector.register("engine", [
 		const IDENTITY_QUAT = quat.identity(quat.create());
 		const ZERO_VEC3 = vec3.create();
 		const SCALE_VEC3 = vec3.fromValues(1, 1, 1);
-		const vec3temp = vec3.create(), vec3temp2 = vec3.create();
+		const vec3pool = new Pool(vec3.create);
 
 		const CORNERS = Float32Array.from([0, 1, 2, 3 ]);
 		const CORNERS_FUNC = () => CORNERS;
@@ -96,6 +96,7 @@ injector.register("engine", [
 					this.refreshMove();
 					const realSpritesCount = this.reorderSprites();
 					this.refreshSprites(now, sprites, realSpritesCount);
+					vec3pool.reset();
 				}
 
 				if (Utils.debug) {
@@ -188,15 +189,16 @@ injector.register("engine", [
 					}
 				}
 
-				const [ directionX, directionY, directionZ ] = cam.getRelativeDirection();
+				const [ directionX, directionY, directionZ ] = cam.getRelativeDirection(vec3pool.get());
 				const [ preX, preY, preZ ] = pos;
+
 				pos[0] += directionX * MOVE_SPEED;
 				pos[1] += directionY * MOVE_SPEED;
 				pos[2] += directionZ * MOVE_SPEED;
 
-				if (Math.floor(preX) !== Math.floor(pos[0]) || Math.floor(preZ) !== Math.floor(pos[2])) {
-					if (Utils.debug) {
-						debug.mapCell = (pos.map(Math.floor));
+				if (Utils.debug) {
+					if (Math.floor(preX) !== Math.floor(pos[0]) || Math.floor(preZ) !== Math.floor(pos[2])) {
+							debug.mapCell = pos.map(Math.floor);
 					}
 				}
 
@@ -208,7 +210,7 @@ injector.register("engine", [
 					const zOffset = -this.cameraDistance || 0;
 					quat.rotateY(cameraQuat, quat.rotateX(cameraQuat, IDENTITY_QUAT, tilt), turn);
 					mat4.fromRotationTranslationScaleOrigin(viewMatrix, cameraQuat, ZERO_VEC3,
-						vec3.set(vec3temp2, scale, scale, scale), vec3.set(vec3temp, 0, h, zOffset));			
+						vec3.set(vec3pool.get(), scale, scale, scale), vec3.set(vec3pool.get(), 0, h, zOffset));			
 					quat.conjugate(cameraQuat, cameraQuat);	//	conjugate for sprites			
 					mat4.translate(viewMatrix, viewMatrix, pos);
 
@@ -218,7 +220,7 @@ injector.register("engine", [
 				}
 
 				if (onMove) {
-					onMove.forEach(callback => callback(vec3.set(vec3temp, preX, preY, preZ), pos));
+					onMove.forEach(callback => callback(vec3.set(vec3pool.get(), preX, preY, preZ), pos, vec3pool.get()));
 				}
 			}
 

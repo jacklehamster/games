@@ -238,8 +238,8 @@ injector.register("worldmap", [
 		makeRangeAutoUpdate(rangeSize) {
 			const area = this;
 			let first = true;
-			return (from, to) => {
-				const newCell = Utils.checkNewCell(first ? null : from, to);
+			return (from, to, vec3temp) => {
+				const newCell = Utils.checkNewCell(first ? null : from, to, vec3temp);
 				first = false;
 				if (newCell) {
 					const [ x, y, z ] = newCell;

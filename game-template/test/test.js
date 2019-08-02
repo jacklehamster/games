@@ -75,6 +75,18 @@
 		"grid-slot": GridSlot => {
 
 		},
+		"pool": Pool => {
+			const pool = new Pool(() => Math.random());
+			let a = pool.get(), b = pool.get();
+			console.assert(a !== b);
+			pool.reset();
+			a = pool.get();
+			pool.reset();
+			b = pool.get();
+			console.assert(a === b);
+			pool.reset();
+			console.assert(pool.pool.length === 2);
+		},
 	};
 
 

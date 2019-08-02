@@ -77,4 +77,3 @@ const KeyboardHandler = (() => {
 	injector.register("keyboard", identity(KeyboardHandler));
 	return KeyboardHandler;
 })();
-
