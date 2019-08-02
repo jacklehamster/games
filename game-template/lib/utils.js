@@ -7,6 +7,7 @@ const FLOAT_NUMS = new Array(100).fill(null).map((a, index) => {
 });
 const ANGLE_RANGE = Math.PI * 2;
 const DEG_90 = Math.PI / 2;
+const nop = () => {};
 
 class Utils {
 	static get debug() {
@@ -185,8 +186,8 @@ class Utils {
 		}
 	}
 
-	static makeDoubleArray(cols, rows) {
-		return new Array(cols).fill(null).map(a => new Array(rows));
+	static makeDoubleArray(cols, rows, fillCallback) {
+		return new Array(Math.ceil(cols)).fill(null).map(a => new Array(Math.ceil(rows)).fill(null).map(fillCallback||nop));
 	}
 }
 

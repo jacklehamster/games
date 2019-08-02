@@ -10,7 +10,8 @@ injector.register("sprite", [
 			left: 		2,
 			right: 		3,
 			wall:       4,
-			sprite: 	5,
+			backwall:   5,
+			sprite: 	6,
 		};
 
 		class Sprite {

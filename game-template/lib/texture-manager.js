@@ -67,6 +67,12 @@ const TextureManager = (() => {
 					left, 	top, 	0,
 				]),
 				new Float32Array([
+					right, 	bottom, 0,
+					left, 	bottom, 0,
+					left, 	top, 	0,
+					right, 	top, 	0,
+				]),
+				new Float32Array([
 					left, 	bottom, 0,
 					right, 	bottom, 0,
 					right, 	top, 	0,

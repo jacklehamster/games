@@ -253,6 +253,12 @@ injector.register("worldmap", [
 		}				
 	}
 
+	class AutoArea extends Area {
+		constructor(worldmap, left, right, top, bottom) {
+			super(worldmap, left, right, top, bottom);
+		}
+	}
+
 	const INFINITY_RANGE = { 
 		left: Number.NEGATIVE_INFINITY,
 		right: Number.POSITIVE_INFINITY,
@@ -335,8 +341,11 @@ injector.register("worldmap", [
 		}
 
 		getArea(range) {
-			const {left, right, top, bottom} = range;
-			const area = new Area(this, left, right, top, bottom);
+			if (!range) {
+				range = { left: 0, right: 0, top: 0, bottom: 0 };
+			}
+			const { left, right, top, bottom } = range;
+			const area = new AutoArea(this, left, right, top, bottom);
 			const elementsCount = {};
 			const [ leftLine, rightLine ] = WorldMap.iterate(this.lineGroups[VERTICAL], left, right, element => {
 				area.checkElement(element, range);

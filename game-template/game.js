@@ -75,12 +75,14 @@ injector.register("game", [
 			},
 		}, {
 			range: WorldMap.makeRange(0, -6.5, 1000),
-			map: Utils.makeDoubleArray(areaMapArraySize, areaMapArraySize),
+			map: Utils.makeDoubleArray(areaMapArraySize/8, areaMapArraySize/8),
 			step: 8,
 			onUpdate: (element, type, col, row) => {
 				const { map, sprite } = element;
-				let mapcol = col % areaMapArraySize; if (mapcol < 0) mapcol += areaMapArraySize;
-				let maprow = row % areaMapArraySize; if (maprow < 0) maprow += areaMapArraySize;
+				const w = map.length;
+				const h = map[0].length;
+				let mapcol = col/element.step % w; if (mapcol < 0) mapcol += w;
+				let maprow = row/element.step % h; if (maprow < 0) maprow += h;
 
 				switch(type) {
 					case WorldMap.ADD: {
@@ -111,33 +113,51 @@ injector.register("game", [
 			},
 		}, {
 			range: WorldMap.makeRange(0, -6.5, 1000),
-			map: Utils.makeDoubleArray(areaMapArraySize, areaMapArraySize),
+			map: Utils.makeDoubleArray(areaMapArraySize/3, areaMapArraySize/3, () => []),
 			step: 3,
 			onUpdate: (element, type, col, row) => {
-				const { map, sprite } = element;
 				if ((col * 7 ^ row * 13) % 33 !== 0) {
 					return;
 				}
+				const { map, sprite } = element;
+				const w = map.length;
+				const h = map[0].length;
+				let mapcol = col/element.step % w; if (mapcol < 0) mapcol += w;
+				let maprow = row/element.step % h; if (maprow < 0) maprow += h;
 
-				let mapcol = col % areaMapArraySize; if (mapcol < 0) mapcol += areaMapArraySize;
-				let maprow = row % areaMapArraySize; if (maprow < 0) maprow += areaMapArraySize;
-
-				switch(type) {
+				switch (type) {
 					case WorldMap.ADD: {
-						if (!map[mapcol][maprow]) {
+						if (!map[mapcol][maprow].length) {
 							const { id, type } = sprite;
-							const spriteInstance = engine.addSprite({
-								id, type, chunk: [ -col, -row ], pos: [ -col, groundLevel, -row ],
+							let spriteInstance;
+							spriteInstance = engine.addSprite({
+								id, type: "backwall", chunk: [ -col, -row ], pos: [ -col, groundLevel, -row - 2 ],
 							});
-							map[mapcol][maprow] = spriteInstance;
+							map[mapcol][maprow].push(spriteInstance);
+							spriteInstance = engine.addSprite({
+								id, type: "wall", chunk: [ -col, -row ], pos: [ -col, groundLevel, -row + 2 ],
+							});
+							map[mapcol][maprow].push(spriteInstance);
+							spriteInstance = engine.addSprite({
+								id, type: "right", chunk: [ -col, -row ], pos: [ -col - 2, groundLevel, -row ],
+							});
+							map[mapcol][maprow].push(spriteInstance);
+							spriteInstance = engine.addSprite({
+								id, type: "left", chunk: [ -col, -row ], pos: [ -col + 2, groundLevel, -row ],
+							});
+							map[mapcol][maprow].push(spriteInstance);
+							spriteInstance = engine.addSprite({
+								id, type: "floor", chunk: [ -col, -row ], pos: [ -col, groundLevel + 4, -row - 1.5 ],
+							});
+							map[mapcol][maprow].push(spriteInstance);
 						}
 						break;						
 					}
 					case WorldMap.REMOVE: {
-						const spriteInstance = map[mapcol][maprow];
-						if (spriteInstance) {
-							engine.removeSprite(spriteInstance);
-							delete map[mapcol][maprow];
+						const spriteInstances = map[mapcol][maprow];
+						if (spriteInstances.length) {
+							spriteInstances.forEach(spriteInstance => engine.removeSprite(spriteInstance));
+							map[mapcol][maprow].length = 0;
 						}							
 						break;
 					}
@@ -150,7 +170,7 @@ injector.register("game", [
 				pos: [ 0, groundLevel, 0 ],
 			},
 		});
-		let area = worldmap.getArea({ left: 0, right: 0, top: 0, bottom: 0 });
+		const area = worldmap.getArea();
 		const canvasResizer = new CanvasResizer(canvas);
 		const engine = new Engine();
 
@@ -163,9 +183,10 @@ injector.register("game", [
 			canvas.width = width;
 			canvas.height = height;
 			canvas.style.background = "#" + (0x1000000 | settings.background).toString(16).substr(1);
+			canvasResizer.setCallback((width, height) => engine.setSize(width, height));
+			canvasResizer.resize();
 
 			engine.setBackground(settings.background);
-			engine.setSize(canvas.width, canvas.height);
 			engine.setupAsset(assets);
 			engine.refreshScene(game, sceneIndex);	
 			engine.setCameraSettings(cameraSettings);
