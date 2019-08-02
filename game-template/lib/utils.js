@@ -139,8 +139,12 @@ class Utils {
 		for (let p = 0; p < data.length; p += 4) {
 			if (data[p + 3] !== 0) {
 				empty = false;
-			} else {
+			}
+			if (data[p + 3] < 255) {
 				opaque = false;
+			}
+			if (!empty && !opaque) {
+				break;
 			}
 		}
 		return { empty, opaque };
@@ -188,6 +192,12 @@ class Utils {
 
 	static makeDoubleArray(cols, rows, fillCallback) {
 		return new Array(Math.ceil(cols)).fill(null).map(a => new Array(Math.ceil(rows)).fill(null).map(fillCallback||nop));
+	}
+
+	static swap(array, index1, index2) {
+		const temp = array[index1];
+		array[index1] = array[index2];
+		array[index2] = temp;
 	}
 }
 

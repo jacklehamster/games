@@ -94,7 +94,7 @@ injector.register("engine", [
 				if (renderer && !gamePaused) {
 					globalData.now = now;
 					this.refreshMove();
-					const realSpritesCount = this.reorderSprites();
+					const realSpritesCount = this.reorderSprites(sprites);
 					this.refreshSprites(now, sprites, realSpritesCount);
 					vec3pool.reset();
 				}
@@ -133,26 +133,27 @@ injector.register("engine", [
 				}
 			}
 			
-			reorderSprites() {
-				//	put recycled sprites on top. Return number of real sprites
-				let topRealSpriteIndex = -1;
-				for (let i = sprites.length-1; i >= 0; i--) {
-					if (!sprites[i].isRecycled()) {
-						topRealSpriteIndex = i;
-						break;
-					}
-				}
+			reorderSprites(sprites) {
+				//	put recycled sprites at the end, opaque sprites at the beginning. Return number of real sprites
+				//	[ opaque, transparents, recycled ]
 
-				for (let i = topRealSpriteIndex-1; i >= 0; i--) {
-					if (sprites[i].isRecycled()) {
-						const temp = sprites[i];
-						sprites[i] = sprites[topRealSpriteIndex];
+				let left = 0, right = sprites.length - 1;
+				for (let i = 0; i <= right; i++) {
+					const sprite = sprites[i];
+					if (sprite.isRecycled()) {
+						Utils.swap(sprites, i, right);
 						sprites[i].makeDirty();
-						sprites[topRealSpriteIndex] = temp;
-						topRealSpriteIndex --;
+						right--; i--;
+					} else if (sprite.opaque) {
+						if (i !== left) {
+							Utils.swap(sprites, i, left);
+							sprites[i].makeDirty();
+							sprites[left].makeDirty();
+							left++; i--;
+						}
 					}
 				}
-				return topRealSpriteIndex + 1;
+				return right + 1;
 			}
 
 			setSize(width, height) {

@@ -36,6 +36,7 @@ injector.register("sprite", [
 				sprite.static = false;
 				sprite.vertices = null;
 				sprite.isSprite = Utils.get4Floats(1);
+				sprite.opaque = true;
 			}
 
 			setDefinition(definition) {
@@ -70,6 +71,7 @@ injector.register("sprite", [
 					this.textureData = textureData;
 					this.updateChunkIndex();
 					this.updateVertices();
+					this.opaque = textureData.textures.every(texture => texture.opaque);
 					this.slotIndex = -1;
 				}
 				return this;
