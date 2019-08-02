@@ -19,7 +19,7 @@ injector.register("engine", [
 		const CORNERS = Float32Array.from([0, 1, 2, 3 ]);
 		const CORNERS_FUNC = () => CORNERS;
 
-		const SIZE_INCREASE = 500;
+		const SIZE_INCREASE = 1000;
 
 		const canProjectionMatrixChange = false;
 
@@ -51,6 +51,7 @@ injector.register("engine", [
 
 		let gamePaused = true;
 		let background = 0xffffff;
+		let requestId = 0;
 
 		class Engine {
 			constructor() {
@@ -62,7 +63,7 @@ injector.register("engine", [
 
 			start() {
 				gamePaused = false;
-				this.createLoop(now => this.refresh(now));
+				this.createLoop(this.refresh.bind(this));
 			}
 
 			refreshPause() {
@@ -71,18 +72,18 @@ injector.register("engine", [
 					gamePaused = !focused;
 					if (!gamePaused) {
 						this.start();
+					} else {
+						cancelAnimationFrame(requestId);
 					}
 				}
 			}
 
 			createLoop(callback) {
 				function step(timestamp) {
-					if (!gamePaused) {
-						callback(timestamp);
-					    requestAnimationFrame(step);
-					}
+					callback(timestamp);
+				    requestId = requestAnimationFrame(step);
 				}
-				requestAnimationFrame(step);
+				requestId = requestAnimationFrame(step);
 			}
 
 			initializeRenderer() {
@@ -217,7 +218,7 @@ injector.register("engine", [
 				}
 
 				if (onMove) {
-					onMove(vec3.set(vec3temp, preX, preY, preZ), pos);
+					onMove.forEach(callback => callback(vec3.set(vec3temp, preX, preY, preZ), pos));
 				}
 			}
 
@@ -419,7 +420,7 @@ injector.register("engine", [
 
 			ensureBuffer(renderer, size) {
 				if (size > renderer.spriteBufferSize) {
-					this.allocateBuffer(renderer, size + SIZE_INCREASE);
+					this.allocateBuffer(renderer, Math.ceil(size / SIZE_INCREASE) * SIZE_INCREASE);
 					return true;
 				}
 				return false;

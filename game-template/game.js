@@ -4,12 +4,13 @@ injector.register("game", [
 
 		function lake(id, size, x, y, z) {
 			return () => {
-				//	[botleft, botright, topright, topleft]				
-				const wave = Float32Array.from([1,1,1,1]);
-				const waveLeftShore = Float32Array.from([0,1,1,0]);
-				const waveRightShore = Float32Array.from([1,0,0,1]);
-				const waveTopShore = Float32Array.from([1,1,0,0]);
-				const waveBottomShore = Float32Array.from([0,0,1,1]);
+				//	[botleft, botright, topright, topleft]	
+				const waveSize = 1;			
+				const wave = Float32Array.from([waveSize,waveSize,waveSize,waveSize]);
+				const waveLeftShore = Float32Array.from([0,waveSize,waveSize,0]);
+				const waveRightShore = Float32Array.from([waveSize,0,0,waveSize]);
+				const waveTopShore = Float32Array.from([waveSize,waveSize,0,0]);
+				const waveBottomShore = Float32Array.from([0,0,waveSize,waveSize]);
 
 				return new Array(size * size).fill(null).map((n, index) => {
 					const col = index % size;
@@ -51,7 +52,7 @@ injector.register("game", [
 		    {id:'penguin-bot-left',	src:'assets/penguin-bot-left.png',	scale: penguinScale,	flip:false, },
 		];
 
-		const waterSize = 30 + 1;
+		const waterSize = 50 + 1;
 		const groundSize = 10;
 		const groundLevel = -1;
 
@@ -170,7 +171,8 @@ injector.register("game", [
 				pos: [ 0, groundLevel, 0 ],
 			},
 		});
-		const area = worldmap.getArea();
+		const camArea = worldmap.getArea();
+		const penguinArea = worldmap.getArea();
 		const canvasResizer = new CanvasResizer(canvas);
 		const engine = new Engine();
 
@@ -191,9 +193,15 @@ injector.register("game", [
 			engine.refreshScene(game, sceneIndex);	
 			engine.setCameraSettings(cameraSettings);
 			engine.setMoveSettings(moveSettings);	
-			engine.start();	
+			engine.start();
 
-			area.addCallback((type, element, range, oldRange) => {
+			penguinArea.addCallback((type, element, range, oldRange) => {
+				if (element.block) {
+
+				}
+			});	
+
+			camArea.addCallback((type, element, range, oldRange) => {
 				if (element.sprite) {
 					switch (type) {
 						case WorldMap.ADD:
@@ -280,7 +288,7 @@ injector.register("game", [
 				src: 'assets/water.png',
 				spriteSize: [32, 32],
 				options: {
-					scale: 10 / waterSize,
+					scale: (12 / waterSize),
 					chunks: Math.max(1, Math.floor(waterSize / 10)),
 				},
 			},
@@ -305,7 +313,10 @@ injector.register("game", [
 			moveSettings: {
 				scale: .5,
 				angleStep: Math.PI / 4,
-				onMove: area.makeRangeAutoUpdate(horizonRangeSize),
+				onMove: [
+					camArea.makeRangeAutoUpdate(horizonRangeSize),
+					penguinArea.makeRangeAutoUpdate(0),
+				],
 			},
 			cameraSettings: {
 				height: cameraHeight,

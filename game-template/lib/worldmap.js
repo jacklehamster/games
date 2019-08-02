@@ -253,12 +253,6 @@ injector.register("worldmap", [
 		}				
 	}
 
-	class AutoArea extends Area {
-		constructor(worldmap, left, right, top, bottom) {
-			super(worldmap, left, right, top, bottom);
-		}
-	}
-
 	const INFINITY_RANGE = { 
 		left: Number.NEGATIVE_INFINITY,
 		right: Number.POSITIVE_INFINITY,
@@ -341,14 +335,16 @@ injector.register("worldmap", [
 		}
 
 		getArea(range) {
-			if (!range) {
-				range = { left: 0, right: 0, top: 0, bottom: 0 };
-			}
-			const { left, right, top, bottom } = range;
-			const area = new AutoArea(this, left, right, top, bottom);
+			const { left, right, top, bottom } = range || { left: 0, right: 0, top: 0, bottom: 0 };
+			const area = new Area(this, left, right, top, bottom);
+			return this.fulfillArea(area);
+		}
+
+		fulfillArea(area) {
+			const { left, right, top, bottom } = area.range;
 			const elementsCount = {};
 			const [ leftLine, rightLine ] = WorldMap.iterate(this.lineGroups[VERTICAL], left, right, element => {
-				area.checkElement(element, range);
+				area.checkElement(element, area.range);
 			});
 			const [ topLine, bottomLine ] = WorldMap.iterate(this.lineGroups[HORIZONTAL], top, bottom, element => {
 				//	no need to check. Previous iterate does that.

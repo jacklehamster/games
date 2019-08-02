@@ -52,6 +52,10 @@ float getFrame(float time, float fps, float totalFrames) {
 	return mod(time * fps / SECOND_TO_MILLIS, totalFrames);
 }
 
+float rand(vec2 co){
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
 void main(void) {
 	float frameStart = 	aFrame[0];
 	float totalFrames = aFrame[1];
