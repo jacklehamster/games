@@ -449,7 +449,6 @@ injector.register("engine", [
 			}
 
 			allocateBuffer(renderer, size) {
-				console.log("Reallocate", size);
 				const { gl, programInfo, cache } = renderer;
 
 				if (!renderer.vertexBuffer) {
@@ -499,6 +498,7 @@ injector.register("engine", [
 				// biggest size
 				renderer.bigFloatArray = new Float32Array(size * VERTICES_PER_SPRITE * 4 * Float32Array.BYTES_PER_ELEMENT);
 				renderer.spriteBufferSize = size;
+				debug.bufferSize = size;
 			}
 
 			resizeBuffer(gl, bufferType, buffer, newBufferSize) {
