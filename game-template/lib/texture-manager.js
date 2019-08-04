@@ -23,19 +23,19 @@ const TextureManager = (() => {
 			this.cellCache = {};
 			this.texIndex = 0;
 		}
-
+		
 		static makeVerticesMap(width, height, scale) {
 			if (!scale) {
 				scale = [ 1, 1 ];
 			} else if (!Array.isArray(scale)) {
 				scale = [ scale, scale ];
 			}
-			const left = 	-.5 * scale[0];
-			const right = 	 .5 * scale[0];
-			const top = 	height / width * scale[1];
-			const bottom = 	0;
+			let left = 	-.5 * scale[0];
+			let right = 	 .5 * scale[0];
+			let top = 	height / width * scale[1];
+			let bottom = 	0;
 
-			return [
+			const result = [
 				new Float32Array([
 					left, 	0, top - .5,
 					right, 	0, top - .5,
@@ -79,6 +79,7 @@ const TextureManager = (() => {
 					left, 	top, 	0,
 				]),
 			];
+			return  result;
 		}
 
 		static getEmptyTextureData() {
@@ -101,12 +102,8 @@ const TextureManager = (() => {
 				data.sentToGPU = false;
 
 				Utils.load(src).then(img => {
-					const { naturalWidth, naturalHeight } = img;
-					const cols = Math.ceil(naturalWidth / spriteWidth);
-					const rows = Math.ceil(naturalHeight / spriteHeight);
-
 					const textures = [];
-					ImageSplitter.splitImage(img, spriteWidth, spriteHeight, (img, col, row, canvas, { opaque }) => {
+					ImageSplitter.splitImage(img, spriteWidth, spriteHeight, null, (img, col, row, canvas, { opaque }) => {
 						const cellTag = `${img.src}_${col}_${row}`;
 						let cell = cellCache[cellTag];
 						if (!cell) {
@@ -128,10 +125,11 @@ const TextureManager = (() => {
 
 							gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
 							gl.generateMipmap(gl.TEXTURE_2D);
-							const textureLeft = 	x / TEXTURE_SIZE;
-							const textureRight = 	x / TEXTURE_SIZE + spriteWidth / TEXTURE_SIZE;
-							const textureTop = 		y / TEXTURE_SIZE;
-							const textureBottom = 	y / TEXTURE_SIZE + spriteHeight / TEXTURE_SIZE;
+							let textureLeft = 	x / TEXTURE_SIZE;
+							let textureRight = 	x / TEXTURE_SIZE + spriteWidth / TEXTURE_SIZE;
+							let textureTop = 		y / TEXTURE_SIZE;
+							let textureBottom = 	y / TEXTURE_SIZE + spriteHeight / TEXTURE_SIZE;
+
 							cellCache[cellTag] = cell = {
 								index,
 								coordinates: [

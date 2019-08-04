@@ -79,8 +79,7 @@ const Camera = (() => {
 			return this.relativeDirection;
 		}
 
-		getMovDirection(vec3temp) {
-			this.getRelativeDirection(vec3temp);
+		getMovDirection() {
 			return this.movDirection;
 		}
 	}

@@ -1,6 +1,7 @@
 injector.register("game", [
-	"utils", "canvas", "texture-manager", "worldmap", "canvas-resizer", "engine",
-	(Utils, canvas, textureManager, WorldMap, CanvasResizer, Engine) => {
+	"utils", "canvas", "texture-manager", "worldmap", "canvas-resizer", "engine", "debug", "pool",
+	(Utils, canvas, textureManager, WorldMap, CanvasResizer, Engine, debug, Pool) => {
+		const vec3pool = new Pool(vec3.create);
 
 		function lake(id, size, x, y, z) {
 			return () => {
@@ -40,8 +41,8 @@ injector.register("game", [
 			};
 		}
 
-		const penguinScale = [1, .9];
-		const penguin_sprites = [
+		const penguinScale = [1, .92];
+		const penguinSprites = [
 		    {id:'penguin-down',		src:'assets/penguin-down.png',		scale: penguinScale,	flip:false,	},
 		    {id:'penguin-bot-right',src:'assets/penguin-bot-left.png',	scale: penguinScale,	flip:true,	},
 		    {id:'penguin-right',	src:'assets/penguin-right.png',		scale: penguinScale,	flip:false, },
@@ -53,7 +54,6 @@ injector.register("game", [
 		];
 
 		const waterSize = 50 + 1;
-		const groundSize = 10;
 		const groundLevel = -1;
 
 		const cameraDistance = 6;
@@ -68,14 +68,13 @@ injector.register("game", [
 		worldmap.add({
 			range: WorldMap.makeRange(0, -6.5, 5),
 			unique: true,
-			onUpdate: null,
 			sprite: {
 				id: "test",
 				pos: [ 0, -1, -6.5 ],
 				type: "sprite",
 			},
 		}, {
-			range: WorldMap.makeRange(0, -6.5, 1000),
+			range: WorldMap.makeRange(0, 0, 1000),
 			map: Utils.makeDoubleArray(areaMapArraySize/8, areaMapArraySize/8),
 			step: 8,
 			onUpdate: (element, type, col, row) => {
@@ -89,8 +88,9 @@ injector.register("game", [
 					case WorldMap.ADD: {
 						if (!map[mapcol][maprow]) {
 							const { id, type } = sprite;
+							const x = -col, y = groundLevel, z = -row - cameraDistance;
 							const spriteInstance = engine.addSprite({
-								id, type, chunk: [ -col, -row ], pos: [ -col, groundLevel, -row ],
+								id, type, chunk: [ -col, -row ], pos: [ x, y, z ],
 							});
 							map[mapcol][maprow] = spriteInstance;
 						}
@@ -100,8 +100,8 @@ injector.register("game", [
 						const spriteInstance = map[mapcol][maprow];
 						if (spriteInstance) {
 							engine.removeSprite(spriteInstance);
-							delete map[mapcol][maprow];
-						}							
+							map[mapcol][maprow] = null;
+						}
 						break;
 					}
 				}
@@ -113,11 +113,17 @@ injector.register("game", [
 				pos: [ 0, groundLevel, 0 ],
 			},
 		}, {
-			range: WorldMap.makeRange(0, -6.5, 1000),
+			range: WorldMap.makeRange(0, 0, 1000),
 			map: Utils.makeDoubleArray(areaMapArraySize/3, areaMapArraySize/3, () => []),
 			step: 3,
+			blocks : (element, from, to) => {
+				return false;
+			},
 			onUpdate: (element, type, col, row) => {
-				if ((col * 7 ^ row * 13) % 33 !== 0) {
+				if ((col * 7 ^ row * 13 + 5) % 33 !== 0) {
+					return;
+				}
+				if (col % 2 === 0) {
 					return;
 				}
 				const { map, sprite } = element;
@@ -128,27 +134,29 @@ injector.register("game", [
 
 				switch (type) {
 					case WorldMap.ADD: {
-						if (!map[mapcol][maprow].length) {
-							const { id, type } = sprite;
+						if (map[mapcol][maprow].length === 0) {
+							const x = -col, y = groundLevel, z = -row - cameraDistance;
+
+							let { id } = sprite;
 							let spriteInstance;
 							spriteInstance = engine.addSprite({
-								id, type: "backwall", chunk: [ -col, -row ], pos: [ -col, groundLevel, -row - 2 ],
+								id, type: "backwall", chunk: [ -col, -row ], pos: [ x, y, z - 2 ],
 							});
 							map[mapcol][maprow].push(spriteInstance);
 							spriteInstance = engine.addSprite({
-								id, type: "wall", chunk: [ -col, -row ], pos: [ -col, groundLevel, -row + 2 ],
+								id, type: "wall", chunk: [ -col, -row ], pos: [ x, y, z + 2 ],
 							});
 							map[mapcol][maprow].push(spriteInstance);
 							spriteInstance = engine.addSprite({
-								id, type: "right", chunk: [ -col, -row ], pos: [ -col - 2, groundLevel, -row ],
+								id, type: "right", chunk: [ -col, -row ], pos: [ x - 2, y, z ],
 							});
 							map[mapcol][maprow].push(spriteInstance);
 							spriteInstance = engine.addSprite({
-								id, type: "left", chunk: [ -col, -row ], pos: [ -col + 2, groundLevel, -row ],
+								id, type: "left", chunk: [ -col, -row ], pos: [ x + 2, y, z ],
 							});
 							map[mapcol][maprow].push(spriteInstance);
 							spriteInstance = engine.addSprite({
-								id, type: "floor", chunk: [ -col, -row ], pos: [ -col, groundLevel + 4, -row - 1.5 ],
+								id, type: "floor", chunk: [ -col, -row ], pos: [ x, y + 4, z - 1.5 ],
 							});
 							map[mapcol][maprow].push(spriteInstance);
 						}
@@ -171,10 +179,15 @@ injector.register("game", [
 				pos: [ 0, groundLevel, 0 ],
 			},
 		});
+
 		const camArea = worldmap.getArea();
-		const penguinArea = worldmap.getArea();
 		const canvasResizer = new CanvasResizer(canvas);
 		const engine = new Engine();
+
+		function getPenguinPos(camPos) {
+			const [ x, y, z ] = camPos;
+			return Utils.set3(vec3pool.get(), -x, -y + groundLevel, -z - cameraDistance);
+		}
 
 		function setupEngine(engine, game, assets) {
 			const sceneIndex = game.firstScene || Object.keys(game.scenes)[0];
@@ -194,12 +207,6 @@ injector.register("game", [
 			engine.setCameraSettings(cameraSettings);
 			engine.setMoveSettings(moveSettings);	
 			engine.start();
-
-			penguinArea.addCallback((type, element, range, oldRange) => {
-				if (element.block) {
-
-				}
-			});	
 
 			camArea.addCallback((type, element, range, oldRange) => {
 				if (element.sprite) {
@@ -240,7 +247,7 @@ injector.register("game", [
 		const assets = [
 			penguin => {
 				const spriteSize = [64, 64];
-				return penguin_sprites.map(({ id, src, scale, flip }) => {
+				return penguinSprites.map(({ id, src, scale, flip }) => {
 					return {
 						id, src, spriteSize,
 						options: {
@@ -263,6 +270,7 @@ injector.register("game", [
 				spriteSize: [800, 800],
 				options: {
 					chunks: 8,
+					scale: 1,
 				},
 			},
 			{
@@ -313,10 +321,17 @@ injector.register("game", [
 			moveSettings: {
 				scale: .5,
 				angleStep: Math.PI / 4,
-				onMove: [
-					camArea.makeRangeAutoUpdate(horizonRangeSize),
-					penguinArea.makeRangeAutoUpdate(0),
-				],
+				canMove: (from, to) => {
+					const elements = camArea.getElements();
+					for (let id in elements) {
+						const element = elements[id];
+						if (element.blocks && element.blocks(element, from, to)) {
+							return false;
+						}
+					}
+					return true;
+				},
+				onMove: ([x, y, z]) => camArea.update(WorldMap.makeRange(x, z, horizonRangeSize)),
 			},
 			cameraSettings: {
 				height: cameraHeight,
@@ -326,15 +341,12 @@ injector.register("game", [
 				"demo": {
 					spriteDefinitions: [
 						penguin => {
-							const pos = vec3.create();
-							let movDirection = Utils.getDirectionAngle(vec3.fromValues(0, 0, -1));
+							let movDirection = Utils.getDirectionAngle(vec3.set(vec3pool.get(), 0, 0, -1));
 							let previousMoveDirection = -Number.MAX_VALUE;
 							let previousCamRotation = -Number.MAX_VALUE;
 							let textureIndex = -1;
 
-							const angleToTextureIndex = penguin_sprites.map(({id}) => {
-								return textureManager.getTextureData(id).index;
-							});
+							const angleToTextureIndex = penguinSprites.map(({id}) => textureManager.getTextureData(id).index);
 
 							return {
 								textureIndex: ({cam}) => {
@@ -351,8 +363,9 @@ injector.register("game", [
 									return textureIndex;
 								},
 								pos: ({cam}) => {
-									const [ x, y, z ] = cam.pos;
-									return Utils.set3(pos, -x, -y + groundLevel, -z - cameraDistance);
+									const penguinPos = getPenguinPos(cam.pos);
+									debug.penguin = penguinPos;
+									return penguinPos;
 								},
 								type: "sprite",
 								fps: ({cam}) => {

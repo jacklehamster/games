@@ -1,9 +1,12 @@
 injector.register("pool", () => {
+	const pools = [];
+
 	class Pool {
 		constructor(createCall) {
 			this.createCall = createCall;
 			this.pool = [];
 			this.index = 0;
+			pools.pop(this);
 		}
 
 		get() {
@@ -15,6 +18,10 @@ injector.register("pool", () => {
 
 		reset() {
 			this.index = 0;
+		}
+
+		static resetAll() {
+			pools.forEach(pool => pool.reset());
 		}
 	}
 

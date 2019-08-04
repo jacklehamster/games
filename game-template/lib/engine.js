@@ -1,6 +1,6 @@
 injector.register("engine", [ 
-	"gl", "utils", "keyboard", "texture-manager", "sprite", "camera", "pool",
-	(gl, Utils, Keyboard, textureManager, Sprite, Camera, Pool) => {
+	"gl", "utils", "keyboard", "texture-manager", "sprite", "camera", "pool", "debug",
+	(gl, Utils, Keyboard, textureManager, Sprite, Camera, Pool, debug) => {
 		const TEXTURE_SIZE = injector.get("texture-size");
 		const INDEX_ARRAY_PER_SPRITE = new Uint16Array([
 			0,  1,  2,
@@ -16,7 +16,7 @@ injector.register("engine", [
 		const SCALE_VEC3 = vec3.fromValues(1, 1, 1);
 		const vec3pool = new Pool(vec3.create);
 
-		const CORNERS = Float32Array.from([0, 1, 2, 3 ]);
+		const CORNERS = Float32Array.from([0, 1, 2, 3]);
 		const CORNERS_FUNC = () => CORNERS;
 
 		const SIZE_INCREASE = 1000;
@@ -35,7 +35,7 @@ injector.register("engine", [
 			now: 0, cam,
 		};
 
-		const debug = { globalData };
+		debug.globalData = globalData;
 
 		const sprites = [];
 		const dirtySprites = [];
@@ -53,12 +53,17 @@ injector.register("engine", [
 		let background = 0xffffff;
 		let requestId = 0;
 
+		let firstMove = true;
+
 		class Engine {
 			constructor() {
 				this.initGL(gl);
 				this.initializeRenderer();
 				addEventListener("focus", () => this.refreshPause());
 				addEventListener("blur", () => this.refreshPause());
+
+				this.cameraDistance = 0;
+				this.cameraHeight = 0;
 			}
 
 			start() {
@@ -96,12 +101,17 @@ injector.register("engine", [
 					this.refreshMove();
 					const realSpritesCount = this.reorderSprites(sprites);
 					this.refreshSprites(now, sprites, realSpritesCount);
-					vec3pool.reset();
 				}
 
-				if (Utils.debug) {
+				if (debug.canDebug) {
 					this.showDebugLog();
 				}
+
+				this.cleanup();
+			}
+
+			cleanup() {
+				Pool.resetAll();
 			}
 
 			refreshSprites(now, sprites, count) {
@@ -137,15 +147,18 @@ injector.register("engine", [
 				//	put recycled sprites at the end, opaque sprites at the beginning. Return number of real sprites
 				//	[ opaque, transparents, recycled ]
 
-				let left = 0, right = sprites.length - 1;
-				for (let i = 0; i <= right; i++) {
+				let left, right;
+				for (left = 0; left < sprites.length && sprites[left].opaque; left++) {};
+				for (right = sprites.length - 1; right > left && sprites[right].isRecycled(); right--) {};
+
+				for (let i = left; i <= right; i++) {
 					const sprite = sprites[i];
 					if (sprite.isRecycled()) {
 						Utils.swap(sprites, i, right);
 						sprites[i].makeDirty();
 						right--; i--;
 					} else if (sprite.opaque) {
-						if (i !== left) {
+						if (i !== left && left < sprites.length) {
 							Utils.swap(sprites, i, left);
 							sprites[i].makeDirty();
 							sprites[left].makeDirty();
@@ -161,20 +174,20 @@ injector.register("engine", [
 			}
 
 			setCameraSettings({ height, distance }) {
-				this.cameraDistance = distance;
-				this.cameraHeight = height;
+				this.cameraDistance = distance || 0;
+				this.cameraHeight = height || 0;
 			}
 
-			setMoveSettings({ angleStep, scale, onMove }) {
+			setMoveSettings({ angleStep, scale, onMove, canMove, onCleanup }) {
 				this.moveSettings = {
-					angleStep, scale, onMove,
+					angleStep, scale, onMove : onMove || (()=>{}), canMove : canMove || (()=>false), onCleanup : onCleanup || (()=>{}),
 				};
 			}
 
 			refreshMove() {
 				const { ax, ay, rot } = Keyboard.getActions();
 				const { mov, pos } = cam;
-				const { angleStep, scale, onMove } = this.moveSettings;
+				const { angleStep, scale, onMove, canMove } = this.moveSettings;
 				cam.addMove(- ax * ACCELERATION, 0, ay * ACCELERATION);
 
 				if (rot) {
@@ -192,26 +205,31 @@ injector.register("engine", [
 
 				const [ directionX, directionY, directionZ ] = cam.getRelativeDirection(vec3pool.get());
 				const [ preX, preY, preZ ] = pos;
+				const newPos = Utils.set3(vec3pool.get(),
+					preX + directionX * MOVE_SPEED,
+					preY + directionY * MOVE_SPEED,
+					preZ + directionZ * MOVE_SPEED,
+				);
 
-				pos[0] += directionX * MOVE_SPEED;
-				pos[1] += directionY * MOVE_SPEED;
-				pos[2] += directionZ * MOVE_SPEED;
-
-				if (Utils.debug) {
-					if (Math.floor(preX) !== Math.floor(pos[0]) || Math.floor(preZ) !== Math.floor(pos[2])) {
-							debug.mapCell = pos.map(Math.floor);
+				if (firstMove || !Utils.equal3(pos, newPos) && canMove(pos, newPos)) {
+					const newCell = Utils.checkNewCell(firstMove ? null : pos, newPos, vec3pool.get());
+					Utils.set3(pos, ...newPos);
+					if (newCell) {
+						onMove(newCell);
+						firstMove = false;
+						debug.mapCell = newCell;
 					}
 				}
 
 				if (viewMatrix) {
-					const h = this.cameraHeight || 0;
+					const h = this.cameraHeight;
 					const { cameraQuat } = renderer;
 					const turn = cam.rotation;
 					const tilt = h/2;
-					const zOffset = -this.cameraDistance || 0;
+					const zOffset = -this.cameraDistance;
 					quat.rotateY(cameraQuat, quat.rotateX(cameraQuat, IDENTITY_QUAT, tilt), turn);
 					mat4.fromRotationTranslationScaleOrigin(viewMatrix, cameraQuat, ZERO_VEC3,
-						vec3.set(vec3pool.get(), scale, scale, scale), vec3.set(vec3pool.get(), 0, h, zOffset));			
+						Utils.set3(vec3pool.get(), scale, scale, scale), Utils.set3(vec3pool.get(), 0, h, zOffset));			
 					quat.conjugate(cameraQuat, cameraQuat);	//	conjugate for sprites			
 					mat4.translate(viewMatrix, viewMatrix, pos);
 
@@ -219,15 +237,16 @@ injector.register("engine", [
 						mat4.fromQuat(cameraRotationMatrix, cameraQuat);
 					}
 				}
-
-				if (onMove) {
-					onMove.forEach(callback => callback(vec3.set(vec3pool.get(), preX, preY, preZ), pos, vec3pool.get()));
-				}
 			}
 
 			showDebugLog() {
 				document.getElementById("debug").style.display = "";
-				document.getElementById("log").innerText = JSON.stringify(debug, null, '  ');
+				document.getElementById("log").innerHTML = debug._syntaxHighlight(JSON.stringify(debug, (key, value) => {
+					if (key.indexOf("_") === 0) {
+						return undefined;
+					}
+					return value;
+				}, '  '));
 			}
 
 			refreshMatrices({ cache, programInfo }) {
@@ -401,7 +420,7 @@ injector.register("engine", [
 					Engine.bufferSprites(renderer, dirtySprites, VERTICES_PER_SPRITE, CORNERS_FUNC);
 				}
 
-				if (Utils.debug) {
+				if (debug.canDebug) {
 					debug.draws = dirtySprites.length;
 					debug.totalDraws = (debug.totalDraws || 0) + debug.draws;
 					debug.spriteCount = sprites.length;

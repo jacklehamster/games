@@ -40,9 +40,9 @@ injector.register("worldmap", [
 		}
 	}
 
-	const ADD = 1;
-	const REMOVE = 2;
-	const UPDATE = 3;
+	const ADD 		= 3;
+	const REMOVE 	= 4;
+	const UPDATE 	= 5;
 
 	class Area {
 		constructor(worldmap, left, right, top, bottom) {
@@ -100,6 +100,13 @@ injector.register("worldmap", [
 
 		getElements() {
 			return this.elementHash;
+		}
+
+		forEachElement(callback) {
+			const elements = this.getElements();
+			for (let id in elements) {
+				callback(elements[id]);
+			}
 		}
 
 		update(range) {
@@ -234,23 +241,6 @@ injector.register("worldmap", [
 		removeCallback(callback) {
 			this.callbacks = this.callbacks.filter(c => c !== callback);
 		}
-
-		makeRangeAutoUpdate(rangeSize) {
-			const area = this;
-			let first = true;
-			return (from, to, vec3temp) => {
-				const newCell = Utils.checkNewCell(first ? null : from, to, vec3temp);
-				first = false;
-				if (newCell) {
-					const [ x, y, z ] = newCell;
-					tempRange.left = x - rangeSize / 2;
-					tempRange.right = x + rangeSize / 2;
-					tempRange.top = z - rangeSize / 2;
-					tempRange.bottom = z + rangeSize / 2;
-					area.update(tempRange);
-				}
-			};
-		}				
 	}
 
 	const INFINITY_RANGE = { 

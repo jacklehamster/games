@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <title></title>
+		<meta charset="utf-8"/>
+		<style>
+			html, body {
+			    height: 100%;
+			}
+			body {
+			    margin: 0;
+			}
+		</style>
+	</head>
+	<script src="../lib/dependency-injector.js"></script>
+	<script src="../lib/utils.js"></script>
+	<script src="../lib/image-splitter.js"></script>
+
+	<body style="margin: 0;">
+		<div style="display: flex; flex-direction: row">
+			<div id="images" style="display: flex; flex-direction: column">
+			</div>
+			<div id="thumbnail" style="margin-left: 20px">
+			</div>
+		</div>
+		<div>
+			<label for="rotate">rotate</label>
+			<input type="checkbox" id="rotate" onchange="reset()"></div>
+		</div>
+	</body>
+	
+	<script>
+		const imagesDiv = document.getElementById("images");
+		const thumbDiv = document.getElementById("thumbnail");
+		
+		function refresh(image) {
+			imagesDiv.innerHTML = "";
+			thumbDiv.innerHTML = "";
+			image.style.maxWidth = "100px";
+			thumbDiv.appendChild(image);
+			
+			ImageSplitter.splitImage(image, 100, 50, {rotateCC90: document.getElementById("rotate").checked}, (img, c, r, canvas, { opaque }) => {
+				let row = document.getElementById(`row-${r}`);
+				if (!row) {
+					row = images.appendChild(document.createElement("div"));
+					row.id = `row-${r}`;
+					row.style.display = "flex";
+					row.style.flexDirection = "row";
+				}
+				const newCanvas = row.appendChild(document.createElement("canvas"));
+				newCanvas.style.margin = "2px";
+				newCanvas.width = canvas.width;
+				newCanvas.height = canvas.height;
+				const ratio = 50 / Math.max(newCanvas.width, newCanvas.height);
+				newCanvas.style.width = `${newCanvas.width * ratio}px`;
+				newCanvas.style.height = `${newCanvas.height * ratio}px`;
+				newCanvas.getContext("2d").fillRect(0, 0, newCanvas.width, newCanvas.height);
+				newCanvas.getContext("2d").drawImage(canvas, 0, 0);
+			});
+		}
+		
+		function reset() {
+			Utils.load("../assets/crystal-wall.jpg").then(refresh);
+		}
+
+		reset();
+	</script>	
+</html>

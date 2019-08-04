@@ -38,6 +38,13 @@
 			.flex-item {
 			    text-align: center;
 			}
+
+			pre {outline: 1px solid #ccc; padding: 2px; margin: 2px; }
+			.string { color: darkgreen; }
+			.number { color: blue; }
+			.boolean { color: darkblue; }
+			.null { color: gray; }
+			.key { font-weight: bold; color: black; }
 		</style>
 	</head>
 	<script src="lib/gl-matrix.js"></script>
@@ -71,7 +78,21 @@
 			</script>
 		</div>
 		<div id="debug" style="display: none; background-color: #FFcccc; min-height: 100px; padding: 5px">
-			<pre id="log"></pre>
+			<div>
+				<label for="tosky">Bring to top</label>
+				<input id="tosky" type="checkbox">
+				<script>
+					const checkbox = document.getElementById('tosky');
+					checkbox.checked = localStorage.getItem("debugTop") === "top";
+					checkbox.addEventListener("change", check);
+					function check() {
+						localStorage.setItem("debugTop", checkbox.checked ? "top" : "");
+						document.getElementById('log').style.position = checkbox.checked ? 'absolute' : '';
+					}
+					document.addEventListener("DOMContentLoaded", check);
+				</script>
+			</div>
+			<pre id="log" style="background-color: #FFccccEE; left: 0px; top: 0px; padding: 2px; font-size: 8pt"></pre>
 		</div>
 	</body>
 	<script src="test/test.js"></script>

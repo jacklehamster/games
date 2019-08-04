@@ -50,7 +50,7 @@
 			img.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAAGElEQVQIW2P4DwcMDAxAfBvMAhEQMYgcACEHG8ELxtbPAAAAAElFTkSuQmCC";
 			img.addEventListener("load", e => {
 				const calls = [];
-				ImageSplitter.splitImage(img, 2, 1, (img, c, r, canvas) => {
+				ImageSplitter.splitImage(img, 2, 1, null, (img, c, r, canvas) => {
 					calls.push([img, c, r, canvas]);
 				});
 				console.assert(calls.length === 6);

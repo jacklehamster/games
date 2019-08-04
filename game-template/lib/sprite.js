@@ -133,7 +133,7 @@ injector.register("sprite", [
 						this.slotIndex = -1;
 					}
 				} else {
-					if (!Utils.arrayEqual(this.wave, wave)) {
+					if (!Utils.equal4(this.wave, wave)) {
 						this.wave.set(wave);
 						this.slotIndex = -1;
 					}

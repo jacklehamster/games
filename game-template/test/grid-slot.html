@@ -84,7 +84,14 @@
 				if (selection) {
 					const { x0, y0, x1, y1 } = selection;
 					const x = Math.min(x0, x1), y = Math.min(y0, y1);
-					const width = Math.abs(x1 - x0 + 1), height = Math.abs(y1 - y0 + 1);
+					let width = Math.abs(x1 - x0 + 1), height = Math.abs(y1 - y0 + 1);
+
+					if (document.getElementById("rotate").checked && width < height) {
+						const temp = width;
+						width = height;
+						height = temp;
+					}
+
 					const slot = gridSlot.getSlot(width, height);
 					rects.push({
 						box: { x, y, width, height },
@@ -165,5 +172,9 @@
 		<canvas id="canvas"></canvas>
 		<br>
 		<div id="pager"></div>
+		<div>
+			<label for="rotate">rotate when tall</label>
+			<input type="checkbox" id="rotate"></div>
+		</div>
 	</body>
 </html>

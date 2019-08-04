@@ -1,5 +1,4 @@
 const cache = {};
-const canDebug = location.search.indexOf("debug") >= 0;
 const tempVec3 = vec3.create(), temp2Vec3 = vec3.create();
 const temp4Float = new Float32Array(4);
 const FLOAT_NUMS = new Array(100).fill(null).map((a, index) => {
@@ -10,10 +9,6 @@ const DEG_90 = Math.PI / 2;
 const nop = () => {};
 
 class Utils {
-	static get debug() {
-		return canDebug;
-	}
-
 	static delay(ms) {
 	  return new Promise(resolve => setTimeout(resolve, ms));
 	}
@@ -114,16 +109,13 @@ class Utils {
 		return vector;
 	}
 
-	static arrayEqual(arr1, arr2) {
-		if (arr1.length !== arr2.length) {
-			return false;
-		}
-		for (let i = 0; i < arr1.length; i++) {
-			if (arr1[i] !== arr2[i]) {
-				return false;
-			}
-		}
-		return true;
+	static equal3(vector1, vector2) {
+		const [ x1, y1, z1 ] = vector1, [ x2, y2, z2 ] = vector2;
+		return x1 === x2 && y1 === y2 && z1 === z2;
+	}
+
+	static equal4(vector1, vector2) {
+		return Utils.equal3(vector1, vector2) && vector1[3] === vector2[3];
 	}
 
 	static get4Floats(num) {
@@ -198,6 +190,14 @@ class Utils {
 		const temp = array[index1];
 		array[index1] = array[index2];
 		array[index2] = temp;
+	}
+
+	static name(prop, parent) {
+		for (let p in parent) {
+			if (prop === parent[p]) {
+				return p;
+			}
+		}
 	}
 }
 
