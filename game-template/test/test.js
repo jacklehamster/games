@@ -5,9 +5,6 @@
 		"texture-size": textureSize => {
 			console.assert(textureSize === 4096, "Invalid texture size.");
 		},
-		"antialias": antialias => {
-			console.assert(!antialias, "Should have no antialias.");
-		},
 		"gl": gl => {
 			console.assert(gl.constructor === WebGLRenderingContext, "gl is unexpected type.");
 		},
