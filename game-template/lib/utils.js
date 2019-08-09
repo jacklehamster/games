@@ -1,5 +1,5 @@
 const cache = {};
-const tempVec3 = vec3.create(), temp2Vec3 = vec3.create();
+const canDebug = location.search.indexOf("debug") >= 0;
 const temp4Float = new Float32Array(4);
 const FLOAT_NUMS = new Array(100).fill(null).map((a, index) => {
 	return Float32Array.from([index, index, index, index]);
@@ -9,6 +9,10 @@ const DEG_90 = Math.PI / 2;
 const nop = () => {};
 
 class Utils {
+	static get debug() {
+		return canDebug;
+	}
+
 	static delay(ms) {
 	  return new Promise(resolve => setTimeout(resolve, ms));
 	}

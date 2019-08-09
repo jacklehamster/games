@@ -16,18 +16,17 @@ injector.register("canvas-resizer", () => {
 		}
 
 		resize() {
+			const pixelRatio = window.devicePixelRatio;
 			const { canvas } = this;
 			const { width, height } = canvas;
 			const { offsetWidth, offsetHeight } = canvas.parentElement.parentElement;
 			const divisor = gcd(width, height);
-			let screenWidth = width / divisor, screenHeight = height / divisor;
+			let screenWidth = width / divisor / pixelRatio, screenHeight = height / divisor / pixelRatio;
 			let mul = 1;
 			while (screenWidth * mul < offsetWidth && screenHeight * mul < offsetHeight) {
 				mul ++;
 			}
 			mul--;
-
-			const pixelRatio = window.devicePixelRatio;
 
 			canvas.width = mul * screenWidth * pixelRatio;
 			canvas.height = mul * screenHeight * pixelRatio;

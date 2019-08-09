@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <title></title>
+		<meta charset="utf-8"/>
+		<style>
+			canvas {  
+		        image-rendering: optimizeSpeed;
+				image-rendering: -moz-crisp-edges;
+				image-rendering: -webkit-crisp-edges;
+				image-rendering: pixelated;
+				image-rendering: crisp-edges;
+		        image-rendering: optimize-contrast;
+		        -ms-interpolation-mode: nearest-neighbor;
+		        cursor: none;
+			}
+
+			html, body {
+			    height: 100%;
+			}
+			body {
+			    margin: 0;
+			}
+			.flex-container {
+			    height: 100%;
+			    padding: 0;
+			    margin: 0;
+			    display: -webkit-box;
+			    display: -moz-box;
+			    display: -ms-flexbox;
+			    display: -webkit-flex;
+			    display: flex;
+			    align-items: center;
+			    justify-content: center;
+			}
+			.row {
+			    width: auto;
+			}
+			.flex-item {
+			    text-align: center;
+			}
+
+			pre {outline: 1px solid #ccc; padding: 2px; margin: 2px; }
+			.string { color: darkgreen; }
+			.number { color: blue; }
+			.boolean { color: darkblue; }
+			.null { color: gray; }
+			.key { font-weight: bold; color: black; }
+		</style>
+	</head>
+
+	<body style="margin: 0;">
+		<div class="flex-container">
+			<canvas class="flex-item" id="canvas" width=64 height=64 style="background-color: black; width: 512px; height: 512px"></canvas>
+		</div>
+	</body>
+
+	<script src="game.js"></script>
+	<script>
+		document.addEventListener("DOMContentLoaded", e => {
+			Game.start();
+		});
+	</script>
+</html>

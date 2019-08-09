@@ -139,6 +139,7 @@ injector.register("engine", [
 					const didBufferResized = this.ensureBuffer(renderer, count);
 					textureManager.sendTexturesToGPU(renderer.shaderProgram);
 					this.processSprites(renderer, sprites, count, didBufferResized);
+					gl.clear(gl.COLOR_BUFFER_BIT);
 					gl.drawElements(gl.TRIANGLES, count * INDEX_ARRAY_PER_SPRITE.length, gl.UNSIGNED_SHORT, 0);
 				}
 			}
@@ -326,10 +327,7 @@ injector.register("engine", [
 								backgroundLocation:         gl.getUniformLocation(shaderProgram, 'background'),
 							};
 							gl.uniform1iv(gl.getUniformLocation(shaderProgram, 'uTextureSampler'), new Array(16).fill(null).map((a, index) => index));
-							const r = ((background / 256 / 256) % 256) / 256;
-							const g = ((background / 256) % 256) / 256;
-							const b = ((background) % 256) / 256;
-							gl.uniform4f(renderer.programInfo.backgroundLocation, r, g, b, 1);
+							this.updateBackgroundColor(renderer, background);
 						}).then(() => {
 							resolve(renderer);
 						});
@@ -339,11 +337,16 @@ injector.register("engine", [
 			setBackground(bg) {
 				background = bg;
 				if(renderer) {
-					const r = ((background / 256 / 256) % 256) / 256;
-					const g = ((background / 256) % 256) / 256;
-					const b = ((background) % 256) / 256;
-					gl.uniform4f(renderer.programInfo.backgroundLocation, r, g, b, 1);
+					this.updateBackgroundColor(renderer, bg);
 				}
+			}
+
+			updateBackgroundColor(renderer, color) {
+				const r = ((background / 256 / 256) % 256) / 256;
+				const g = ((background / 256) % 256) / 256;
+				const b = ((background) % 256) / 256;
+				gl.uniform4f(renderer.programInfo.backgroundLocation, r, g, b, 1.0);
+				gl.clearColor(r, g, b, 1.0);
 			}
 
 			getSlotIndices(slotIndex) {

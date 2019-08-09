@@ -1,11 +1,9 @@
 //	Texture size
 const TEXTURE_SIZE = 4096;
-injector.register("texture-size", [ () => TEXTURE_SIZE ]);
+injector.register("texture-size", identity(TEXTURE_SIZE));
 
 //	WebGL
-injector.register("gl", [ "canvas",
-	canvas => canvas.getContext('webgl', {antialias: false })
-]);
+injector.register("gl", [ "canvas", canvas => canvas.getContext('webgl', {antialias: false }) ]);
 
 //	Document
 injector.register("document", identity(document));
