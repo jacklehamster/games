@@ -55,11 +55,13 @@
 		</div>
 	</body>
 
+	<script src="common.js"></script>
+	<script src="config.js"></script>
 	<script src="game.js"></script>
 	<script>
 		let game;
 		document.addEventListener("DOMContentLoaded", e => {
-			game = Game.start();
+			game = Game.start(gameConfig);
 		});
 	</script>
 </html>

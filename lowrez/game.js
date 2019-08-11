@@ -1,50 +1,5 @@
 const Game = (() => {
 
-	const ASSETS = {
-		ARROW_SIDE:'assets/arrow-side.png',
-		ARROW_FORWARD:'assets/arrow-forward.png',
-		ARROW_BACKWARD:'assets/arrow-backward.png',
-		JAIL:'assets/jail.png',
-		JAIL360:'assets/jail-360.png',
-		WRITING:'assets/writing.png',
-		PHOTO:'assets/photo.png',
-		TILE:'assets/tile.png',
-		BOTTLE:'assets/bottle.png',
-		FAR_SIDE:'assets/far-side.png',
-		FAR_SIDE_CORNER:'assets/far-side-corner.png',
-		FAR_WALL:'assets/far-wall.png',
-		FAR_DOOR:'assets/far-door.png',
-		CLOSE_SIDE:'assets/close-side.png',
-		CLOSE_SIDE_CORNER:'assets/close-side-corner.png',
-		CLOSE_WALL:'assets/close-wall.png',
-		DOOR_OPEN:'assets/door-open.png',
-		CLOSE_DOOR:'assets/close-door.png',
-		BAG_OUT:'assets/bag-out.png',
-		LAMP:'assets/light.png',
-		LOCK:'assets/lock.png',
-		EXIT_DOOR:'assets/exit-door.png',
-		CAGE: 'assets/cage.png',
-		DIMMING_LIGHT: 'assets/dimming-light.png',
-		RIGHT_GUARD: 'assets/right-guard.png',
-		LEFT_GUARD: 'assets/left-guard.png',
-		ALPHABET:'assets/alphabet.png',
-		GRAB_PHOTO:'assets/grab-photo.png',
-		ZOOM_GUARDS: 'assets/zoom-guards.png',
-		GRAB_BOTTLE:'assets/grab-bottle.png',
-		BIRTHDAY: 'assets/birthday.png',
-		SPEECH_OUT: 'assets/speech-out.png',
-		BRING_CAKE: 'assets/bring-cake.png',
-		POOR_HITMAN: 'assets/poor-hitman.png',
-		POOR_HITMAN_BACK: 'assets/poor-hitman-back.png',
-		POOR_HITMAN_GUARD: 'assets/poor-hitman-guard.png',
-	};
-
-	const SOUNDS = {
-		HELLO:'sounds/hello.mp3',
-		HAHAHA:'sounds/hahaha.mp3',
-		BIRTHDAY:'sounds/birthday.mp3',
-	};
-
 	const canvas = document.getElementById("canvas");
 	const ctx = canvas.getContext("2d");
 	const maskCanvas = document.createElement("canvas");
@@ -56,8 +11,6 @@ const Game = (() => {
 	tempCanvas.width = canvas.width;
 	tempCanvas.height = canvas.height;
 	tempCtx = tempCanvas.getContext("2d");
-
-	const LEFT = 1, RIGHT = 2, FORWARD = 3, BACKWARD = 4, BAG = 5;
 
 	function nop() {}
 
@@ -93,479 +46,19 @@ const Game = (() => {
 		return map[y][x];
 	}
 
-	const ALPHAS = (() => {
-		const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz.,?'#@!♪ ";
-		const array = [];
-		for(let c = 0; c < letters.length; c++) {
-			array[letters.charCodeAt(c)] = { index: c };
-		}
-		array[" ".charCodeAt(0)].width = 1;
-		return array;
-	})();
-
-
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz "
-		.split("").map((letter, index) => {
-
-		});
-
-	const ORIENTATIONS = ['W','N','E','S'];
-	const ARROWS = [
-		null, 
-		{ src:ASSETS.ARROW_SIDE, side:LEFT },
-		{ src:ASSETS.ARROW_SIDE, side:RIGHT},
-		{ src:ASSETS.ARROW_FORWARD},
-		{ src:ASSETS.ARROW_BACKWARD},
-	];
-
-	const config = {
-		scenes: [
-			{
-				name: "jail-cell",
-				arrowGrid: [
-					[],
-					[],
-					[ null, null, null,  null, null  ],
-					[ LEFT, null, null,  null, RIGHT ],
-					[ LEFT, null, BAG , null, RIGHT ],
-				],
-				onScene: game => {
-					if (!game.data.seen.intro) {
-						game.data.seen.intro = true;
-						if (location.search.indexOf("skip-intro") < 0) {
-							game.fade = 1;
-							game.sceneIntro = true;
-							game.hideCursor = true;
-							game.hideArrows = true;
-							setTimeout(() => {
-								game.showTip([
-									"My brain... it hurts...",
-									"And my body is filled with bruises...",
-									"Where am I? I don't remember anything.",
-									"WHO am I?"
-									], game => {
-									game.sceneIntro = false;
-									game.sceneData.beginTime = game.now;
-									game.hideCursor = false;
-								});
-							},3000);
-						}
-					}
-				},
-				onSceneRefresh: game => {
-					if (!game.sceneIntro) {
-						game.fade = Math.max(0, 1 - (game.now - game.sceneData.beginTime) / 3000);
-						if (game.hideArrows && game.fade === 0) {
-							game.hideArrows = false;
-						} 
-					}
-				},
-				sprites: [
-					{
-						name: "lock",
-						src: ASSETS.LOCK,
-						hidden: game => game.rotation !== 0,
-						onClick: game => {
-							console.log("lock");
-						},
-					},
-					{
-						name: "lamp",
-						src: ASSETS.LAMP,
-						hidden: game => game.rotation !== 0,
-						onClick: game => {
-							console.log("lamp");
-						},
-					},
-					{
-						src: ASSETS.EXIT_DOOR,
-						hidden: game => game.rotation !== 0,
-						onClick: game => {
-							console.log("exit door");
-						},
-					},
-					{
-						src: ASSETS.JAIL, col:3, row:3,
-						index: () => Math.random() < .1 ? 1 : 0,
-						hidden: game => game.rotation !== 0,
-					},
-					{
-						src: ASSETS.DIMMING_LIGHT,
-						index: () => Math.random() < .1 ? 1 : 0,
-						hidden: game => game.rotation !== 0,
-					},
-					{
-						name: "guard",
-						src: ASSETS.RIGHT_GUARD, col:3, row:3,
-						index: 0,
-						hidden: game => game.rotation !== 0,
-						onClick: game => game.gotoScene("zoom-guards"),
-						tip: "He looks bored.",
-						canCombine: item => true,
-						combine: (item, game) => {
-							game.gotoScene("zoom-guards");
-							game.useItem = item;
-						}
-					},
-					{
-						name: "guard",
-						src: ASSETS.LEFT_GUARD, col:3, row:3,
-						index: 0,
-						hidden: game => game.rotation !== 0,
-						onClick: game => game.gotoScene("zoom-guards"),
-						tip: "He's reading a book.",
-						canCombine: item => true,
-						combine: (item, game) => {
-							game.gotoScene("zoom-guards");
-							game.useItem = item;
-						}
-					},
-					{
-						src: ASSETS.CAGE,
-						index: 0,
-						hidden: game => game.rotation !== 0,
-					},
-					{
-						src: ASSETS.JAIL360, col:3, row:3,
-						index: game => (game.rotation + 8) % 8,
-						hidden: game => game.rotation === 0,
-					},
-					{
-						src: ASSETS.WRITING, col:3, row:3,
-						index: game => (game.rotation + 8) % 8,
-						hidden: game => game.rotation === 0,
-						onClick: game => {
-							if (game.rotation === 4) {
-								game.turnLeft(game.now);
-							} else {
-								game.gotoScene("birthday");
-							}
-						},
-						tip: ({rotation, data}) => rotation === 4 || data.seen["writing"] ? null : "I must have been here for several days... or even months!",
-					},
-					{
-						name: "photo",
-						src: ASSETS.PHOTO, col:3, row:3,
-						index: game => (game.rotation + 8) % 8,
-						hidden: (game,{name}) => game.rotation === 0 || game.data.pickedUp[name],
-						onClick: (game, sprite) => {
-							if (game.rotation === 4) {
-								game.turnRight(game.now);
-							} else {
-								game.pickUp(sprite.name, ASSETS.GRAB_PHOTO, "It's ...\nBABY HITLER!");
-							}
-						},
-						tip: ({rotation}) => rotation === 4 ? null : "This photo looks familiar",
-					},
-					{
-						name: "tile",
-						src: ASSETS.TILE, col:3, row:3,
-						index: game => (game.rotation + 8) % 8,
-						hidden: game => game.rotation === 0,
-						onClick: game => game.showTip("I can't lift it with my fingers. I need some kind of lever."),
-						tip: "The tile seems loose.",
-						combineMessage: (item, game) => "That doesn't work as a lever.",
-					},
-					{
-						name: "empty bottle",
-						src: ASSETS.BOTTLE, col:3, row:3,
-						index: game => (game.rotation + 8) % 8,
-						hidden: (game,{name}) => game.rotation === 0 || game.data.pickedUp[name],
-						onClick: (game, sprite) => {
-							game.pickUp(sprite.name, ASSETS.GRAB_BOTTLE, "It's empty.");
-						},
-					},
-					{
-						bag: true,
-						src: ASSETS.BAG_OUT,
-						index: game => game.frameIndex,
-						hidden: game => game.arrow !== BAG && !game.bagOpening,
-						alpha: game => game.emptyBag() ? .2 : 1,
-						onClick: game => {
-							if (game.emptyBag()) {
-								return;
-							}
-							if (game.frameIndex === 3) {
-								if (game.useItem) {
-									game.useItem = null;
-								} else {
-									for (let i in game.inventory) {
-										const { item, image, message } = game.inventory[i];
-										if (game.isMouseHover({src:image, index:game.frameIndex-1})) {
-											game.useItem = item;
-										}
-									}
-								}
-							}
-							game.openBag(game.now);
-						}
-					},
-				],
-			},
-			{
-				arrowGrid: [
-					[],
-					[],
-					[ null, null, null,     null, null  ],
-					[ LEFT, null, FORWARD,  null, RIGHT ],
-					[ LEFT, null, BACKWARD, null, RIGHT ],
-				],
-				map: `
-					XXXXXXXX
-					X.....XX
-					XX.XX.XX
-					XX8XX.XX
-					XXXXX1XX
-					XXXXXXXX
-				`,
-				doors: {
-					1: {
-						exit: game => {
-							game.fadeOut(game.now, {duration:3000, fadeDuration:2000, color:"#000000", onDone:() => {
-								game.gotoScene(0);
-							}});
-						},
-					},
-				},
-			},
-			{
-				name: "zoom-guards",
-				arrowGrid: [
-					[],
-					[],
-					[ null, null, null,  null, null  ],
-					[ null, null, null,  null, null ],
-					[ null, null, BAG ,  null, null ],
-				],
-				onScene: game => {
-					game.startDialog({
-						time: game.now,
-						index: 0,
-						conversation: [
-							{
-								message: "",
-								options: [
-									{
-										msg: "Say Hello", 
-										onSelect: (game, dialog) => {
-											game.playSound(SOUNDS.HELLO);
-											dialog.guardSpeaking = true;
-											game.hideCursor = true;
-											game.showTip("...", () => {
-												dialog.guardSpeaking = false;
-												game.hideCursor = false;
-											});
-											dialog.index = 1;
-										}
-									},
-									{ msg: "LEAVE", onSelect: game => game.gotoScene("jail-cell")},
-								],
-							},
-							{
-								message: "",
-								options: [
-									{
-										msg: "Let me out?", 
-										onSelect: (game, dialog) => {
-											game.playSound(SOUNDS.HAHAHA);
-											dialog.guardSpeaking = true;
-											game.hideCursor = true;
-											game.showTip("... seems like he's laughing at me ...", () => {
-												dialog.guardSpeaking = false;
-												game.hideCursor = false;
-											});
-										}
-									},
-									{
-										hidden: game => !game.data.seen.writing,
-										msg: "It's my birthday", 
-										onSelect: (game, dialog) => {
-											game.playSound(SOUNDS.BIRTHDAY);
-											dialog.guardSpeaking = true;
-											game.hideCursor = true;
-											game.showTip("... did he\nunderstand? ...", game => {
-												game.gotoScene("bring-cake");
-											});
-										}
-									},
-									{ msg: "LEAVE", onSelect: game => game.gotoScene("jail-cell")},
-								],
-							},
-						],
-					});
-				},
-				sprites: [
-					{
-						src: ASSETS.ZOOM_GUARDS,
-						index: game => {
-							if (game.dialog && game.dialog.guardSpeaking) {
-								return Math.floor(game.now / 100) % 4;
-							}
-							const frame = Math.floor(game.now / 200);
-							return frame % 31 === 1 ? 1 : 0;
-						},
-						combineMessage: (item, game) => `The guard shrugs at your ${item}.`,
-					},
-					{
-						src: ASSETS.SPEECH_OUT,
-						hidden: game => game.bagOpening || game.useItem || game.pendingTip,
-						index: game => Math.min(3, Math.floor((game.now - game.sceneTime) / 80)),
-					},
-					{
-						bag: true,
-						src: ASSETS.BAG_OUT,
-						index: game => game.frameIndex,
-						hidden: game => game.arrow !== BAG && !game.bagOpening,
-						alpha: game => game.emptyBag() ? .2 : 1,
-						onClick: game => {
-							if (game.emptyBag()) {
-								return;
-							}
-							if (game.frameIndex === 3) {
-								if (game.useItem) {
-									game.useItem = null;
-								} else {
-									for (let i in game.inventory) {
-										const { item, image, message } = game.inventory[i];
-										if (game.isMouseHover({src:image, index:game.frameIndex-1})) {
-											game.useItem = item;
-										}
-									}
-								}
-							}
-							game.openBag(game.now);
-						}
-					},
-				],
-			},
-			{
-				name: "birthday",
-				onScene: game => {
-					game.hideCursor = true;
-					if (!game.data.seen["writing"]) {
-						game.data.seen["writing"] = true;
-						game.showTip(["Hey, it looks like I carved a birthday cake on the wall.", "I can't remember that, but could it be... it's my BIRTHDAY?!"],
-							game => {
-								game.gotoScene("jail-cell");
-								game.rotation = 6;
-							}
-						);
-					} else {
-						game.showTip("♪♪ Happy\nbirthday\nto me ♪♪",
-							game => {
-								game.gotoScene("jail-cell");
-								game.rotation = 6;
-							});
-					}
-				},
-				sprites: [
-					{
-						src: ASSETS.BIRTHDAY,
-					},
-				],
-			},
-			{
-				name: "bring-cake",
-				onScene: game => {
-					game.hideCursor = true;
-					game.sceneData.scenario = 0;
-				},
-				onSceneRefresh: game => {
-					if (game.sceneData.scenario === 0) {
-						const frame = Math.floor((game.now - game.sceneTime) / 300);
-						if (frame >= 10) {
-							game.showTip([
-								"...",
-								"Wait... did he just leave?",
-								"That's odd.",
-								"Maybe he went to get me a birthday cake.",
-								"Wouldn't that be funny?!?",
-							], game => {
-								game.sceneData.scenario = 2;
-								game.sceneData.scenarioTime = game.now;
-							});
-							game.sceneData.scenario = 1;
-						}
-					} else if (game.sceneData.scenario === 2) {
-						const frame = Math.floor((game.now - game.sceneData.scenarioTime) / 500);
-						if (frame >= 5) {
-							game.sceneData.scenario = 3;
-							game.showTip("OMG!", game => {
-								game.gotoScene("poor-hitman");
-							});
-						}
-					}
-				},
-				sprites: [
-					{
-						src: ASSETS.JAIL, col:3, row:3,
-						index: () => Math.random() < .1 ? 1 : 0,
-					},
-					{
-						src: ASSETS.DIMMING_LIGHT,
-						index: () => Math.random() < .1 ? 1 : 0,
-					},
-					{
-						src: ASSETS.RIGHT_GUARD, col:3, row:3,
-						index: 0,
-					},
-					{
-						src: ASSETS.BRING_CAKE, col:3, row:3,
-						index: game => {
-							if (game.sceneData.scenario === 0) {
-								const frame = Math.floor((game.now - game.sceneTime) / 300);
-								return Math.min(frame, 3);
-							} else if (game.sceneData.scenario === 1) {
-								return 3;
-							} else if (game.sceneData.scenario === 2) {
-								const frame = Math.floor((game.now - game.sceneData.scenarioTime) / 500);
-								return Math.min(6, frame + 4);
-							}
-							const frame = Math.floor((game.now - game.sceneTime) / 300);
-							return 5 + frame % 2;
-						},
-					},
-					{
-						src: ASSETS.CAGE,
-						index: 0,
-					},
-				],
-			},
-			{
-				name: "poor-hitman",
-				onScene: game => {
-					game.hideCursor = true;
-					game.showTip(["What a surprise, how thoughtful of you!", "You really do care about me after all.."],
-						game => {
-							console.log("NEXT");
-						}
-					);					
-				},
-				sprites: [
-					{
-						src: ASSETS.POOR_HITMAN_BACK,
-					},
-					{
-						src: ASSETS.POOR_HITMAN,
-						index: ({ pendingTip, now }) => pendingTip && pendingTip.progress < 1 ? Math.floor(now / 150) % 4 : 0,
-					},
-					{
-						src: ASSETS.POOR_HITMAN_GUARD,
-						index: game => Math.floor(game.now / 200) % 4, 
-					},
-				],
-			},
-		],
-	};
-
 	const imageStock = {};
 	const soundStock = {};
 	let gameInstance;
 
 	class Game {
-		static start() {
+		static start(gameConfig) {
 			gameInstance = new Game();
-			gameInstance.play(config);
+			gameInstance.play(gameConfig);
+
+			if (location.hash.split("#")[1]) {
+				gameInstance.gotoScene(location.hash.split("#")[1]);
+			}
+
 			return gameInstance;
 		}
 
@@ -577,7 +70,7 @@ const Game = (() => {
 		}
 
 		constructor() {
-			this.sceneIndex = location.hash.split("#")[1] || 0;
+			this.sceneIndex = 0;
 			this.initGame();
 
 			document.addEventListener("keydown", ({keyCode}) => {
@@ -602,11 +95,13 @@ const Game = (() => {
 
 			canvas.addEventListener("mousedown", ({currentTarget, offsetX, offsetY}) => {
 				if (this.pickedUp) {
-					const { item } = this.pickedUp;
-					this.inventory[item] = this.pickedUp;				
-					this.pickedUp = null;
-					this.tips = {};
-					this.openBag(this.now);
+					const { item, onPicked, tip } = this.pickedUp;
+					if (tip.progress >= 1) {
+						this.inventory[item] = this.pickedUp;				
+						this.pickedUp = null;
+						this.tips = {};
+						this.openBag(this.now, onPicked);
+					}
 					return;
 				}
 				if (this.dialog && this.dialog.hovered) {
@@ -615,47 +110,53 @@ const Game = (() => {
 					}
 					return;
 				}
-				const { offsetWidth, offsetHeight } = currentTarget;
-				if (this.arrowGrid && !this.useItem && !this.bagOpening) {
-					const arrow = this.getArrow(offsetX, offsetY, offsetWidth, offsetHeight);
-					this.arrow = arrow;
-					switch(this.arrow) {
-						case LEFT: {
-							this.turnLeft(this.now);
-							this.actionDown = arrow;
-						}
-						break;
-						case RIGHT: {
-							this.turnRight(this.now);
-							this.actionDown = arrow;
-						}
-						break;
-						case FORWARD: {
-							const { x, y } = this.pos;
-							if (this.matchCell(this.map,x,y,0,1,this.orientation,"12345",[])) {
-								if (!this.doorOpening) {
-									this.performAction(this.now);
-								} else if (this.doors) {
-									const cell = getCell(this.map, ... Game.getPosition(x,y,0,1,this.orientation));
-									if (this.doors[cell].exit) {
-										this.doors[cell].exit(this);
-									} else {
-										this.actionDown = arrow;
-									}
-								} else {
-									console.error("You need doors!");
-								}
-							} else {
+				if (this.pendingTip && this.pendingTip.progress < 1) {
+					return;
+				}
+				if (!this.hoverSprite || this.hoverSprite.bag) {
+					const { offsetWidth, offsetHeight } = currentTarget;
+					if (this.arrowGrid && !this.useItem && !this.bagOpening) {
+						const arrow = this.getArrow(offsetX, offsetY, offsetWidth, offsetHeight);
+						this.arrow = arrow;
+						switch(this.arrow) {
+							case LEFT: {
+								this.turnLeft(this.now);
 								this.actionDown = arrow;
 							}
+							break;
+							case RIGHT: {
+								this.turnRight(this.now);
+								this.actionDown = arrow;
+							}
+							break;
+							case FORWARD: {
+								const { x, y } = this.pos;
+								if (this.matchCell(this.map,x,y,0,1,this.orientation,"12345",[])) {
+									if (!this.doorOpening) {
+										this.performAction(this.now);
+									} else if (this.doors) {
+										const cell = getCell(this.map, ... Game.getPosition(x,y,0,1,this.orientation));
+										if (this.doors[cell].exit) {
+											this.doors[cell].exit(this);
+										} else {
+											this.actionDown = arrow;
+										}
+									} else {
+										console.error("You need doors!");
+									}
+								} else {
+									this.actionDown = arrow;
+								}
+							}
+							break;
+							case BACKWARD: {
+								this.actionDown = arrow;
+							}
+							break;
 						}
-						break;
-						case BACKWARD: {
-							this.actionDown = arrow;
-						}
-						break;
 					}
 				}
+
 				this.mouseDown = true;
 			});
 
@@ -689,13 +190,13 @@ const Game = (() => {
 
 		gotoScene(index) {
 			if (typeof(index) === "string") {
-				index = config.scenes.map(({name}, idx) => name === index ? idx : -1).filter(index => index >= 0)[0];
+				index = this.config.scenes.map(({name}, idx) => name === index ? idx : -1).filter(index => index >= 0)[0];
 				if (typeof(index) === 'undefined') {
 					console.error(`${index}: unknown scene.`);
 				}
 			}
 			this.sceneIndex = index;
-			this.loadScene(config.scenes[this.sceneIndex]);
+			this.loadScene(this.config.scenes[this.sceneIndex]);
 		}
 
 		initGame() {
@@ -704,6 +205,7 @@ const Game = (() => {
 				pickedUp: {},
 				seen: {},
 			};
+			this.config = null;
 
 			this.initScene();
 			this.prepareAssets();
@@ -749,9 +251,24 @@ const Game = (() => {
 			this.onSceneRefresh = null;
 		}
 
-		pickUp(item, image, message) {
+		pickUp(item, image, message, onPicked) {
+			if (!item) {
+				console.error(`Your item (${image}) needs a name.`);
+			}
 			this.data.pickedUp[item] = true;
-			this.pickedUp = { item, image, message, time:this.now };
+			this.pickedUp = {
+				item,
+				image,
+				time: this.now,
+				onPicked,
+				tip: {
+					text: message,
+					time: this.now,
+					speed: 100,
+					fade: 0,
+					end: 0,
+				},
+			};
 			if (!this.bagOpening) {
 				this.openBag(this.now)
 			}
@@ -827,7 +344,7 @@ const Game = (() => {
 			}
 		}
 
-		openBag(now) {
+		openBag(now, onClose) {
 			this.actions.push({
 				time: now,
 				command: "openbag",
@@ -835,6 +352,9 @@ const Game = (() => {
 				onDone: action => {
 					if(this.bagOpening < 0) {
 						this.bagOpening = 0;
+						if (onClose) {
+							onClose(this);
+						}
 					} else if (this.bagOpening > 0 && this.useItem) {
 						this.useItem = null;
 					}
@@ -978,12 +498,14 @@ const Game = (() => {
 				let index = 0;
 
 				const tip = this.pendingTip = {
+					index,
 					text: message[index],
 					time: this.now + 200,
 					speed: 100,
 					end: 0,
-					onDone: game => {
+					onDone: message.length === 1 ? onDone : game => {
 						index++;
+						tip.index = index;
 						tip.text = message[index];
 						tip.time = game.now + 200;
 						if (index === message.length-1) {
@@ -996,7 +518,7 @@ const Game = (() => {
 				this.pendingTip = {
 					text: message,
 					time: this.now + 200,
-					speed: 100,
+					speed: 110,
 					end: 0,
 					onDone,
 				};
@@ -1010,7 +532,7 @@ const Game = (() => {
 		checkMouseHover() {
 			if (this.mouse) {
 				let hovered = null;
-				for (let i = this.sprites.length-1; i>=0; i--) {
+				for (let i = this.sprites.length - 1; i >= 0; i--) {
 					const sprite = this.sprites[i];
 					const tip = this.evaluate(sprite.tip);
 					if ((sprite.onClick || tip || this.useItem) && !this.actionDown && !this.clicking) {
@@ -1018,13 +540,11 @@ const Game = (() => {
 							if (this.mouseDown && !this.clicking) {
 								this.clicking = true;
 								if (this.useItem && !sprite.bag) {
-									const { canCombine, combine, combineMessage, name } = sprite;
-									if (canCombine && canCombine(this.useItem, this)) {
-										combine(this.useItem, this);
-									} else {
+									const { combine, combineMessage, name } = sprite;
+									if (!combine || !combine(this.useItem, this)) {
 										this.showTip(combineMessage && combineMessage(this.useItem, this) ||
-											(name ? "You can't use the " + this.useItem + " on the " + name + "."
-												: "You can't use " + this.useItem + " like that."
+											(name ? `You can't use the ${this.useItem} on the ${name}.`
+												: `You can't use ${this.useItem} like that.`
 											)
 										);
 										this.useItem = null;
@@ -1035,6 +555,9 @@ const Game = (() => {
 								return;
 							}
 							hovered = sprite;
+							if (!hovered.bag) {
+								this.arrow = 0;
+							}
 							break;
 						}
 					}
@@ -1043,10 +566,17 @@ const Game = (() => {
 			}
 		}
 
-		isMouseHover(sprite) {
+		isMouseHover(sprite, outline) {
 			const { x, y } = this.mouse;
 			maskCtx.clearRect(0,0,maskCanvas.width, maskCanvas.height);
+
+			if (outline) {
+				maskCtx.shadowBlur = outline;
+			}
 			this.displayImage(maskCtx, sprite);
+			if (outline) {
+				maskCtx.shadowBlur = 0;
+			}
 			const pixel = maskCtx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
 			return pixel[3] > 0;
 		}
@@ -1285,10 +815,10 @@ const Game = (() => {
 			for(let t in this.tips) {
 				const tip = this.tips[t];
 				if (!tip.end && (!this.hoverSprite || hoveredTip != tip.text)) {
-					tip.end = this.now + 1000;
+					tip.end = this.now + 200;
 				}
 
-				tip.fade = Math.min(1, tip.end ? (this.now - tip.end) / 800 : (this.now - (tip.time + (tip.text.length + 15) * tip.speed)) / 350);
+				tip.fade = Math.min(1, tip.end ? (this.now - tip.end) / 100 : (this.now - (tip.time + (tip.text.length + 15) * tip.speed)) / 350);
 				this.displayText(tip);
 				if (tip.fade >= 1) {
 					delete this.tips[t];
@@ -1308,39 +838,53 @@ const Game = (() => {
 		displayCursor() {
 			if (this.mouse) {
 				const { x, y } = this.mouse;
-				ctx.strokeStyle = "#00000055";
-				ctx.lineWidth = 1;
-				const px = Math.floor(x)+.5, py = Math.floor(y);
 
-				// shadow
-				ctx.fillStyle = "#00000099";
-				ctx.beginPath();
-				ctx.moveTo(px, 2 + py);
-				ctx.lineTo(px - (x / 16), 2 + py + 8 - (x / 32));
-				ctx.lineTo(px + 4 - (x / 16), 2 + py + 6 + (x / 32));
-				ctx.lineTo(px, 2 + py);
-				ctx.fill();
+				if (this.useItem && this.useItem === "gun" && this.arrow !== BAG) {
+					ctx.strokeStyle = Math.random() < .5 ? "#FFFFFF" : "#000000";
+					ctx.lineWidth = .5;
+					const px = Math.floor(x)+.5, py = Math.floor(y)+.5;
+					ctx.beginPath();
+					ctx.moveTo(px, 0);
+					ctx.lineTo(px, 64);
+					ctx.moveTo(0, py);
+					ctx.lineTo(64, py);
+					ctx.stroke();
+					this.displayImage(ctx, { src: ASSETS.GRAB_GUN, index: 3 });
+				} else {
+					ctx.strokeStyle = "#00000055";
+					ctx.lineWidth = 1;
+					const px = Math.floor(x)+.5, py = Math.floor(y)+.5;
 
-				const ydown = this.mouseDown ? 1 : 0;
-				const x0 = px - x / 16, y0 = py + 8 - (x / 32);
-				const x1 = px + 4 - x / 16, y1 = py + 6 - (x / 32);
+					// shadow
+					ctx.fillStyle = "#00000099";
+					ctx.beginPath();
+					ctx.moveTo(px, 2 + py);
+					ctx.lineTo(px - (x / 16), 2 + py + 8 - (x / 32));
+					ctx.lineTo(px + 4 - (x / 16), 2 + py + 6 + (x / 32));
+					ctx.lineTo(px, 2 + py);
+					ctx.fill();
 
-				ctx.fillStyle = "#FFFFFF";
-				ctx.beginPath();
-				ctx.moveTo(px, py + ydown * 2);
-				ctx.lineTo(px - (x / 16), py + 8 - (x / 32));
-				ctx.lineTo(px + 4 - (x / 16), py + 6 + (x / 32));
-				ctx.lineTo(px, ydown * 2 + py);
-				ctx.stroke();
-				ctx.fill();
+					const ydown = this.mouseDown ? 1 : 0;
+					const x0 = px - x / 16, y0 = py + 8 - (x / 32);
+					const x1 = px + 4 - x / 16, y1 = py + 6 - (x / 32);
 
-				if (!this.mouseDown) {
-					ctx.strokeStyle = "#aaccFF";
-					const mid = (x % 8) / 8;
+					ctx.fillStyle = "#FFFFFF";
 					ctx.beginPath();
 					ctx.moveTo(px, py + ydown * 2);
-					ctx.lineTo(x0 * mid + x1 * (1-mid), y0 * mid + y1 * (1-mid));
+					ctx.lineTo(px - (x / 16), py + 8 - (x / 32));
+					ctx.lineTo(px + 4 - (x / 16), py + 6 + (x / 32));
+					ctx.lineTo(px, ydown * 2 + py);
 					ctx.stroke();
+					ctx.fill();
+
+					if (!this.mouseDown) {
+						ctx.strokeStyle = "#aaccFF";
+						const mid = (x % 8) / 8;
+						ctx.beginPath();
+						ctx.moveTo(px, py + ydown * 2);
+						ctx.lineTo(x0 * mid + x1 * (1-mid), y0 * mid + y1 * (1-mid));
+						ctx.stroke();
+					}
 				}
 			}
 		}
@@ -1383,7 +927,7 @@ const Game = (() => {
 			const frame = Math.floor((this.now - (time||0)) / speed);
 			const fullWrappedText = this.wordwrap(text, 12);
 			tip.progress = Math.min(1, frame / fullWrappedText.length);
-			const lines = fullWrappedText.substr(0, Math.min(text.length, frame)).split("\n").slice(-4);
+			const lines = fullWrappedText.substr(0, Math.min(text.length, frame)).split("\n").slice(-3);
 			const letterTemplate = {
 				src: ASSETS.ALPHABET, col:9, row:8, size:[5,6],
 				offsetX: 20, offsetY: 20,
@@ -1527,7 +1071,8 @@ const Game = (() => {
 		}
 
 		play(config) {
-			this.loadScene(config.scenes[this.sceneIndex]);
+			this.config = config;
+			this.loadScene(this.config.scenes[this.sceneIndex]);
 			this.createLoop(this.refresh.bind(this));
 		}
 
@@ -1664,17 +1209,10 @@ const Game = (() => {
 			}
 		}
 
-		displayPickedUp({item, image, message, time}) {
+		displayPickedUp({item, time, image, tip}) {
 			this.displayFade({fade:Math.min(.7, (this.now - time) / 500), fadeColor:"#333333"});
 			this.displayImage(ctx, {src:image});
-
-			this.displayText({
-				text: message,
-				time,
-				speed: 100,
-				fade: 0,
-				end: 0,
-			});
+			this.displayText(tip, true);
 		}
 
 		displayImage(ctx, sprite) {
@@ -1714,6 +1252,25 @@ const Game = (() => {
 			if (alpha) {
 				ctx.globalAlpha = 1.0;
 			}
+		}
+
+		clickBag() {
+			if (this.emptyBag()) {
+				return;
+			}
+			if (this.frameIndex === 3) {
+				if (this.useItem) {
+					this.useItem = null;
+				} else {
+					for (let i in this.inventory) {
+						const { item, image, message } = this.inventory[i];
+						if (this.isMouseHover({src:image, index:this.frameIndex-1}, 1)) {
+							this.useItem = item;
+						}
+					}
+				}
+			}
+			this.openBag(this.now);			
 		}
 	}
 
