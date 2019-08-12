@@ -32,6 +32,7 @@
 			    display: flex;
 			    align-items: center;
 			    justify-content: center;
+			    flex-direction: col;
 			}
 			.row {
 			    width: auto;
@@ -50,10 +51,17 @@
 	</head>
 
 	<body style="margin: 0;">
-		<div class="flex-container">
-			<canvas class="flex-item" id="canvas" width=64 height=64 style="background-color: black; width: 512px; height: 512px"></canvas>
+		<div>
+			<b>EXPERIMENTAL (Use at your own risk):<b>
+			<button onClick="clear()">CLEAR</button>
+			<button onClick="save()">SAVE</button>
+			<div id="savebox">
+			</div>
 		</div>
-	</body>
+		<div class="flex-container">
+				<canvas class="flex-item" id="canvas" width=64 height=64 style="background-color: black; width: 512px; height: 512px"></canvas>
+		</div>
+</body>
 
 	<script src="common.js"></script>
 	<script src="config.js"></script>
@@ -62,6 +70,40 @@
 		let game;
 		document.addEventListener("DOMContentLoaded", e => {
 			game = Game.start(gameConfig);
+			updateSaves();
 		});
+
+		function clear() {
+			localStorage.setItem("saves", JSON.stringify([]));			
+			updateSaves();
+		}
+
+		function save() {
+			const saves = JSON.parse(localStorage.getItem("saves") || "[]");
+			saves.push(game.data);
+			localStorage.setItem("saves", JSON.stringify(saves));
+			updateSaves();
+		}
+
+		function updateSaves() {
+			const saveBox = document.getElementById("savebox");
+			saveBox.innerHTML ="";
+			const saves = JSON.parse(localStorage.getItem("saves") || "[]");
+			console.log(saves);
+			for(let i = 0; i < saves.length; i++) {
+				addSaveBox(i, saves[i]);
+			}
+		}
+
+		function addSaveBox(index, data) {
+			const saveBox = document.getElementById("savebox");
+			const button = saveBox.appendChild(document.createElement("button"));
+			button.innerText = index;
+			button.addEventListener("click", e => {
+				game.data = data;
+				game.gotoScene("jail-cell");
+				game.showTip(`GAME ${index} LOADED.`);
+			});
+		}
 	</script>
 </html>

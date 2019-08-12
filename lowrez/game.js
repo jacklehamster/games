@@ -230,12 +230,16 @@ const Game = (() => {
 			this.loadScene(this.config.scenes[this.sceneIndex]);
 		}
 
+		get inventory() {
+			return this.data.inventory;
+		}
+
 		initGame() {
-			this.inventory = {};
 			this.data = {
 				pickedUp: {},
 				seen: {},
 				shot: {},
+				inventory: {},
 			};
 			this.config = null;
 			this.mouse = null;
