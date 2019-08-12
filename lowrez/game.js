@@ -630,7 +630,9 @@ const Game = (() => {
 		checkUseItem() {
 			if (this.mouseDown && !this.actionDown && !this.clicking) {
 				this.clicking = true;
-				if (this.useItem) {
+				if (this.useItem === "gun" && this.gunFiredWithin(100)) {
+					this.onSceneShot(this, this.useItem);
+				} else if (this.useItem) {
 					this.onSceneUseItem(this, this.useItem);
 				}
 			}

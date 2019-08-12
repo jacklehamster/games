@@ -60,6 +60,7 @@ const ASSETS = {
 	SHOOTS: "assets/shoots.png",
 	EATER: "assets/eater.png",
 	ALIEN_EATER: "assets/alien-eater.png",
+	CAKE_BOOM: "assets/cake-boom.png",
 };
 
 const SOUNDS = {
@@ -69,6 +70,7 @@ const SOUNDS = {
 	HEY:'sounds/hey.mp3',
 	GUN_SHOT:'sounds/gun-shot.mp3',
 	DUD:'sounds/dud.mp3',
+	ALIEN:'sounds/alien.mp3',
 };
 
 const ALPHAS = (() => {

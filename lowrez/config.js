@@ -30,7 +30,7 @@ const gameConfig = {
 						}
 					} else {
 						game.waitCursor = true;
-						game.showTip("Oh shit, that was loud.", game => {
+						game.showTip("Uh oh, that was a bit loud.", game => {
 							game.hideCursor = true;
 							if (game.rotation === 4 || game.rotation === 6) {
 								game.turnLeft(game.now, game => {
@@ -156,11 +156,6 @@ const gameConfig = {
 			},
 			sprites: [
 				{
-					name: "lock",
-					src: ASSETS.LOCK,
-					hidden: game => game.rotation !== 0,
-				},
-				{
 					src: ASSETS.EXIT_DOOR,
 					hidden: game => game.rotation !== 0,
 				},
@@ -239,8 +234,30 @@ const gameConfig = {
 				},					
 				{
 					src: ASSETS.CAGE,
-					index: 0,
+					index: game => game.sceneData.lighterOn ? 1:0,
 					hidden: game => game.rotation !== 0,
+				},
+				{
+					name: "lock",
+					src: ASSETS.LOCK,
+					hidden: game => game.rotation !== 0 || game.data.cakelock,
+					combineMessage: (item, game) => `I can't pick the lock with a ${item}`,
+					combine: (item, game) => {
+						if (item === "cake") {
+							delete game.inventory[game.useItem];
+							game.useItem = null;						
+							game.data.cakelock = game.now;
+							if (!game.data.shot.lamp) {
+								game.showTip("The guards look at you with suspicion.");
+							}
+							return true;
+						}
+					},
+				},
+				{
+					src: ASSETS.CAKE_BOOM,
+					index: 0,
+					hidden: game => game.rotation !== 0 || !game.data.cakelock,
 				},
 				{
 					src: ASSETS.SHOOTS,
@@ -324,7 +341,7 @@ const gameConfig = {
 					index: game => (game.rotation + 8) % 8,
 					hidden: (game,{name}) => !game.data.seen.badguards || game.rotation === 0 || game.data.pickedUp[name],
 					tip: "That looks like a fork.",
-					onClick: (game, {name}) => game.pickUp(name, ASSETS.GRAB_FORK, "Hum... they took the time to bring me a cake fork...\nIt's made of some new kind of solid metal."),
+					onClick: (game, {name}) => game.pickUp(name, ASSETS.GRAB_FORK, "Hum... they took the time to bring me a cake fork..."),
 				},
 				{
 					name: "lighter",
@@ -882,6 +899,13 @@ const gameConfig = {
 					game.sceneData.frame = 10 + Math.floor((game.now - game.sceneTime) / 10) % 4;
 				} else if (frame < 200) {
 					if (!game.sceneData.explode) {
+						game.playSound(SOUNDS.GUN_SHOT);
+						setTimeout(() => {
+							game.playSound(SOUNDS.GUN_SHOT);
+						}, 50);
+						setTimeout(() => {
+							game.playSound(SOUNDS.GUN_SHOT);
+						}, 50);
 						game.sceneData.explode = game.now;
 						game.sceneData.pieces = new Array(500).fill(null).map(a => {
 							const byte = Math.max(0x10, Math.floor(Math.random() * 0xaa)).toString(16);
@@ -903,6 +927,10 @@ const gameConfig = {
 					game.sceneData.frame = 14;
 				} else if (frame < 250) {
 					game.sceneData.frame = Math.min(24, frame - 200 + 17);
+					if (!game.sceneData.alienSound) {
+						game.sceneData.alienSound = true;
+						game.playSound(SOUNDS.ALIEN);					
+					}
 				}
 			},
 			sprites: [
