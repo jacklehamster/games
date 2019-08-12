@@ -12,6 +12,8 @@ const Game = (() => {
 	tempCanvas.height = canvas.height;
 	tempCtx = tempCanvas.getContext("2d");
 
+	const TEXTSPEEDER = 1;
+
 	function nop() {}
 
 	function toMap(string) {
@@ -546,7 +548,7 @@ const Game = (() => {
 					index,
 					text: message[index],
 					time: this.now + 200,
-					speed: 100,
+					speed: 100 * TEXTSPEEDER,
 					end: 0,
 					onDone: message.length === 1 ? onDone : game => {
 						index++;
@@ -563,7 +565,7 @@ const Game = (() => {
 				this.pendingTip = {
 					text: message,
 					time: this.now + 200,
-					speed: 110,
+					speed: 110 * TEXTSPEEDER,
 					end: 0,
 					onDone,
 				};
@@ -871,15 +873,16 @@ const Game = (() => {
 			if (this.hoverSprite) {
 				hoveredTip = this.evaluate(this.hoverSprite.tip);
 				if (hoveredTip) {
-					if (!this.tips[hoveredTip]) {
+					const tip = this.tips[hoveredTip];
+					if (!tip) {
 						this.tips[hoveredTip] = {
 							text: hoveredTip,
 							time: this.now + 1000,
-							speed: 80,
+							speed: 80 * TEXTSPEEDER,
 							end: 0,
 						};
 					} else {
-						this.tips[hoveredTip].end = 0;
+						tip.end = 0;
 					}
 				}
 			}
@@ -1315,6 +1318,7 @@ const Game = (() => {
 		displayPickedUp({item, time, image, tip}) {
 			this.displayFade({fade:Math.min(.7, (this.now - time) / 500), fadeColor:"#333333"});
 			this.displayImage(ctx, {src:image});
+			tip.fade = Math.min(1, (this.now - (tip.time + (tip.text.length + 15) * tip.speed)) / 350);
 			this.displayText(tip, true);
 		}
 

@@ -103,6 +103,9 @@ const gameConfig = {
 				}
 			},
 			onSceneRefresh: game => {
+				if (game.data.cakebomb && game.data.shot["left guard"] && game.data.shot["right guard"]) {
+					game.gotoScene("temp-end");
+				}
 				if (!game.sceneIntro && !game.sceneData.showedIntro) {
 					game.fade = Math.max(0, 1 - (game.now - game.sceneData.beginTime) / 3000);
 					if (game.hideArrows && game.fade === 0) {
@@ -233,8 +236,8 @@ const gameConfig = {
 					combineMessage: (item, game) => "I don't need to put anything in there.",
 				},					
 				{
-					src: ASSETS.CAGE,
-					index: game => game.sceneData.lighterOn ? 1:0,
+					src: ASSETS.CAGE, col:2, row:3,
+					index: game => game.sceneData.lighterOn ? 3:0,
 					hidden: game => game.rotation !== 0,
 				},
 				{
@@ -248,16 +251,27 @@ const gameConfig = {
 							game.useItem = null;						
 							game.data.cakelock = game.now;
 							if (!game.data.shot.lamp) {
-								game.showTip("The guards look at you with suspicion.");
+								game.showTip("The guards look at me with suspicion.");
 							}
 							return true;
 						}
 					},
 				},
 				{
+					name: "cakelock",
 					src: ASSETS.CAKE_BOOM,
-					index: 0,
+					index: game => game.data.cakebomb ? Math.min(10, Math.floor((game.now - game.data.cakebomb)/100)) : 0,
 					hidden: game => game.rotation !== 0 || !game.data.cakelock,
+					combine: (item, game) => {
+						if (item === "lighter") {
+							game.useItem = null;						
+							game.data.cakebomb = game.now;
+							if (!game.data.shot.lamp) {
+								game.sceneData.guardAlert = game.now + 1000;
+							}							
+							return true;
+						}
+					},
 				},
 				{
 					src: ASSETS.SHOOTS,
@@ -548,7 +562,7 @@ const gameConfig = {
 						const frame = Math.floor((game.now - game.sceneTime) / 200);
 						return frame % 31 === 1 ? 1 : 0;
 					},
-					combineMessage: (item, game) => `The guard shrugs at your ${item}.`,
+					combineMessage: (item, game) => `The guard shrugs at my ${item}.`,
 				},
 				{
 					src: ASSETS.ZOOM_GUARD_ALERT,
@@ -656,7 +670,7 @@ const gameConfig = {
 					},
 				},
 				{
-					src: ASSETS.CAGE,
+					src: ASSETS.CAGE, col:2, row:3,
 					index: 0,
 				},
 			],
@@ -870,6 +884,15 @@ const gameConfig = {
 					index: game => game.frameIndex,
 					hidden: game => !game.bagOpening,
 				},
+			],
+		},
+		{
+			name: "temp-end",
+			onScene: game => {
+				game.showTip("Congrats Leo, you reached the end so far. I didn't program the rest yet.");
+			},
+			sprites: [
+				{ fade: 1, fadeColor: "#cc5588" }
 			],
 		},
 		{
