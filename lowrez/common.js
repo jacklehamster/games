@@ -10,6 +10,7 @@ const ASSETS = {
 	PHOTO:'assets/photo.png',
 	TILE:'assets/tile.png',
 	BOTTLE:'assets/bottle.png',
+	BOTTLE_SHARDS:'assets/bottle-shards.png',
 	FAR_SIDE:'assets/far-side.png',
 	FAR_SIDE_CORNER:'assets/far-side-corner.png',
 	FAR_WALL:'assets/far-wall.png',
@@ -29,6 +30,7 @@ const ASSETS = {
 	LEFT_GUARD: 'assets/left-guard.png',
 	ALPHABET:'assets/alphabet.png',
 	GRAB_PHOTO:'assets/grab-photo.png',
+	GRAB_PHOTO_SHOT:'assets/grab-photo-shot.png',
 	ZOOM_GUARDS: 'assets/zoom-guards.png',
 	GRAB_BOTTLE:'assets/grab-bottle.png',
 	BIRTHDAY: 'assets/birthday.png',
@@ -50,7 +52,12 @@ const ASSETS = {
 	GRAB_LIGHTER:'assets/grab-lighter.png',
 	TILE_HOLE:'assets/tile-hole.png',
 	GUN: 'assets/gun.png',
+	SHOOTS: 'assets/shoots.png',
 	GRAB_GUN: 'assets/grab-gun.png',
+	HOLD_GUN: 'assets/hold-gun.png',
+	ZOOM_GUARD_ALERT: 'assets/zoom-guard-alert.png',
+	SHOOTS: "assets/shoots.png",
+	EATER: "assets/eater.png",
 };
 
 const SOUNDS = {
@@ -58,6 +65,8 @@ const SOUNDS = {
 	HAHAHA:'sounds/hahaha.mp3',
 	BIRTHDAY:'sounds/birthday.mp3',
 	HEY:'sounds/hey.mp3',
+	GUN_SHOT:'sounds/gun-shot.mp3',
+	DUD:'sounds/dud.mp3',
 };
 
 const ALPHAS = (() => {

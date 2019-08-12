@@ -9,13 +9,59 @@ const gameConfig = {
 				[ LEFT, null, null,  null, RIGHT ],
 				[ LEFT, null, BAG , null, RIGHT ],
 			],
+			onSceneUseItem: (game, item) => {
+				if (item === "gun" && !game.data.shot.lamp) {
+					if (game.rotation === 0 && !game.sceneData.guardAlert) {
+						game.sceneData.guardAlert = game.now + 1000;
+					}
+				}
+			},
+			onSceneHoldItem: (game, item) => {
+				if (game.data.shot.lamp && item === "lighter") {
+					game.sceneData.lighterOn = game.now + 500;
+					game.useItem = null;
+				}
+			},
+			onSceneShot: (game, item) => {
+				if (!game.data.shot.lamp) {
+					if (game.rotation === 0) {
+						if (!game.sceneData.guardAlert || game.now < game.sceneData.guardAlert) {
+							game.sceneData.guardAlert = game.now;
+						}
+					} else {
+						game.waitCursor = true;
+						game.showTip("Oh shit, that was loud.", game => {
+							game.hideCursor = true;
+							if (game.rotation === 4 || game.rotation === 6) {
+								game.turnLeft(game.now, game => {
+									if (game.rotation !== 0) {
+										game.turnLeft(game.now, game => {
+											game.sceneData.guardAlert = game.now;
+										});
+									} else {
+										game.sceneData.guardAlert = game.now;
+									}
+								});
+							} else if (game.rotation === 2) {
+								game.turnRight(game.now, game => {
+									game.sceneData.guardAlert = game.now;
+								});
+							}
+						});
+					}
+				} else {
+					if (!game.sceneData.guardAlert) {
+						game.sceneData.guardAlert = game.now + 2000;
+					}
+				}
+			},
 			onScene: game => {
 				if (location.search.indexOf("bad-guards") >= 0) {
-					game.data.seen.badguards = true;						
+					game.see("badguards");
 				}
 
 				if (!game.data.seen.intro) {
-					game.data.seen.intro = true;
+					game.see("intro");
 					if (location.search.indexOf("skip-intro") < 0) {
 						game.fade = 1;
 						game.sceneIntro = true;
@@ -32,10 +78,10 @@ const gameConfig = {
 								game.sceneData.beginTime = game.now;
 								game.hideCursor = false;
 							});
-						},3000);
+						}, 3000);
 					}
 				} else if (game.data.seen.badguards && !game.data.seen.badguards_intro) {
-					game.data.seen.badguards_intro = true;
+					game.see("badguards_intro");
 					if (location.search.indexOf("skip-intro") < 0) {
 						game.fade = 1;
 						game.sceneIntro = true;
@@ -43,7 +89,7 @@ const gameConfig = {
 						game.hideArrows = true;
 						setTimeout(() => {
 							game.showTip([
-								"My brain... it hurts...",
+								"Ohh my brain... it hurts...",
 								"And my body is filled with bruises...",
 								"... now at least, I know how I got those.",
 								"I must find a way out of here.",
@@ -52,16 +98,58 @@ const gameConfig = {
 								game.sceneData.beginTime = game.now;
 								game.hideCursor = false;
 							});
-						},3000);
+						}, 2000);
 					}						
 				}
 			},
 			onSceneRefresh: game => {
-				if (!game.sceneIntro) {
+				if (!game.sceneIntro && !game.sceneData.showedIntro) {
 					game.fade = Math.max(0, 1 - (game.now - game.sceneData.beginTime) / 3000);
 					if (game.hideArrows && game.fade === 0) {
 						game.hideArrows = false;
 					} 
+					game.sceneData.showedIntro = true;
+				}
+				if (game.sceneData.guardAlert) {
+					if (!game.data.shot["right guard"]) {
+						const frame = 5 + Math.max(0, Math.min(2, Math.floor((game.now - game.sceneData.guardAlert) / 200)));
+						if (frame === 7) {
+							if (!game.sceneData.rightShot || game.now - game.sceneData.rightShot > 500) {
+								if (!game.sceneData.rightShotCount || game.sceneData.rightShotCount < 6) {
+									game.playSound(SOUNDS.GUN_SHOT);
+									game.sceneData.rightShot = game.now;
+									game.sceneData.rightShotCount = (game.sceneData.rightShotCount||0) + 1;
+									if (!game.sceneData.firstShot) {
+										game.sceneData.firstShot = game.now;
+										game.frameIndex = 0;
+										game.useItem = null;
+										game.hideCursor = true;
+									}
+								}
+							}
+						}
+					}
+					if (!game.data.shot["left guard"]) {
+						const frame = 1 + Math.max(0, Math.min(2, Math.floor((game.now - game.sceneData.guardAlert) / 150)));
+						if (frame === 3) {
+							if (!game.sceneData.leftShot || game.now - game.sceneData.leftShot > 300) {
+								if (!game.sceneData.leftShotCount || game.sceneData.leftShotCount < 6) {
+									game.playSound(SOUNDS.GUN_SHOT);
+									game.sceneData.leftShot = game.now;
+									game.sceneData.leftShotCount = (game.sceneData.leftShotCount||0) + 1;
+									if (!game.sceneData.firstShot) {
+										game.sceneData.firstShot = game.now;
+										game.frameIndex = 0;
+										game.useItem = null;
+										game.hideCursor = true;
+									}
+								}
+							}
+						}
+					}
+					game.fade = game.sceneData.firstShot ? Math.min(.9, (game.now - game.sceneData.firstShot) / 3000) : 0;
+					game.fadeColor = "#990000";
+
 				}
 			},
 			sprites: [
@@ -69,24 +157,10 @@ const gameConfig = {
 					name: "lock",
 					src: ASSETS.LOCK,
 					hidden: game => game.rotation !== 0,
-					onClick: game => {
-						console.log("lock");
-					},
-				},
-				{
-					name: "lamp",
-					src: ASSETS.LAMP,
-					hidden: game => game.rotation !== 0,
-					onClick: game => {
-						console.log("lamp");
-					},
 				},
 				{
 					src: ASSETS.EXIT_DOOR,
 					hidden: game => game.rotation !== 0,
-					onClick: game => {
-						console.log("exit door");
-					},
 				},
 				{
 					src: ASSETS.JAIL, col:3, row:3,
@@ -94,33 +168,62 @@ const gameConfig = {
 					hidden: game => game.rotation !== 0,
 				},
 				{
-					src: ASSETS.DIMMING_LIGHT,
-					index: () => Math.random() < .1 ? 1 : 0,
+					src: ASSETS.DIMMING_LIGHT, col:2, row:2,
+					index: () => game.data.shot.lamp ? 3 : Math.random() < .1 ? 1 : 0,
 					hidden: game => game.rotation !== 0,
 				},
 				{
-					name: "guard",
+					name: "lamp",
+					src: ASSETS.LAMP,
+					hidden: game => game.rotation !== 0 || game.data.shot.lamp,
+				},
+				{
+					name: "right guard",
 					src: ASSETS.RIGHT_GUARD, col:3, row:3,
-					index: 0,
+					index: game => {
+						if (game.data.shot["right guard"]) {
+							const frame = 1 + Math.max(0, Math.min(3, Math.floor((game.now - game.data.shot["right guard"]) / 150)));
+							return frame;
+						}
+						if (game.sceneData.guardAlert) {
+							const frame = 5 + Math.max(0, Math.min(2, Math.floor((game.now - game.sceneData.guardAlert) / 200)));
+							return frame;
+						}
+						return 0;
+					},
 					hidden: game => game.rotation !== 0,
-					onClick: game => game.gotoScene("zoom-guards"),
+					onClick: game => { if (!game.data.shot.lamp && !game.sceneData.guardAlert) game.gotoScene("zoom-guards"); },
 					tip: game => game.data.seen.badguards ? null : "He looks bored.",
 					combine: (item, game) => {
-						game.gotoScene("zoom-guards");
-						game.useItem = item;
+						if (item !== "gun" && !game.data.shot.lamp && !game.sceneData.guardAlert) {
+							game.gotoScene("zoom-guards");
+							game.useItem = item;
+						}
 						return true;
 					}
 				},
 				{
-					name: "guard",
+					name: "left guard",
 					src: ASSETS.LEFT_GUARD, col:3, row:3,
-					index: 0,
+					index: game => {
+						if (game.data.shot["left guard"]) {
+							const frame = 4 + Math.max(0, Math.min(3, Math.floor((game.now - game.data.shot["left guard"]) / 150)));
+							return frame;
+						}
+						if (game.sceneData.guardAlert) {
+							const frame = 1 + Math.max(0, Math.min(2, Math.floor((game.now - game.sceneData.guardAlert) / 150)));
+							return frame;
+						}
+						return 0;
+					},
 					hidden: game => game.rotation !== 0,
-					onClick: game => game.gotoScene("zoom-guards"),
+					onClick: game => { if (!game.data.shot.lamp && !game.sceneData.guardAlert) game.gotoScene("zoom-guards");},
 					tip: game => game.data.seen.badguards ? null : "He's reading a book.",
 					combine: (item, game) => {
-						game.gotoScene("zoom-guards");
-						game.useItem = item;
+						if (item !== "gun" && !game.data.shot.lamp && !game.sceneData.guardAlert) {
+							game.gotoScene("zoom-guards");
+							game.useItem = item;
+						}
 						return true;
 					}
 				},
@@ -138,6 +241,30 @@ const gameConfig = {
 					hidden: game => game.rotation !== 0,
 				},
 				{
+					src: ASSETS.SHOOTS,
+					index: 0,
+					hidden: game => game.rotation !== 0 || !game.sceneData.leftShot || game.now - game.sceneData.leftShot > 100,				
+				},
+				{
+					src: ASSETS.SHOOTS,
+					index: 1,
+					hidden: game => game.rotation !== 0 || !game.sceneData.rightShot || game.now - game.sceneData.rightShot > 100,				
+				},
+				{
+					src: ASSETS.SHOOTS,
+					index: 2,
+					hidden: game => {
+						if (game.rotation !== 0 || game.data.shot["left guard"]) {
+							return true;
+						}				
+						if (!game.sceneData.guardAlert) {
+							return true;
+						}
+						const frame = 1 + Math.max(0, Math.min(2, Math.floor((game.now - game.sceneData.guardAlert) / 150)));
+						return frame < 3;
+					}
+				},				
+				{
 					src: ASSETS.JAIL360, col:3, row:3,
 					index: game => (game.rotation + 8) % 8,
 					hidden: game => game.rotation === 0,
@@ -146,11 +273,8 @@ const gameConfig = {
 					src: ASSETS.WRITING, col:3, row:3,
 					index: game => (game.rotation + 8) % 8,
 					hidden: game => game.rotation === 0,
-					onClick: game => {
-						if (game.rotation === 6) {
-							game.gotoScene("birthday");
-						}
-					},
+					preventClick: game => game.rotation !== 6,
+					onClick: game => game.gotoScene("birthday"),
 					tip: ({rotation, data}) => rotation === 4 || data.seen["writing"] ? null : "How long was I in this cell?",
 				},
 				{
@@ -158,8 +282,8 @@ const gameConfig = {
 					src: ASSETS.PHOTO, col:3, row:3,
 					index: game => (game.rotation + 8) % 8,
 					hidden: (game,{name}) => game.rotation === 0 || game.data.pickedUp[name],
-					onClick: (game, sprite) => game.pickUp(sprite.name, ASSETS.GRAB_PHOTO, "It's ...\nBABY HITLER!"),
-					tip: ({rotation}) => rotation === 4 ? null : "This photo looks familiar",
+					onClick: (game, {name}) => game.pickUp(name, game.data.shot.photo ? ASSETS.GRAB_PHOTO_SHOT : ASSETS.GRAB_PHOTO, "It's ...\nBABY HITLER!" + (game.data.shot.photo ? "\n...\nHuh... did I make that hole?" : "")),
+					tip: ({rotation}) => "This photo looks familiar",
 				},
 				{
 					name: "tile",
@@ -173,10 +297,9 @@ const gameConfig = {
 						if (item !== "cake fork") {
 							return false;
 						}
-						game.data.pickedUp.tile = true;
+						game.markPickedUp("tile");
 						delete game.inventory[game.useItem];
 						game.useItem = null;
-						game.showTip(["I was able to lift the tile.", "Let's see what's underneath."]);
 						return true;
 					},
 				},
@@ -191,9 +314,7 @@ const gameConfig = {
 					index: game => (game.rotation + 8) % 8,
 					hidden: (game,{name}) => !game.data.seen.badguards || game.rotation === 0 || game.data.pickedUp[name],
 					tip: "I don't think the cake was edible. That thing burned my eyes.",
-					onClick: (game, sprite) => {
-						game.pickUp(sprite.name, ASSETS.GRAB_CAKE, "The most\npathetic part of this, is that I still want to have a bite of that cake.");
-					},
+					onClick: (game, {name}) => game.pickUp(name, ASSETS.GRAB_CAKE, "The most\npathetic part in all of this ... I still want a bite of that cake."),
 				},
 				{
 					name: "cake fork",
@@ -201,9 +322,7 @@ const gameConfig = {
 					index: game => (game.rotation + 8) % 8,
 					hidden: (game,{name}) => !game.data.seen.badguards || game.rotation === 0 || game.data.pickedUp[name],
 					tip: "That looks like a fork.",
-					onClick: (game, sprite) => {
-						game.pickUp(sprite.name, ASSETS.GRAB_FORK, "Hum... they took the time to bring me a cake fork.\nFeels like it's made of some new kind of solid metal.");
-					},
+					onClick: (game, {name}) => game.pickUp(name, ASSETS.GRAB_FORK, "Hum... they took the time to bring me a cake fork...\nIt's made of some new kind of solid metal."),
 				},
 				{
 					name: "lighter",
@@ -211,26 +330,84 @@ const gameConfig = {
 					index: game => (game.rotation + 8) % 8,
 					hidden: (game,{name}) => !game.data.seen.badguards || game.rotation === 0 || game.data.pickedUp[name],
 					tip: "Turns out they did leave a bunch of presents behind.",
-					onClick: (game, sprite) => {
-						game.pickUp(sprite.name, ASSETS.GRAB_LIGHTER, "For the candle on my cake, they actually used a lighter.");
-					},
+					onClick: (game, {name}) => game.pickUp(name, ASSETS.GRAB_LIGHTER, "For the candle on my cake, they actually used a lighter."),
 				},
 				{
 					name: "empty bottle",
 					src: ASSETS.BOTTLE, col:3, row:3,
 					index: game => (game.rotation + 8) % 8,
-					hidden: (game,{name}) => game.rotation === 0 || game.data.pickedUp[name],
-					onClick: (game, sprite) => {
-						game.pickUp(sprite.name, ASSETS.GRAB_BOTTLE, "It's empty.");
+					hidden: (game,{name}) => game.rotation === 0 || game.data.pickedUp[name] || game.data.shot[name],
+					onClick: (game, {name}) => game.pickUp(name, ASSETS.GRAB_BOTTLE, "It's empty."),
+				},
+				{
+					src: ASSETS.BOTTLE_SHARDS, col:3, row:3,
+					index: game => (game.rotation + 8) % 8,
+					hidden: (game,{name}) => game.rotation === 0 || !game.data.shot["empty bottle"],
+				},
+				{
+					fade: game => {
+						if (game.sceneData.lighterOn) {
+							const progress = Math.max(0, Math.min(1, (game.now - game.sceneData.lighterOn) / 10000));
+							return .9 * (1 - progress) + 0 * progress;
+						}
+						return .9
 					},
+					fadeColor: "#000000",
+					hidden: game => {
+						if (game.sceneData.rightShot && game.now - game.sceneData.rightShot < 150) {
+							return true;
+						}
+						if (game.sceneData.leftShot && game.now - game.sceneData.leftShot < 150) {
+							return true;
+						}
+						return !game.data.shot.lamp || game.gunFiredWithin(150);
+					}
+				},
+				{
+					fade: game => {
+						const progress = Math.max(0, Math.min(1, (game.now - game.sceneData.lighterOn) / 5000));
+						return progress * .75 + Math.cos(game.now / 15)*.01;
+					},
+					fadeColor: "#331100",
+					hidden: game => {
+						if (game.sceneData.rightShot && game.now - game.sceneData.rightShot < 150) {
+							return true;
+						}
+						if (game.sceneData.leftShot && game.now - game.sceneData.leftShot < 150) {
+							return true;
+						}
+						return !game.sceneData.lighterOn || game.gunFiredWithin(150);
+					}
+				},
+				{
+					fade: .9,
+					fadeColor: "#ffffff",
+					hidden: game => !game.data.shot.lamp || game.now - game.data.shot.lamp >= 100,
+				},
+				{
+					src: ASSETS.DIMMING_LIGHT, col:2, row:2,
+					index: 2,
+					hidden: game => !game.data.shot.lamp || game.now - game.data.shot.lamp >= 100 || game.rotation !== 0,
 				},
 				{
 					bag: true,
 					src: ASSETS.BAG_OUT,
 					index: game => game.frameIndex,
-					hidden: game => game.arrow !== BAG && !game.bagOpening,
-					alpha: game => game.emptyBag() ? .2 : 1,
+					hidden: game => game.arrow !== BAG && !game.bagOpening || game.sceneData.firstShot,
+					alpha: game => game.emptyBag() && game.frameIndex === 0 ? .2 : 1,
 					onClick: game => game.clickBag(),
+				},
+				{
+					name: "self",
+					src: ASSETS.EATER, col:2, row:2,
+					index: (game, sprite) => game.hoverSprite === sprite ? Math.min(2, Math.floor((game.now - sprite.hoverTime) / 100)) : 0,
+					hidden: game => game.useItem !== 'cake',
+					combine: (item, game) => {
+						if (item === 'cake') {
+							game.gotoScene("alien");
+						}
+						return true;
+					},
 				},
 			],
 		},
@@ -269,6 +446,17 @@ const gameConfig = {
 				[ null, null, null,  null, null ],
 				[ null, null, BAG ,  null, null ],
 			],
+			onSceneHoldItem: (game, item) => {
+				if (item === "gun") {
+					game.waitCursor = true;
+					game.showTip("...", () => {
+						game.waitCursor = false;
+						game.gotoScene("jail-cell");
+						game.hideCursor = true;
+						game.sceneData.guardAlert = game.now;
+					});
+				}
+			},
 			onScene: game => {
 				game.startDialog({
 					time: game.now,
@@ -278,14 +466,14 @@ const gameConfig = {
 							message: "",
 							options: [
 								{
-									msg: "Say Hello", 
+									msg: "Say Hello",
 									onSelect: (game, dialog) => {
 										game.playSound(SOUNDS.HELLO);
 										dialog.guardSpeaking = true;
-										game.hideCursor = true;
+										game.waitCursor = true;
 										game.showTip("...", () => {
 											dialog.guardSpeaking = false;
-											game.hideCursor = false;
+											game.waitCursor = false;
 										});
 										dialog.index = 1;
 									}
@@ -301,10 +489,10 @@ const gameConfig = {
 									onSelect: (game, dialog) => {
 										game.playSound(SOUNDS.HAHAHA);
 										dialog.guardSpeaking = true;
-										game.hideCursor = true;
+										game.waitCursor = true;
 										game.showTip("... seems like he's laughing at me ...", () => {
 											dialog.guardSpeaking = false;
-											game.hideCursor = false;
+											game.waitCursor = false;
 										});
 									}
 								},
@@ -312,12 +500,16 @@ const gameConfig = {
 									hidden: game => !game.data.seen.writing,
 									msg: "It's my birthday", 
 									onSelect: (game, dialog) => {
-										game.playSound(SOUNDS.BIRTHDAY);
-										dialog.guardSpeaking = true;
-										game.hideCursor = true;
-										game.showTip("... did he\nunderstand? ...", game => {
-											game.gotoScene("bring-cake");
-										});
+										if (game.data.seen.badguards) {
+											game.showTip("Let's just keep that to myself");
+										} else {
+											game.playSound(SOUNDS.BIRTHDAY);
+											dialog.guardSpeaking = true;
+											game.waitCursor = true;
+											game.showTip("... did he\nunderstand? ...", game => {
+												game.gotoScene("bring-cake");
+											});
+										}
 									}
 								},
 								{ msg: "LEAVE", onSelect: game => game.gotoScene("jail-cell")},
@@ -331,12 +523,16 @@ const gameConfig = {
 					src: ASSETS.ZOOM_GUARDS,
 					index: game => {
 						if (game.dialog && game.dialog.guardSpeaking) {
-							return Math.floor(game.now / 100) % 4;
+							return Math.floor((game.now - game.sceneTime) / 100) % 4;
 						}
-						const frame = Math.floor(game.now / 200);
+						const frame = Math.floor((game.now - game.sceneTime) / 200);
 						return frame % 31 === 1 ? 1 : 0;
 					},
 					combineMessage: (item, game) => `The guard shrugs at your ${item}.`,
+				},
+				{
+					src: ASSETS.ZOOM_GUARD_ALERT,
+					hidden: game => game.useItem !== "gun",
 				},
 				{
 					src: ASSETS.SPEECH_OUT,
@@ -356,9 +552,9 @@ const gameConfig = {
 		{
 			name: "birthday",
 			onScene: game => {
-				game.hideCursor = true;
+				game.waitCursor = true;
 				if (!game.data.seen["writing"]) {
-					game.data.seen["writing"] = true;
+					game.data.seen["writing"] = game.now;
 					game.showTip(["Hey, it looks like I carved a birthday cake on the wall.", "I can't remember but could it be... it's my BIRTHDAY?!"],
 						game => {
 							game.gotoScene("jail-cell");
@@ -366,11 +562,10 @@ const gameConfig = {
 						}
 					);
 				} else {
-					game.showTip("♪♪ Happy\nbirthday\nto me ♪♪",
-						game => {
-							game.gotoScene("jail-cell");
-							game.rotation = 6;
-						});
+					game.showTip("♪♪ Happy\nbirthday\nto me ♪♪", game => {
+						game.gotoScene("jail-cell");
+						game.rotation = 6;
+					});
 				}
 			},
 			sprites: [
@@ -382,7 +577,7 @@ const gameConfig = {
 		{
 			name: "bring-cake",
 			onScene: game => {
-				game.hideCursor = true;
+				game.waitCursor = true;
 				game.sceneData.scenario = 0;
 			},
 			onSceneRefresh: game => {
@@ -466,7 +661,7 @@ const gameConfig = {
 				},
 				{
 					src: ASSETS.POOR_HITMAN_GUARD,
-					index: game => Math.floor(game.now / 200) % 4, 
+					index: game => Math.floor((game.now - game.sceneTime) / 200) % 4, 
 				},
 			],
 		},
@@ -526,7 +721,7 @@ const gameConfig = {
 				},
 				{
 					src: ASSETS.POOR_HITMAN_GUARD,
-					index: game => Math.floor(game.now / 200) % 4, 
+					index: game => Math.floor((game.now - game.sceneTime) / 200) % 4, 
 				},
 			],
 		},
@@ -559,7 +754,7 @@ const gameConfig = {
 			},
 			onSceneRefresh: game => {
 				const frame = Math.floor((game.now - game.sceneTime) / 150);					
-				if (frame > 40) {
+				if (frame > 50) {
 					game.gotoScene("guards-attack");
 				}	
 			},
@@ -568,7 +763,7 @@ const gameConfig = {
 					src: ASSETS.GUARDS_LAUGHING,
 					index: game => {
 						const frame = Math.floor((game.now - game.sceneTime) / 150);
-						return frame < 20 ? frame % 2 + 2 : 4;
+						return frame < 20 ? frame % 2 + 2 : frame < 32 ? 0 : 4;
 					},
 				},
 			],
@@ -578,8 +773,7 @@ const gameConfig = {
 			onScene: game => {
 				game.hideCursor = true;
 				game.fadeColor = "#000000";
-
-				game.data.seen.badguards = true;
+				game.see("badguards");
 			},
 			onSceneRefresh: game => {
 				const frame = Math.floor((game.now - game.sceneTime) / 100);
@@ -587,7 +781,7 @@ const gameConfig = {
 
 				if (frame > 70) {
 					game.gotoScene("jail-cell");
-					game.data.seen.intro = true;
+					game.see("intro");
 				}
 			},
 			sprites: [
@@ -626,6 +820,11 @@ const gameConfig = {
 			sprites: [
 				{
 					src: ASSETS.TILE_HOLE,
+					preventClick: game => !game.data.pickedUp.gun,
+					onClick: game => {
+						game.gotoScene("jail-cell");
+						game.rotation = 4;
+					},
 				},
 				{
 					name: "gun",
@@ -634,6 +833,11 @@ const gameConfig = {
 					onClick: (game, {name}) => {
 						game.pickUp(name, ASSETS.GRAB_GUN, "A loaded gun! Did I hide this in here?",
 							game => {
+								game.addToInventory({
+									item: "bullet",
+									count: 6,
+								});
+
 								game.gotoScene("jail-cell");
 								game.rotation = 4;
 							}
@@ -647,6 +851,9 @@ const gameConfig = {
 					hidden: game => !game.bagOpening,
 				},
 			],
-		},		
+		},
+		{
+			name: "alien",
+		},
 	],
 };
