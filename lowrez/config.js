@@ -17,7 +17,7 @@ const gameConfig = {
 				}
 			},
 			onSceneHoldItem: (game, item) => {
-				if (game.data.shot.lamp && item === "lighter") {
+				if (game.data.shot.lamp && !game.sceneData.lighterOn && item === "lighter") {
 					game.sceneData.lighterOn = game.now + 500;
 					game.useItem = null;
 				}
