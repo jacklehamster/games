@@ -49,6 +49,7 @@ const Game = (() => {
 	const imageStock = {};
 	const soundStock = {};
 	let gameInstance;
+	window.o = { imageStock, soundStock };
 
 	class Game {
 		static start(gameConfig) {
@@ -587,7 +588,6 @@ const Game = (() => {
 									if (this.useItem == "gun" && this.inventory.gun.fired) {
 										this.data.shot[name] = this.now;
 										let handled = false;
-										console.log(sprite, name);
 										if (onShot) {
 											handled = onShot(this);
 										}
@@ -757,7 +757,7 @@ const Game = (() => {
 		displayMap(map, {x, y}) {
 			const sprites = [];
 			const index = this.doorOpening ? 0 : this.frameIndex;
-			sprites.push({ src:'assets/dungeon-move.png', index });
+			sprites.push({ src:ASSETS.DUNGEON_MOVE, index });
 			const closeLeftHole 	= this.matchCell(map,x,y,-1,0,this.orientation,[], 'X12345');
 			const closeRightHole 	= this.matchCell(map,x,y,+1,0,this.orientation,[], 'X12345');
 			const closeWall 		= this.matchCell(map,x,y,0,+1,this.orientation,'X12345',[])
@@ -1317,8 +1317,12 @@ const Game = (() => {
 		}
 
 		displayImage(ctx, sprite) {
-			const {src, index, side, col, row, size, hidden, offsetX, offsetY, alpha} = sprite;			
+			const {src, index, side, col, row, size, hidden, offsetX, offsetY, alpha, custom } = sprite;			
 			if (this.evaluate(hidden, sprite)) {
+				return;
+			}
+			if (custom) {
+				custom(game, sprite, ctx);
 				return;
 			}
 			if (!src) {

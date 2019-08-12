@@ -11,6 +11,7 @@ const ASSETS = {
 	TILE:'assets/tile.png',
 	BOTTLE:'assets/bottle.png',
 	BOTTLE_SHARDS:'assets/bottle-shards.png',
+	DUNGEON_MOVE:'assets/dungeon-move.png',
 	FAR_SIDE:'assets/far-side.png',
 	FAR_SIDE_CORNER:'assets/far-side-corner.png',
 	FAR_WALL:'assets/far-wall.png',
@@ -58,6 +59,7 @@ const ASSETS = {
 	ZOOM_GUARD_ALERT: 'assets/zoom-guard-alert.png',
 	SHOOTS: "assets/shoots.png",
 	EATER: "assets/eater.png",
+	ALIEN_EATER: "assets/alien-eater.png",
 };
 
 const SOUNDS = {
