@@ -108,7 +108,9 @@ const gameConfig = {
 					if (game.hideArrows && game.fade === 0) {
 						game.hideArrows = false;
 					} 
-					game.sceneData.showedIntro = true;
+					if (game.fade === 0) {
+						game.sceneData.showedIntro = true;
+					}
 				}
 				if (game.sceneData.guardAlert) {
 					if (!game.data.shot["right guard"]) {
