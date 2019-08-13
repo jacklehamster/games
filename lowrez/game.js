@@ -255,13 +255,11 @@ const Game = (() => {
 		}
 
 		get situation() {
-			if (!this.data.situation) {
-				this.data.situation = {};
+			const { data, sceneIndex } = this;
+			if (!data.situation[sceneIndex]) {
+				data.situation[sceneIndex] = {};
 			}
-			if (!this.data.situation[this.sceneIndex]) {
-				this.data.situation[this.sceneIndex] = {};
-			}
-			return this.data.situation[this.sceneIndex];
+			return data.situation[sceneIndex];
 		}
 
 		initGame() {
@@ -272,6 +270,7 @@ const Game = (() => {
 				seen: {},
 				shot: {},
 				inventory: {},
+				situation: {},
 			};
 			this.config = null;
 			this.mouse = null;
@@ -510,7 +509,7 @@ const Game = (() => {
 							if (onDone) {
 								onDone(this, action);
 							}
-							if (action.repeat) {
+							if (action.repeat && action.active) {
 								action.repeat--;
 								const {x, y} = this.pos;
 								const dy = direction === "forward" ? 1 : -1;
@@ -723,20 +722,33 @@ const Game = (() => {
 			return true;
 		}
 
+		checkMonster() {
+			return false;
+		}
+
 		move(now, direction) {
 			const dy = direction === "forward" ? 1 : -1;
 			if (!this.canMove(this.pos, dy)) {
 				return;
 			}
-			const onStart = direction === "forward" ? () => this.applyMove(direction, this.orientation) : nop;
-			const onDone = direction === "backward" ? () => {
-				this.applyMove(direction, this.orientation);
-				const { x, y } = this.pos;
-				const closeDoor = this.matchCell(this.map,x,y,0,direction,this.orientation,'12345','');;
-				this.doorOpening = 1;
-				this.doorOpened = 1;
-				this.frameIndex = 3;
-			}: nop;
+			const onStart = direction === "forward" ? game => game.applyMove(direction, game.orientation) : nop;
+			const onDone = direction === "backward" 
+				? (game, action) => {
+					game.applyMove(direction, game.orientation);
+					const { x, y } = game.pos;
+					const closeDoor = game.matchCell(game.map,x,y,0,direction,game.orientation,'12345','');;
+					game.doorOpening = 1;
+					game.doorOpened = 1;
+					game.frameIndex = 3;
+					if (checkMonster) {
+						action.active = false;
+					}
+				}
+				: (game, action) => {
+					if (checkMonster) {
+						action.active = false;
+					}
+				};
 
 			const [ action ] = this.actions.filter(({command, direction, active}) => {
 				return active && command === "move" && direction === direction;
@@ -973,12 +985,14 @@ const Game = (() => {
 
 				if (this.pendingTip && this.pendingTip.progress < 1 || this.pickedUp && this.pickedUp.tip && this.pickedUp.tip.progress < 1 || this.waitCursor) {
 					const angle = this.now / 200;
-					const radius = 2;
+					const radius = 3;
 					ctx.strokeStyle = "#FFFFFF";
-					ctx.lineWidth = .5;
+					ctx.lineWidth = 1;
 					ctx.beginPath();
-					ctx.moveTo(px - Math.cos(angle) * radius, py - Math.sin(angle) * radius);
-					ctx.lineTo(px + Math.cos(angle) * radius, py + Math.sin(angle) * radius);
+					ctx.moveTo(x - Math.cos(angle) * radius, y - Math.sin(angle) * radius);
+					ctx.lineTo(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
+					ctx.moveTo(x + Math.sin(angle) * radius, y - Math.cos(angle) * radius);
+					ctx.lineTo(x - Math.sin(angle) * radius, y + Math.cos(angle) * radius);
 					ctx.stroke();
 				} else if (this.useItem && this.useItem === "gun" && this.arrow !== BAG) {
 					ctx.strokeStyle = Math.random() < .5 ? "#FFFFFF" : "#000000";

@@ -1,5 +1,5 @@
 const shortcut = {
-	0: game => game.situation.explode ? FORWARD : null,
+	0: game => game.situation.explode && game.data.shot["left guard"] && game.data.shot["right guard"] ? FORWARD : null,
 };
 
 function s(index) {
@@ -119,9 +119,8 @@ const gameConfig = {
 				game.save();
 			},
 			onSceneRefresh: game => {
-				if (game.data.cakebomb && game.data.shot["left guard"] && game.data.shot["right guard"]) {
-//					game.gotoScene("temp-end");
-					const frame = Math.floor((game.now - game.data.cakebomb)/100);
+				if (game.sceneData.cakebomb && !game.situation.explode) {
+					const frame = Math.floor((game.now - game.sceneData.cakebomb)/100);
 					if (frame >= 11 && !game.situation.explode) {
 						game.situation.explode = game.now;
 						game.playSound(SOUNDS.GUN_SHOT);
@@ -142,7 +141,10 @@ const gameConfig = {
 								appear: game.now,
 							};
 							return p;
-						});												
+						});	
+						if (!game.data.shot.lamp) {
+							game.sceneData.guardAlert = game.now + 1000;
+						}											
 					}
 				}
 				if (!game.sceneIntro && !game.sceneData.showedIntro) {
@@ -299,15 +301,12 @@ const gameConfig = {
 				{
 					name: "cakelock",
 					src: ASSETS.CAKE_BOOM,
-					index: game => game.data.cakebomb ? Math.min(11, Math.floor((game.now - game.data.cakebomb)/100)) : 0,
+					index: game => game.sceneData.cakebomb ? Math.min(11, Math.floor((game.now - game.sceneData.cakebomb)/100)) : 0,
 					hidden: game => game.rotation !== 0 || !game.data.cakelock,
 					combine: (item, game) => {
 						if (item === "lighter") {
 							game.useItem = null;						
-							game.data.cakebomb = game.now;
-							if (!game.data.shot.lamp) {
-								game.sceneData.guardAlert = game.now + 1000;
-							}							
+							game.sceneData.cakebomb = game.now;
 							return true;
 						}
 					},
@@ -1036,7 +1035,7 @@ const gameConfig = {
 				{
 					custom: (game, sprite, ctx) => {
 						if (game.sceneData.explode) {
-							const pieces = game.sceneData || [];
+							const pieces = game.sceneData.pieces || [];
 							pieces.forEach(piece => {
 								const { x, y, preX, preY, dx, dy, size, color, appear } = piece;
 								if (appear < game.now) {
