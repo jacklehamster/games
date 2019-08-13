@@ -488,14 +488,6 @@ const gameConfig = {
 					hidden: game => !game.data.shot.lamp || game.now - game.data.shot.lamp >= 100 || game.rotation !== 0,
 				},
 				{
-					bag: true,
-					src: ASSETS.BAG_OUT,
-					index: game => game.frameIndex,
-					hidden: game => game.arrow !== BAG && !game.bagOpening || game.sceneData.firstShot,
-					alpha: game => game.emptyBag() && game.frameIndex === 0 ? .2 : 1,
-					onClick: game => game.clickBag(),
-				},
-				{
 					name: "self",
 					src: ASSETS.EATER, col:2, row:2,
 					index: (game, sprite) => game.hoverSprite === sprite ? Math.min(2, Math.floor((game.now - sprite.hoverTime) / 100)) : 0,
@@ -506,6 +498,14 @@ const gameConfig = {
 						}
 						return true;
 					},
+				},
+				{
+					bag: true,
+					src: ASSETS.BAG_OUT,
+					index: game => game.frameIndex,
+					hidden: game => game.arrow !== BAG && !game.bagOpening || game.sceneData.firstShot,
+					alpha: game => game.emptyBag() && game.frameIndex === 0 ? .2 : 1,
+					onClick: game => game.clickBag(),
 				},
 			],
 		},

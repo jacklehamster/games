@@ -90,9 +90,6 @@ const Game = (() => {
 		}
 
 		constructor() {
-			this.initGame();
-			this.sceneIndex = 0;
-
 			document.addEventListener("keydown", ({keyCode}) => {
 				this.keyboard[keyCode] = true;
 			});
@@ -228,6 +225,12 @@ const Game = (() => {
 					default:
 				}
 			});
+
+			this.createLoop(this.refresh.bind(this));
+			this.prepareAssets();
+			this.prepareSounds();
+
+			this.initGame();
 		}
 
 		gotoScene(index, door) {
@@ -277,8 +280,6 @@ const Game = (() => {
 			this.timeOffset = 0;
 
 			this.initScene();
-			this.prepareAssets();
-			this.prepareSounds();
 		}
 
 		initScene() {
@@ -1246,7 +1247,6 @@ const Game = (() => {
 		play(config) {
 			this.config = config;
 			this.loadScene(this.config.scenes[this.sceneIndex]);
-			this.createLoop(this.refresh.bind(this));
 		}
 
 		loadScene(scene) {
@@ -1504,6 +1504,11 @@ const Game = (() => {
 
 		save() {
 			localStorage.setItem("lastContinue", JSON.stringify(this.data));
+		}
+
+		load() {
+			this.data = JSON.parse(localStorage.getItem("lastContinue"));
+			this.gotoScene(this.sceneIndex, this.door);
 		}
 	}
 
