@@ -80,7 +80,7 @@
 
 		function save() {
 			const saves = JSON.parse(localStorage.getItem("saves") || "[]");
-			saves.push(game.data);
+			saves.push(JSON.parse(JSON.stringify(game.data)));
 			localStorage.setItem("saves", JSON.stringify(saves));
 			updateSaves();
 		}
@@ -89,7 +89,6 @@
 			const saveBox = document.getElementById("savebox");
 			saveBox.innerHTML ="";
 			const saves = JSON.parse(localStorage.getItem("saves") || "[]");
-			console.log(saves);
 			for(let i = 0; i < saves.length; i++) {
 				addSaveBox(i, saves[i]);
 			}
@@ -100,8 +99,7 @@
 			const button = saveBox.appendChild(document.createElement("button"));
 			button.innerText = index;
 			button.addEventListener("click", () => {
-				console.log(data);
-				game.data = data;
+				game.data = JSON.parse(JSON.stringify(data));
 				game.gotoScene(game.sceneIndex, game.door);
 				game.showTip(`GAME ${index} LOADED.`);
 			});
