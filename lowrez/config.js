@@ -1,5 +1,7 @@
 const shortcut = {
 	0: game => game.situation.explode && game.data.shot["left guard"] && game.data.shot["right guard"] ? FORWARD : null,
+	1: game => game.matchCell(game.map,game.pos.x,game.pos.y,0,1,game.orientation,"12345",[]) && !game.doorOpening ? DOOR : FORWARD,
+	2: game => game.matchCell(game.map,game.pos.x,game.pos.y,0,1,game.orientation,"12345",[]) ? (!game.doorOpening ? DOOR : FORWARD) : null,
 };
 
 function s(index) {
@@ -523,8 +525,8 @@ const gameConfig = {
 			arrowGrid: [
 				[],
 				[],
-				[ null, null, DOOR,     null, null  ],
-				[ LEFT, null, FORWARD,  null, RIGHT ],
+				[ null, null, s(2),     null, null  ],
+				[ LEFT, null, s(1),     null, RIGHT ],
 				[ LEFT, null, BACKWARD, null, RIGHT ],
 			],
 			map: `
