@@ -18,7 +18,8 @@ const gameConfig = {
 				[ LEFT, null, BAG , null, RIGHT ],
 			],
 			onSceneForward: game => {
-				this.waitCursor = true;
+				game.waitCursor = true;
+				game.hideArrows = true;
 				game.fadeOut(game.now, {duration:3000, fadeDuration:2000, color:"#000000", onDone:() => {
 					game.gotoScene("maze", 1);
 				}});
@@ -193,11 +194,13 @@ const gameConfig = {
 							}
 						}
 					}
-					const progress = Math.min(1, (game.now - game.sceneData.firstShot) / 3000);
-					game.fade = game.sceneData.firstShot ? .9 * progress : 0;
-					game.fadeColor = "#990000";
-					if (progress >= 1 && !game.data.gameOver) {
-						game.gameOver();
+					if (game.sceneData.firstShot) {
+						const progress = Math.min(1, (game.now - game.sceneData.firstShot) / 3000);
+						game.fade = game.sceneData.firstShot ? .9 * progress : 0;
+						game.fadeColor = "#990000";
+						if (progress >= 1 && !game.data.gameOver) {
+							game.gameOver();
+						}
 					}
 				}
 			},
@@ -520,7 +523,7 @@ const gameConfig = {
 			arrowGrid: [
 				[],
 				[],
-				[ null, null, null,     null, null  ],
+				[ null, null, DOOR,     null, null  ],
 				[ LEFT, null, FORWARD,  null, RIGHT ],
 				[ LEFT, null, BACKWARD, null, RIGHT ],
 			],

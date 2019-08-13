@@ -150,6 +150,18 @@ const Game = (() => {
 					}
 					return;
 				}
+				if (this.data.gameOver) {
+					const selection = Math.floor(this.mouse.y / 10) - 4;
+					if (selection >= 0 && selection <= 1) {
+						if (selection == 0) {
+							this.load();
+						} else {
+							this.restart();
+						}
+						return;
+					}
+				}
+
 				this.mouseDown = this.now;
 				if (!this.hoverSprite || this.hoverSprite.bag) {
 					const { offsetWidth, offsetHeight } = currentTarget;
@@ -165,6 +177,26 @@ const Game = (() => {
 							case RIGHT: {
 								this.turnRight(this.now);
 								this.actionDown = arrow;
+							}
+							break;
+							case DOOR: {
+								const { x, y } = this.pos;
+								if (this.matchCell(this.map,x,y,0,1,this.orientation,"12345",[])) {
+									if (!this.doorOpening) {
+										this.performAction(this.now);
+									} else if (this.doors) {
+										const cell = getCell(this.map, ... Game.getPosition(x,y,0,1,this.orientation));
+										if (this.doors[cell].exit) {
+											this.doors[cell].exit(this);
+										} else {
+											this.actionDown = arrow;
+										}
+									} else {
+										console.error("You need doors!");
+									}
+								} else {
+									this.actionDown = arrow;
+								}
 							}
 							break;
 							case FORWARD: {
@@ -567,7 +599,8 @@ const Game = (() => {
 						break;
 					}
 					case "fadeOut": {
-						const { duration, fadeDuration } = action;
+						const { duration, fadeDuration, color } = action;
+						this.fadeColor = color;
 						this.fade = Math.min(1, (this.now - time) / fadeDuration);
 						if (this.now - time > duration) {
 							if(onDone) {
@@ -722,6 +755,11 @@ const Game = (() => {
 			return true;
 		}
 
+		canOpen({x, y}, direction) {
+			const closeDoor = this.matchCell(this.map,x,y,0,direction,this.orientation,'12345','');;
+			return closeDoor && !this.doorOpened;			
+		}
+
 		checkMonster() {
 			return false;
 		}
@@ -740,12 +778,12 @@ const Game = (() => {
 					game.doorOpening = 1;
 					game.doorOpened = 1;
 					game.frameIndex = 3;
-					if (checkMonster) {
+					if (this.checkMonster()) {
 						action.active = false;
 					}
 				}
 				: (game, action) => {
-					if (checkMonster) {
+					if (this.checkMonster()) {
 						action.active = false;
 					}
 				};
@@ -914,7 +952,7 @@ const Game = (() => {
 			if (arrow) {
 				if (arrow === FORWARD && pos && !this.canMove(pos, 1)) {
 				} else if (arrow === BACKWARD && pos && !this.canMove(pos, -1)) {
-				} else if (arrow === BAG) {
+				} else if (arrow === BAG || arrow === DOOR) {
 				} else {
 					const index = this.actionDown ? 1 + Math.floor(this.now / 100) % 3 : 0;
 					const { src, side } = ARROWS[arrow];
@@ -1118,7 +1156,7 @@ const Game = (() => {
 
 			tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 			lines.forEach((msg, row) => {
-				this.displayLine(tempCtx, {msg, x: 2, y: (row - lines.length) * 7 + 60});
+				this.displayTextLine(tempCtx, {msg, x: 2, y: (row - lines.length) * 7 + 60});
 			});
 			if (fade > 0) {
 				ctx.globalAlpha = 1 - fade;
@@ -1288,22 +1326,31 @@ const Game = (() => {
 
 		displayGameOver() {
 			if (this.data.gameOver) {
+				ctx.fillStyle = "#998800";
+				if (this.mouse) {
+					const { y } = this.mouse;
+					const selection = Math.floor(y / 10) - 4;
+					if (selection >= 0 && selection <= 1) {
+						ctx.fillRect(0, 40 + selection * 10, 64, 6);
+					}
+				}
+
 				tempCtx.globalAlpha = Math.min(1, (this.now - this.data.gameOver) / 3000);
 				tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 				tempCtx.globalAlpha = 1;
-				this.displayLine(tempCtx, {msg: "GAME OVER", x:11, y:20 });
-				this.displayLine(tempCtx, {msg: "continue", x:17, y:40 });
-				this.displayLine(tempCtx, {msg: "start over", x:14, y:50 });
+				this.displayTextLine(tempCtx, {msg: "GAME OVER",  x:11, y:20 });
+				this.displayTextLine(tempCtx, {msg: "try again",  x:16, y:40 });
+				this.displayTextLine(tempCtx, {msg: "start over", x:14, y:50 });
 				ctx.shadowColor = "white";
 				ctx.shadowBlur = 2;
-				for (let i = 0; i < 5; i++) {
+				for (let i = 0; i < 4; i++) {
 					ctx.drawImage(tempCtx.canvas, 0, 0);
 				}
 				ctx.shadowBlur = 0;
 			}
 		}
 
-		displayLine(ctx, {msg, x, y}) {
+		displayTextLine(ctx, {msg, x, y}) {
 			const letterTemplate = {
 				src: ASSETS.ALPHABET, col:9, row:8, size:[5,6],
 				offsetX: 20, offsetY: 20,
@@ -1364,7 +1411,7 @@ const Game = (() => {
 
 			tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 			filteredOptions.forEach(({msg}, row) => {
-				this.displayLine(tempCtx, {msg, x: 2, y: row * 7 + 43});
+				this.displayTextLine(tempCtx, {msg, x: 2, y: row * 7 + 43});
 			});
 			ctx.shadowColor = "white";
 			ctx.shadowBlur = 1;			

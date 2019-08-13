@@ -1,4 +1,4 @@
-const LEFT = 1, RIGHT = 2, FORWARD = 3, BACKWARD = 4, BAG = 5;
+const LEFT = 1, RIGHT = 2, FORWARD = 3, BACKWARD = 4, BAG = 5, DOOR = 6;
 
 const ASSETS = {
 	ARROW_SIDE:'assets/arrow-side.png',
