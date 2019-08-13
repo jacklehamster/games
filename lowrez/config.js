@@ -193,9 +193,12 @@ const gameConfig = {
 							}
 						}
 					}
-					game.fade = game.sceneData.firstShot ? Math.min(.9, (game.now - game.sceneData.firstShot) / 3000) : 0;
+					const progress = Math.min(1, (game.now - game.sceneData.firstShot) / 3000);
+					game.fade = game.sceneData.firstShot ? .9 * progress : 0;
 					game.fadeColor = "#990000";
-
+					if (progress >= 1 && !game.data.gameOver) {
+						game.gameOver();
+					}
 				}
 			},
 			sprites: [
@@ -427,7 +430,7 @@ const gameConfig = {
 					src: ASSETS.LIGHTER, col:3, row:3,
 					index: game => (game.rotation + 8) % 8,
 					hidden: (game,{name}) => !game.data.seen.badguards || game.rotation === 0 || game.data.pickedUp[name],
-					tip: "Turns out they did leave a bunch of presents behind.",
+					tip: "Turns out they left a bunch of stuff behind.",
 					onClick: (game, {name}) => game.pickUp(name, ASSETS.GRAB_LIGHTER, "For the candle on my cake, they actually used a lighter."),
 				},
 				{
@@ -1019,11 +1022,15 @@ const gameConfig = {
 						});
 					}
 					game.sceneData.frame = 14;
-				} else if (frame < 250) {
+				} else if (frame < 240) {
 					game.sceneData.frame = Math.min(24, frame - 200 + 17);
 					if (!game.sceneData.alienSound) {
 						game.sceneData.alienSound = true;
 						game.playSound(SOUNDS.ALIEN);					
+					}
+				} else {
+					if (!game.data.gameOver) {
+						game.gameOver();
 					}
 				}
 			},

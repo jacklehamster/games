@@ -229,8 +229,6 @@ const Game = (() => {
 			this.createLoop(this.refresh.bind(this));
 			this.prepareAssets();
 			this.prepareSounds();
-
-			this.initGame();
 		}
 
 		gotoScene(index, door) {
@@ -274,6 +272,7 @@ const Game = (() => {
 				shot: {},
 				inventory: {},
 				situation: {},
+				gameOver: false,
 			};
 			this.config = null;
 			this.mouse = null;
@@ -902,11 +901,19 @@ const Game = (() => {
 		}
 
 		displayArrows() {
+			const { useItem, bagOpening, hideArrows, pickedUp, hideCursor } = this;
+			if (useItem || bagOpening || hideArrows || pickedUp || hideCursor) {
+				return;
+			}
+			if (this.data.gameOver) {
+				return;
+			}
+
 			const sprites = [];
-			const { arrow } = this;
+			const { arrow, pos } = this;
 			if (arrow) {
-				if (arrow === FORWARD && this.pos && !this.canMove(this.pos, 1)) {
-				} else if (arrow === BACKWARD && this.pos && !this.canMove(this.pos, -1)) {
+				if (arrow === FORWARD && pos && !this.canMove(pos, 1)) {
+				} else if (arrow === BACKWARD && pos && !this.canMove(pos, -1)) {
 				} else if (arrow === BAG) {
 				} else {
 					const index = this.actionDown ? 1 + Math.floor(this.now / 100) % 3 : 0;
@@ -919,6 +926,9 @@ const Game = (() => {
 		}
 
 		displayTips() {
+			if (this.bagOpening || this.pickedUp) {
+				return;
+			}
 			if (this.pendingTip) {
 				const tip = this.pendingTip;
 				tip.fade = Math.min(1, (this.now - (tip.time + (tip.text.length + 10) * tip.speed)) / 350);
@@ -1008,7 +1018,7 @@ const Game = (() => {
 					const tipReady = this.hoverSprite && this.evaluate(this.hoverSprite.tip);
 					const canClick = this.hoverSprite && this.hoverSprite.onClick && !this.evaluate(this.hoverSprite.preventClick);
 					const canCombine = this.hoverSprite && this.useItem && (this.hoverSprite.name || this.hoverSprite.combine || this.hoverSprite.combineMessage);
-					const highLight = !this.arrow && (tipReady || canClick || canCombine) && !this.bagOpening;
+					const highLight = !this.data.gameOver && !this.arrow && (tipReady || canClick || canCombine) && !this.bagOpening;
 					ctx.strokeStyle = "#00000055";
 					ctx.lineWidth = 1;
 
@@ -1107,37 +1117,8 @@ const Game = (() => {
 			};
 
 			tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-			lines.forEach((line, row) => {
-				letterTemplate.offsetY = (row - lines.length) * 7 + 60;
-				let spaceX = 2;
-				for (let c = 0; c < line.length; c++) {
-					const code = line.charCodeAt(c);
-					const ALPHA = ALPHAS[code] || ALPHAS[' '.charCodeAt(0)];
-					const { index } = ALPHA;
-					letterTemplate.offsetX = spaceX;//3 + c * 5;
-					letterTemplate.index = index;
-					this.displayImage(tempCtx, letterTemplate);
-					if (!ALPHA.width) {
-						const { offsetX, offsetY } = letterTemplate;
-						const { data } = tempCtx.getImageData(offsetX, offsetY, 5, 6);
-
-						let foundW = 0;
-						for (let w = 4; w >= 0; w--) {
-							for (let h = 5; h >= 0; h--) {
-								const offset = (h*5 + w)*4;
-								if (data[offset + 3] !== 0) {
-									foundW = w;
-									break;
-								}
-							}
-							if (foundW) {
-								break;
-							}
-						}
-						ALPHA.width = foundW;
-					}
-					spaceX += ALPHA.width + 2;
-				}
+			lines.forEach((msg, row) => {
+				this.displayLine(tempCtx, {msg, x: 2, y: (row - lines.length) * 7 + 60});
 			});
 			if (fade > 0) {
 				ctx.globalAlpha = 1 - fade;
@@ -1245,6 +1226,7 @@ const Game = (() => {
 		}
 
 		play(config) {
+			this.initGame();
 			this.config = config;
 			this.loadScene(this.config.scenes[this.sceneIndex]);
 		}
@@ -1297,14 +1279,66 @@ const Game = (() => {
 				this.displayPickedUp(this.pickedUp);
 			} 
 
-			if (!this.useItem && !this.bagOpening && !this.hideArrows && !this.pickedUp && !this.hideCursor) {
-				this.displayArrows();
-			}
+			this.displayGameOver();
+			this.displayArrows();
 			this.displayCursor();
-			if (!this.bagOpening && !this.pickedUp) {
-				this.displayTips();
-			}
+			this.displayTips();
 			this.cleanupData();
+		}
+
+		displayGameOver() {
+			if (this.data.gameOver) {
+				tempCtx.globalAlpha = Math.min(1, (this.now - this.data.gameOver) / 3000);
+				tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+				tempCtx.globalAlpha = 1;
+				this.displayLine(tempCtx, {msg: "GAME OVER", x:11, y:20 });
+				this.displayLine(tempCtx, {msg: "continue", x:17, y:40 });
+				this.displayLine(tempCtx, {msg: "start over", x:14, y:50 });
+				ctx.shadowColor = "white";
+				ctx.shadowBlur = 2;
+				for (let i = 0; i < 5; i++) {
+					ctx.drawImage(tempCtx.canvas, 0, 0);
+				}
+				ctx.shadowBlur = 0;
+			}
+		}
+
+		displayLine(ctx, {msg, x, y}) {
+			const letterTemplate = {
+				src: ASSETS.ALPHABET, col:9, row:8, size:[5,6],
+				offsetX: 20, offsetY: 20,
+				index: game => Math.floor(game.now / 100) % 62,
+			};				
+			letterTemplate.offsetY = y;//row * 7 + 43;
+			let spaceX = x;
+			for (let c = 0; c < msg.length; c++) {
+				const code = msg.charCodeAt(c);
+				const ALPHA = ALPHAS[code] || ALPHAS[' '.charCodeAt(0)];
+				const { index } = ALPHA;
+				letterTemplate.offsetX = spaceX;
+				letterTemplate.index = index;
+				this.displayImage(ctx, letterTemplate);
+				if (!ALPHA.width) {
+					const { offsetX, offsetY } = letterTemplate;
+					const { data } = ctx.getImageData(offsetX, offsetY, 5, 6);
+
+					let foundW = 0;
+					for (let w = 4; w >= 0; w--) {
+						for (let h = 5; h >= 0; h--) {
+							const offset = (h*5 + w)*4;
+							if (data[offset + 3] !== 0) {
+								foundW = w;
+								break;
+							}
+						}
+						if (foundW) {
+							break;
+						}
+					}
+					ALPHA.width = foundW;
+				}
+				spaceX += ALPHA.width + 2;
+			}
 		}
 
 		displayDialog(dialog) {
@@ -1315,13 +1349,6 @@ const Game = (() => {
 				return;
 			}
 
-			const letterTemplate = {
-				src: ASSETS.ALPHABET, col:9, row:8, size:[5,6],
-				offsetX: 20, offsetY: 20,
-				index: game => Math.floor(game.now / 100) % 62,
-			};
-
-			tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 
 
 			const {message, options} = conversation[index];
@@ -1335,44 +1362,25 @@ const Game = (() => {
 				dialog.hovered = null;
 			}
 
+			tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 			filteredOptions.forEach(({msg}, row) => {
-				letterTemplate.offsetY = row * 7 + 43;
-				let spaceX = 2;
-				for (let c = 0; c < msg.length; c++) {
-					const code = msg.charCodeAt(c);
-					const ALPHA = ALPHAS[code] || ALPHAS[' '.charCodeAt(0)];
-					const { index } = ALPHA;
-					letterTemplate.offsetX = spaceX;
-					letterTemplate.index = index;
-					this.displayImage(tempCtx, letterTemplate);
-					if (!ALPHA.width) {
-						const { offsetX, offsetY } = letterTemplate;
-						const { data } = tempCtx.getImageData(offsetX, offsetY, 5, 6);
-
-						let foundW = 0;
-						for (let w = 4; w >= 0; w--) {
-							for (let h = 5; h >= 0; h--) {
-								const offset = (h*5 + w)*4;
-								if (data[offset + 3] !== 0) {
-									foundW = w;
-									break;
-								}
-							}
-							if (foundW) {
-								break;
-							}
-						}
-						ALPHA.width = foundW;
-					}
-					spaceX += ALPHA.width + 2;
-				}
+				this.displayLine(tempCtx, {msg, x: 2, y: row * 7 + 43});
 			});
 			ctx.shadowColor = "white";
 			ctx.shadowBlur = 1;			
 			for (let i = 0; i < 16; i++) {
-				ctx.drawImage(tempCanvas, 0, 0);
+				ctx.drawImage(tempCtx.canvas, 0, 0);
 			}
 			ctx.shadowBlur = 0;
+		}
+
+		displayOutlinedImage(image, color, intensity) {
+			ctx.shadowColor = color;
+			ctx.shadowBlur = 1;
+			for (let i = 0; i < intensity; i++) {
+				ctx.drawImage(image, 0, 0);
+			}
+			ctx.shadowBlur = 0;			
 		}
 
 		displayInventory() {
@@ -1509,6 +1517,18 @@ const Game = (() => {
 		load() {
 			this.data = JSON.parse(localStorage.getItem("lastContinue"));
 			this.gotoScene(this.sceneIndex, this.door);
+		}
+
+		restart() {
+			this.play(this.config);
+		}
+
+		gameOver() {
+			if (!this.data.gameOver) {
+				this.data.gameOver = this.now;
+				this.hideCursor = false;
+				this.waitCursor = false;
+			}
 		}
 	}
 
