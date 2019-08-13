@@ -1,3 +1,11 @@
+const shortcut = {
+	0: game => game.situation.explode ? FORWARD : null,
+};
+
+function s(index) {
+	return shortcut[index];
+}
+
 const gameConfig = {
 	scenes: [
 		{
@@ -6,9 +14,16 @@ const gameConfig = {
 				[],
 				[],
 				[ null, null, null,  null, null  ],
-				[ LEFT, null, null,  null, RIGHT ],
+				[ LEFT, null, s(0),  null, RIGHT ],
 				[ LEFT, null, BAG , null, RIGHT ],
 			],
+			onSceneForward: game => {
+				this.waitCursor = true;
+				game.fadeOut(game.now, {duration:3000, fadeDuration:2000, color:"#000000", onDone:() => {
+					game.gotoScene("maze", 1);
+				}});
+				return true;
+			},
 			onSceneUseItem: (game, item) => {
 				if (item === "gun" && !game.data.shot.lamp) {
 					if (game.rotation === 0 && !game.sceneData.guardAlert) {
@@ -17,8 +32,8 @@ const gameConfig = {
 				}
 			},
 			onSceneHoldItem: (game, item) => {
-				if (game.data.shot.lamp && !game.sceneData.lighterOn && item === "lighter") {
-					game.sceneData.lighterOn = game.now + 500;
+				if (game.data.shot.lamp && !game.data.scene.lighterOn && item === "lighter") {
+					game.data.scene.lighterOn = game.now + 500;
 					game.useItem = null;
 				}
 			},
@@ -67,7 +82,7 @@ const gameConfig = {
 						game.sceneIntro = true;
 						game.hideCursor = true;
 						game.hideArrows = true;
-						setTimeout(() => {
+						game.delayAction(game => {
 							game.showTip([
 								"My brain... it hurts...",
 								"And my body is filled with bruises...",
@@ -87,7 +102,7 @@ const gameConfig = {
 						game.sceneIntro = true;
 						game.hideCursor = true;
 						game.hideArrows = true;
-						setTimeout(() => {
+						game.delayAction(game => {
 							game.showTip([
 								"Ohh my brain... it hurts...",
 								"And my body is filled with bruises...",
@@ -101,10 +116,34 @@ const gameConfig = {
 						}, 2000);
 					}						
 				}
+				game.save();
 			},
 			onSceneRefresh: game => {
 				if (game.data.cakebomb && game.data.shot["left guard"] && game.data.shot["right guard"]) {
-					game.gotoScene("temp-end");
+//					game.gotoScene("temp-end");
+					const frame = Math.floor((game.now - game.data.cakebomb)/100);
+					if (frame >= 11 && !game.situation.explode) {
+						game.situation.explode = game.now;
+						game.playSound(SOUNDS.GUN_SHOT);
+						game.delayAction(game => game.playSound(SOUNDS.GUN_SHOT), 50);
+						game.delayAction(game => game.playSound(SOUNDS.GUN_SHOT), 50);
+						game.sceneData.pieces = new Array(10).fill(null).map(a => {
+							const byte = Math.max(0x50, Math.floor(Math.random() * 0xaa)).toString(16);
+							const color = `#cc${byte}00`;
+							const size = Math.random() < .5 ? 1 : 2;
+
+							const p = {
+								x: [37 + 10 * (Math.random()-.5)],
+								y: [35 + Math.random()*2],
+								dx: (Math.random() - .5) * 2,
+								dy: -Math.random() * 2,
+								size,
+								color,
+								appear: game.now,
+							};
+							return p;
+						});												
+					}
 				}
 				if (!game.sceneIntro && !game.sceneData.showedIntro) {
 					game.fade = Math.max(0, 1 - (game.now - game.sceneData.beginTime) / 3000);
@@ -237,7 +276,7 @@ const gameConfig = {
 				},					
 				{
 					src: ASSETS.CAGE, col:2, row:3,
-					index: game => game.sceneData.lighterOn ? 3:0,
+					index: game => (game.data.scene.lighterOn ? 3 : 0) + (game.situation.explode ? Math.min(2, Math.floor((game.now - game.situation.explode) / 100)) : 0),
 					hidden: game => game.rotation !== 0,
 				},
 				{
@@ -251,7 +290,7 @@ const gameConfig = {
 							game.useItem = null;						
 							game.data.cakelock = game.now;
 							if (!game.data.shot.lamp) {
-								game.showTip("The guards look at me with suspicion.");
+								game.showTip("The guards look at me\nsuspiciously.");
 							}
 							return true;
 						}
@@ -260,7 +299,7 @@ const gameConfig = {
 				{
 					name: "cakelock",
 					src: ASSETS.CAKE_BOOM,
-					index: game => game.data.cakebomb ? Math.min(10, Math.floor((game.now - game.data.cakebomb)/100)) : 0,
+					index: game => game.data.cakebomb ? Math.min(11, Math.floor((game.now - game.data.cakebomb)/100)) : 0,
 					hidden: game => game.rotation !== 0 || !game.data.cakelock,
 					combine: (item, game) => {
 						if (item === "lighter") {
@@ -273,6 +312,33 @@ const gameConfig = {
 						}
 					},
 				},
+				{
+					custom: (game, sprite, ctx) => {
+						if (game.situation.explode) {
+							const pieces = game.sceneData.pieces || [];
+							pieces.forEach(piece => {
+								const { x, y, preX, preY, dx, dy, size, color, appear } = piece;
+								if (appear < game.now) {
+									ctx.fillStyle = color;
+									for (let i = 0; i < x.length; i++) {
+										ctx.fillRect(x[i], y[i], size - i*.1, size - i*.1);
+									}
+									if (x.length < 2) {
+										x.push(x[x.length-1]);
+										y.push(y[y.length-1]);
+									}
+									for (let i = x.length-1; i>=1; i--) {
+										x[i] = x[i-1];
+										y[i] = y[i-1];
+									}
+									piece.x[0] += dx;
+									piece.y[0] += dy;
+									piece.dy+= .15;
+								}
+							});
+						}
+					},
+				},				
 				{
 					src: ASSETS.SHOOTS,
 					index: 0,
@@ -379,8 +445,8 @@ const gameConfig = {
 				},
 				{
 					fade: game => {
-						if (game.sceneData.lighterOn) {
-							const progress = Math.max(0, Math.min(1, (game.now - game.sceneData.lighterOn) / 10000));
+						if (game.data.scene.lighterOn) {
+							const progress = Math.max(0, Math.min(1, (game.now - game.data.scene.lighterOn) / 10000));
 							return .9 * (1 - progress) + 0 * progress;
 						}
 						return .9
@@ -398,7 +464,7 @@ const gameConfig = {
 				},
 				{
 					fade: game => {
-						const progress = Math.max(0, Math.min(1, (game.now - game.sceneData.lighterOn) / 5000));
+						const progress = Math.max(0, Math.min(1, (game.now - game.data.scene.lighterOn) / 5000));
 						return progress * .75 + Math.cos(game.now / 15)*.01;
 					},
 					fadeColor: "#331100",
@@ -409,7 +475,7 @@ const gameConfig = {
 						if (game.sceneData.leftShot && game.now - game.sceneData.leftShot < 150) {
 							return true;
 						}
-						return !game.sceneData.lighterOn || game.gunFiredWithin(150);
+						return !game.data.scene.lighterOn || game.gunFiredWithin(150);
 					}
 				},
 				{
@@ -446,6 +512,9 @@ const gameConfig = {
 		},
 		{
 			name: "maze",
+			onScene: game => {
+				game.save();
+			},
 			arrowGrid: [
 				[],
 				[],
@@ -457,15 +526,22 @@ const gameConfig = {
 				XXXXXXXX
 				X.....XX
 				XX.XX.XX
-				XX8XX.XX
-				XXXXX1XX
+				XX1XX.XX
+				XXXXX2XX
 				XXXXXXXX
 			`,
 			doors: {
 				1: {
 					exit: game => {
 						game.fadeOut(game.now, {duration:3000, fadeDuration:2000, color:"#000000", onDone:() => {
-							game.gotoScene(0);
+							game.gotoScene("jail-cell");
+						}});
+					},
+				},
+				2: {
+					exit: game => {
+						game.fadeOut(game.now, {duration:3000, fadeDuration:2000, color:"#000000", onDone:() => {
+							game.gotoScene("leo-end");
 						}});
 					},
 				},
@@ -887,7 +963,7 @@ const gameConfig = {
 			],
 		},
 		{
-			name: "temp-end",
+			name: "leo-end",
 			onScene: game => {
 				game.showTip("Congrats Leo, you reached the end so far. I didn't program the rest yet.");
 			},
@@ -923,12 +999,8 @@ const gameConfig = {
 				} else if (frame < 200) {
 					if (!game.sceneData.explode) {
 						game.playSound(SOUNDS.GUN_SHOT);
-						setTimeout(() => {
-							game.playSound(SOUNDS.GUN_SHOT);
-						}, 50);
-						setTimeout(() => {
-							game.playSound(SOUNDS.GUN_SHOT);
-						}, 50);
+						game.delayAction(game => game.playSound(SOUNDS.GUN_SHOT), 50);
+						game.delayAction(game => game.playSound(SOUNDS.GUN_SHOT), 50);
 						game.sceneData.explode = game.now;
 						game.sceneData.pieces = new Array(500).fill(null).map(a => {
 							const byte = Math.max(0x10, Math.floor(Math.random() * 0xaa)).toString(16);
@@ -964,7 +1036,7 @@ const gameConfig = {
 				{
 					custom: (game, sprite, ctx) => {
 						if (game.sceneData.explode) {
-							const { pieces } = game.sceneData;
+							const pieces = game.sceneData || [];
 							pieces.forEach(piece => {
 								const { x, y, preX, preY, dx, dy, size, color, appear } = piece;
 								if (appear < game.now) {

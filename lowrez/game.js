@@ -25,20 +25,20 @@ const Game = (() => {
 		return lines;
 	}
 
-	function getMapInfo(map) {
+	function getMapInfo(map, door) {
 		if (!map) {
 			return null;
 		}
 		for (let row = 0; row < map.length; row++) {
 			for(let col = 0; col < map[row].length; col++) {
-				if (map[row][col] === '8') {
+				if (map[row][col] == door) {
 					return {
-						x: col, y: row,
+						x: col, y: row + 1,
 					};
 				}
 			}
 		}
-		throw new Error("Invalid map. Missing O");
+		throw new Error(`Invalid map. Missing door ${door}`);
 	}
 
 	function getCell(map, x, y) {
@@ -76,9 +76,22 @@ const Game = (() => {
 			this.inventory[obj.item] = obj;			
 		}
 
+		set sceneIndex(index) {
+			if (index !== this.sceneIndex) {
+				this.data.scene = {
+					index,
+				};
+				console.log(this.data.scene);
+			}
+		}
+
+		get sceneIndex() {
+			return this.data.scene ? this.data.scene.index || 0 : 0;
+		}
+
 		constructor() {
-			this.sceneIndex = 0;
 			this.initGame();
+			this.sceneIndex = 0;
 
 			document.addEventListener("keydown", ({keyCode}) => {
 				this.keyboard[keyCode] = true;
@@ -112,15 +125,14 @@ const Game = (() => {
 				if (this.pendingTip && this.pendingTip.progress < 1 || this.waitCursor || this.hideCursor) {
 					return;
 				}
-				// && (!gun.fired || this.now - gun.fired > 1000)
 				if (this.useItem === "gun" && (!this.hoverSprite || !this.hoverSprite.bag)) {
 					const { bullet, gun } = this.inventory;
 					if (bullet && bullet.count) {
 						bullet.count--;
-						gun.fired = this.now;
+						this.gunFired = this.now;
 						game.playSound(SOUNDS.GUN_SHOT);
 					} else {
-						gun.fired = 0;
+						this.gunFired = 0;
 						game.playSound(SOUNDS.DUD)
 					}
 					this.mouseDown = this.now;
@@ -129,10 +141,6 @@ const Game = (() => {
 				if (this.pickedUp) {
 					const { item, onPicked, tip, image } = this.pickedUp;
 					if (tip.progress >= 1) {
-						this.addToInventory({
-							item,
-							image,
-						});
 						this.pickedUp = null;
 						this.tips = {};
 						this.openBag(this.now, onPicked);
@@ -163,6 +171,9 @@ const Game = (() => {
 							}
 							break;
 							case FORWARD: {
+								if (this.onSceneForward(this)) {
+									return;
+								}
 								const { x, y } = this.pos;
 								if (this.matchCell(this.map,x,y,0,1,this.orientation,"12345",[])) {
 									if (!this.doorOpening) {
@@ -219,7 +230,7 @@ const Game = (() => {
 			});
 		}
 
-		gotoScene(index) {
+		gotoScene(index, door) {
 			if (typeof(index) === "string") {
 				index = this.config.scenes.map(({name}, idx) => name === index ? idx : -1).filter(index => index >= 0)[0];
 				if (typeof(index) === 'undefined') {
@@ -227,15 +238,36 @@ const Game = (() => {
 				}
 			}
 			this.sceneIndex = index;
+			this.door = door;
 			this.loadScene(this.config.scenes[this.sceneIndex]);
+		}
+
+		set door (value) {
+			this.data.scene.door = value;
+		}
+
+		get door () {
+			return this.data.scene ? this.data.scene.door || 0 : 0;
 		}
 
 		get inventory() {
 			return this.data.inventory;
 		}
 
+		get situation() {
+			if (!this.data.situation) {
+				this.data.situation = {};
+			}
+			if (!this.data.situation[this.sceneIndex]) {
+				this.data.situation[this.sceneIndex] = {};
+			}
+			return this.data.situation[this.sceneIndex];
+		}
+
 		initGame() {
 			this.data = {
+				time: 0,
+				scene: {},
 				pickedUp: {},
 				seen: {},
 				shot: {},
@@ -243,6 +275,7 @@ const Game = (() => {
 			};
 			this.config = null;
 			this.mouse = null;
+			this.timeOffset = 0;
 
 			this.initScene();
 			this.prepareAssets();
@@ -257,7 +290,6 @@ const Game = (() => {
 			this.doorOpening = 0;
 			this.bagOpening = 0;
 			this.doorOpened = 0;
-			this.rotation = 0;
 			this.arrow = 0;
 			this.actionDown = 0;
 			this.fade = 0;
@@ -275,6 +307,8 @@ const Game = (() => {
 			this.sceneData = {};
 			this.sceneIntro = false;
 			this.mouseHand = null;
+			this.rotation = 0;
+			this.gunFired = 0;
 
 			this.mode = null;
 			this.map = null;
@@ -289,6 +323,7 @@ const Game = (() => {
 			this.onSceneShot = null;
 			this.onSceneHoldItem = null;
 			this.onSceneUseItem = null;
+			this.onSceneForward = null;
 		}
 
 		markPickedUp(item) {
@@ -303,6 +338,11 @@ const Game = (() => {
 			}
 			this.markPickedUp(item);
 			const time = this.now;
+			this.addToInventory({
+				item,
+				image,
+			});
+
 			this.pickedUp = {
 				item,
 				image,
@@ -327,7 +367,7 @@ const Game = (() => {
 			}
 			const quadrantX = Math.min(4, Math.max(0, Math.floor(x / width * 5)));
 			const quadrantY = Math.min(4, Math.max(0, Math.floor(y / height * 5)));
-			return this.arrowGrid[quadrantY][quadrantX];
+			return this.evaluate(this.arrowGrid[quadrantY][quadrantX]);
 		}
 
 		evaluate(value, extra) {
@@ -368,9 +408,7 @@ const Game = (() => {
 					active: true,
 					started: false,
 					repeat: 0,
-					onDone: !callback ? nop : () => {
-						callback(this);
-					},
+					onDone: callback || nop,
 				});
 				this.tips = {};
 			}
@@ -386,7 +424,7 @@ const Game = (() => {
 						frame: 0,
 						command: "open",
 						onStart: () => this.doorOpening = !this.doorOpening ? 1 : -this.doorOpening,
-						onDone: () => this.doorOpened = this.doorOpening > 0 ? 1 : 0,
+						onDone: game => game.doorOpened = game.doorOpening > 0 ? 1 : 0,
 						active: true,
 						started: false,
 					});
@@ -399,14 +437,14 @@ const Game = (() => {
 				time: now,
 				command: "openbag",
 				onStart: () => this.bagOpening = !this.bagOpening ? 1 : -this.bagOpening,
-				onDone: action => {
-					if(this.bagOpening < 0) {
-						this.bagOpening = 0;
+				onDone: game => {
+					if(game.bagOpening < 0) {
+						game.bagOpening = 0;
 						if (onClose) {
-							onClose(this);
+							onClose(game);
 						}
-					} else if (this.bagOpening > 0 && this.useItem) {
-						this.useItem = null;
+					} else if (game.bagOpening > 0 && game.useItem) {
+						game.useItem = null;
 					}
 				},
 				active: true,
@@ -457,7 +495,7 @@ const Game = (() => {
 				if (!started) {
 					action.started = true;
 					if (onStart) {
-						onStart();
+						onStart(this, action);
 					}
 				}
 
@@ -470,7 +508,7 @@ const Game = (() => {
 						} else {
 							this.frameIndex = 0;
 							if (onDone) {
-								onDone();
+								onDone(this, action);
 							}
 							if (action.repeat) {
 								action.repeat--;
@@ -496,7 +534,7 @@ const Game = (() => {
 							this.frameIndex = Math.min(3, this.doorOpening > 0 ? frame : 3 - frame);
 						} else {
 							if (onDone) {
-								onDone();
+								onDone(this, action);
 							}
 							action.active = false;
 						}
@@ -508,7 +546,7 @@ const Game = (() => {
 							this.frameIndex = Math.min(3, this.bagOpening > 0 ? frame : 3 - frame);
 						} else {
 							if (onDone) {
-								onDone(action);
+								onDone(this, action);
 							}
 							action.active = false;
 						}
@@ -523,7 +561,7 @@ const Game = (() => {
 							this.rotation = (action.rotation + dr * (frame + 1) + 8) % 8;
 						} else {
 							if (onDone) {
-								onDone();
+								onDone(this, action);
 							}
 							action.active = false;
 						}						
@@ -534,11 +572,22 @@ const Game = (() => {
 						this.fade = Math.min(1, (this.now - time) / fadeDuration);
 						if (this.now - time > duration) {
 							if(onDone) {
-								onDone();
+								onDone(this, action);
 							}
+							action.active = false;
 						}
 						break;
 					}
+					case "delay": {
+						const { delay } = action;
+						if (this.now - time > delay) {
+							if(onDone) {
+								onDone(this, action);
+							}
+							action.active = false;
+						}
+					}
+					break;
 				}
 			});
 		}
@@ -591,7 +640,7 @@ const Game = (() => {
 								this.clicking = true;
 								if (this.useItem && !sprite.bag) {
 									const { combine, combineMessage, name, onShot } = sprite;
-									if (this.useItem == "gun" && this.inventory.gun.fired) {
+									if (this.useItem == "gun" && this.gunFired) {
 										this.data.shot[name] = this.now;
 										let handled = false;
 										if (onShot) {
@@ -990,7 +1039,7 @@ const Game = (() => {
 					this.mouseHand.y += (y - this.mouseHand.y) * .5;
 
 					ctx.transform(1,0,-(this.mouseHand.x - 32) / 128,1,(this.mouseHand.x - 32) * 1.25, Math.max(0, this.mouseHand.y - 41));
-					const gunFired = (this.inventory.gun && this.inventory.gun.fired) || 0;
+					const { gunFired } = this;
 					this.displayImage(ctx, { src: ASSETS.HOLD_GUN, col: 1, row: 2, index: gunFired && this.now - gunFired < 100 ? 1 : 0 });
 					ctx.resetTransform();					
 				}
@@ -1171,8 +1220,10 @@ const Game = (() => {
 
 		createLoop(callback) {
 			const self = this;
+			let previousTime = 0;
 			function step(timestamp) {
-				callback(timestamp);
+				callback(timestamp - previousTime);
+				previousTime = timestamp;
 			    self.requestId = requestAnimationFrame(step);
 			}
 			self.requestId = requestAnimationFrame(step);
@@ -1186,10 +1237,11 @@ const Game = (() => {
 
 		loadScene(scene) {
 			this.initScene();
-			const { map, mode, sprites, doors, arrowGrid, onScene, onSceneRefresh, onSceneShot, onSceneHoldItem, onSceneUseItem } = scene;
+			const { map, mode, sprites, doors, arrowGrid,
+				onScene, onSceneRefresh, onSceneShot, onSceneHoldItem, onSceneUseItem, onSceneForward } = scene;
 			this.mode = mode;
 			this.map = toMap(map);
-			this.pos = getMapInfo(this.map);
+			this.pos = getMapInfo(this.map, this.door);
 			this.sprites = sprites || [];
 			this.doors = doors;
 			this.arrowGrid = arrowGrid || null;
@@ -1198,12 +1250,17 @@ const Game = (() => {
 			this.onSceneShot = onSceneShot || nop;
 			this.onSceneHoldItem = onSceneHoldItem || nop;
 			this.onSceneUseItem = onSceneUseItem || nop;
+			this.onSceneForward = onSceneForward || nop;
 		}
 
-		refresh(now) {
-			this.now = now;
+		get now() {
+			return this.data.time;
+		}
+
+		refresh(dt) {
+			this.data.time += dt;
 			if (!this.sceneTime) {
-				this.sceneTime = now;
+				this.sceneTime = this.data.time;
 				this.onScene(this);
 			}
 			this.onSceneRefresh(game);
@@ -1307,7 +1364,7 @@ const Game = (() => {
 		displayInventory() {
 			if (this.bagOpening && (this.frameIndex === 2 || this.frameIndex === 3)) {
 				for (let i in this.inventory) {
-					if (i !== this.useItem) {
+					if (i !== this.useItem && (!this.pickedUp || i !== this.pickedUp.item)) {
 						const { item, image } = this.inventory[i];
 						this.displayImage(ctx, { src: image, index: this.frameIndex-1 });
 					}
@@ -1320,7 +1377,10 @@ const Game = (() => {
 		}
 
 		displayPickedUp({item, time, image, tip}) {
-			this.displayFade({fade:Math.min(.7, (this.now - time) / 500), fadeColor:"#333333"});
+			this.displayFade({
+				fade: Math.min(.8, (this.now - time) / 500),
+				fadeColor:"#333333",
+			});
 			this.displayImage(ctx, {src:image});
 			tip.fade = Math.min(1, (this.now - (tip.time + (tip.text.length + 15) * tip.speed)) / 350);
 			this.displayText(tip, true);
@@ -1414,7 +1474,22 @@ const Game = (() => {
 		}
 
 		gunFiredWithin(millis) {
-			return this.inventory.gun && this.inventory.gun.fired && this.now - this.inventory.gun.fired < millis;
+			return this.gunFired && this.now - this.gunFired < millis;
+		}
+
+		delayAction(callback, delay) {
+			this.actions.push({
+				time: this.now,
+				command: "delay",
+				onDone: callback,
+				delay,
+				active: true,
+				started: false,
+			});
+		}
+
+		save() {
+			localStorage.setItem("lastContinue", JSON.stringify(this.data));
 		}
 	}
 

@@ -53,7 +53,7 @@
 	<body style="margin: 0;">
 		<div>
 			<b>EXPERIMENTAL (Use at your own risk):<b>
-			<button onClick="clear()">CLEAR</button>
+			<button onClick="clearSaves()">CLEAR</button>
 			<button onClick="save()">SAVE</button>
 			<div id="savebox">
 			</div>
@@ -73,8 +73,8 @@
 			updateSaves();
 		});
 
-		function clear() {
-			localStorage.setItem("saves", JSON.stringify([]));			
+		function clearSaves() {
+			localStorage.removeItem("saves");
 			updateSaves();
 		}
 
@@ -99,9 +99,10 @@
 			const saveBox = document.getElementById("savebox");
 			const button = saveBox.appendChild(document.createElement("button"));
 			button.innerText = index;
-			button.addEventListener("click", e => {
+			button.addEventListener("click", () => {
+				console.log(data);
 				game.data = data;
-				game.gotoScene("jail-cell");
+				game.gotoScene(game.sceneIndex, game.door);
 				game.showTip(`GAME ${index} LOADED.`);
 			});
 		}
