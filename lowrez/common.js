@@ -1,4 +1,4 @@
-const LEFT = 1, RIGHT = 2, FORWARD = 3, BACKWARD = 4, BAG = 5, DOOR = 6;
+const LEFT = 1, RIGHT = 2, FORWARD = 3, BACKWARD = 4, BAG = 5, DOOR = 6, FAR = 7, CLOSE = 8;
 
 const ASSETS = {
 	ARROW_SIDE:'assets/arrow-side.png',
@@ -61,6 +61,9 @@ const ASSETS = {
 	EATER: "assets/eater.png",
 	ALIEN_EATER: "assets/alien-eater.png",
 	CAKE_BOOM: "assets/cake-boom.png",
+	MAZE_ROTATION_BACKGROUND: "assets/maze-rotation-background.png",
+	MAZE_ROTATION_WALLS: "assets/maze-rotation-walls.png",
+	MAZE_ROTATION_CORNER: "assets/maze-rotation-corner.png",
 };
 
 const SOUNDS = {
@@ -83,7 +86,7 @@ const ALPHAS = (() => {
 	return array;
 })();
 
-const ORIENTATIONS = ['W','N','E','S'];
+const ORIENTATIONS = ['N','NW','W','SW','S','SE','E','NE'];
 const ARROWS = [
 	null, 
 	{ src:ASSETS.ARROW_SIDE, side:LEFT },

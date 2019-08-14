@@ -81,7 +81,7 @@ const Game = (() => {
 				this.data.scene = {
 					index,
 				};
-				console.log(this.data.scene);
+				console.log("SCENE", this.data.scene);
 			}
 		}
 
@@ -166,19 +166,18 @@ const Game = (() => {
 				if (!this.hoverSprite || this.hoverSprite.bag) {
 					const { offsetWidth, offsetHeight } = currentTarget;
 					if (this.arrowGrid && !this.useItem && !this.bagOpening) {
-						const arrow = this.getArrow(offsetX, offsetY, offsetWidth, offsetHeight);
-						this.arrow = arrow;
+						this.arrow = this.getArrow(offsetX, offsetY, offsetWidth, offsetHeight);
 						switch(this.arrow) {
 							case LEFT: {
 								this.turnLeft(this.now);
-								this.actionDown = arrow;
+								this.actionDown = this.arrow;
+								break;
 							}
-							break;
 							case RIGHT: {
 								this.turnRight(this.now);
-								this.actionDown = arrow;
+								this.actionDown = this.arrow;
+								break;
 							}
-							break;
 							case DOOR: {
 								const { x, y } = this.pos;
 								if (this.matchCell(this.map,x,y,0,1,this.orientation,"12345",[])) {
@@ -189,16 +188,16 @@ const Game = (() => {
 										if (this.doors[cell].exit) {
 											this.doors[cell].exit(this);
 										} else {
-											this.actionDown = arrow;
+											this.actionDown = this.arrow;
 										}
 									} else {
 										console.error("You need doors!");
 									}
 								} else {
-									this.actionDown = arrow;
+									this.actionDown = this.arrow;
 								}
+								break;
 							}
-							break;
 							case FORWARD: {
 								if (this.onSceneForward(this)) {
 									return;
@@ -212,20 +211,20 @@ const Game = (() => {
 										if (this.doors[cell].exit) {
 											this.doors[cell].exit(this);
 										} else {
-											this.actionDown = arrow;
+											this.actionDown = this.arrow;
 										}
 									} else {
 										console.error("You need doors!");
 									}
 								} else {
-									this.actionDown = arrow;
+									this.actionDown = this.arrow;
 								}
+								break;
 							}
-							break;
 							case BACKWARD: {
-								this.actionDown = arrow;
+								this.actionDown = this.arrow;
+								break;
 							}
-							break;
 						}
 					}
 				}
@@ -313,9 +312,12 @@ const Game = (() => {
 			this.initScene();
 		}
 
+		get orientation() {
+			return ORIENTATIONS[Math.floor(this.rotation / 2) * 2];
+		}
+
 		initScene() {
 			this.actions = [];
-			this.orientation = 'N';
 			this.keyboard = [];
 			this.frameIndex = 0;
 			this.doorOpening = 0;
@@ -341,7 +343,6 @@ const Game = (() => {
 			this.rotation = 0;
 			this.gunFired = 0;
 
-			this.mode = null;
 			this.map = null;
 			this.pos = null;
 			this.sprites = null;
@@ -409,23 +410,13 @@ const Game = (() => {
 		}
 
 		turnLeft(now, callback) {
-			const { mode, map } = this;
-			if (map) {
-				const index = ORIENTATIONS.indexOf(this.orientation);
-				this.orientation = ORIENTATIONS[(index - 1 + 4) % 4];
-			} else {
-				this.turn(now, "left", callback);
-			}
+			const { map } = this;
+			this.turn(now, "left", callback);
 		}
 
 		turnRight(now, callback) {
-			const { mode, map } = this;
-			if (map) {
-				const index = ORIENTATIONS.indexOf(this.orientation);
-				this.orientation = ORIENTATIONS[(index + 1) % 4];
-			} else {
-				this.turn(now, "right", callback);
-			}
+			const { map } = this;
+			this.turn(now, "right", callback);
 		}
 
 		turn(now, direction, callback) {
@@ -532,10 +523,9 @@ const Game = (() => {
 
 				switch (command) {
 					case "move": {
-						const frame = Math.floor((this.now - time) / 120);
-						action.frame = frame;
-						if (frame < 4) {
-							this.frameIndex = direction === "forward" ? 3 - frame : direction === "backward" ? frame : 0;
+						action.frame = Math.floor((this.now - time) / 120);
+						if (action.frame < 4) {
+							this.frameIndex = direction === "forward" ? 3 - action.frame : direction === "backward" ? action.frame : 0;
 						} else {
 							this.frameIndex = 0;
 							if (onDone) {
@@ -587,15 +577,19 @@ const Game = (() => {
 						const frame = Math.floor((this.now - time) / 150);
 
 						const cycle = 2;
-						if (frame < 2) {
-							const dr = direction === "left" ? 1 : -1;
+						if (frame < cycle) {
+							const dr = direction === "left" ? 1 : direction === "right" ? -1 : 0;
+							if (!dr) {
+								throw new Error("invalid direction");
+							}
 							this.rotation = (action.rotation + dr * (frame + 1) + 8) % 8;
 						} else {
 							if (onDone) {
 								onDone(this, action);
 							}
 							action.active = false;
-						}						
+						}
+						console.log("ROTATION", this.rotation);			
 						break;
 					}
 					case "fadeOut": {
@@ -744,12 +738,12 @@ const Game = (() => {
 			if (this.fade > 0) {
 				return false;
 			}
-			const closeWall = this.matchCell(this.map,x,y,0,direction,this.orientation,"X",'');;
-			if (closeWall) {
+			const closeWallWithDirection = this.matchCell(this.map,x,y,0,direction,this.orientation,"X",'');;
+			if (closeWallWithDirection) {
 				return false;
 			}
-			const closeDoor = this.matchCell(this.map,x,y,0,direction,this.orientation,'12345','');;
-			if (closeDoor && !this.doorOpened) {
+			const closeDoorWithDirection = this.matchCell(this.map,x,y,0,direction,this.orientation,'12345','');;
+			if (closeDoorWithDirection && (!this.doorOpened || direction === -1)) {
 				return false;
 			}
 			return true;
@@ -823,7 +817,7 @@ const Game = (() => {
 		
 		applyMove(direction, orientation) {
 			const dir = direction === "forward" ? 1 : direction === "backward" ? -1 : 0;
-			switch(this.orientation) {
+			switch(orientation) {
 				case 'N':
 					this.pos.y += dir;
 					break;
@@ -861,20 +855,35 @@ const Game = (() => {
 			return (types.length === 0 || types.indexOf(cell) >= 0) && (!nottypes.length || nottypes.indexOf(cell) < 0);
 		}
 
+		mazeHole({direction, distance}) {
+			const { x, y } = this.pos;
+			const dx = direction === LEFT ? -1 : direction === RIGHT ? 1 : 0;
+			const dy = distance === FAR ? 1 : distance === CLOSE ? 0 : 0;
+			return this.matchCell(this.map,x,y,dx,dy,this.orientation,[], 'X12345');			
+		}
+
+		closeWall() {
+			const { x, y } = this.pos;
+			return this.matchCell(this.map,x,y,0,+1,this.orientation,'X12345',[]) || this.matchCell(this.map,x,y,0,0,this.orientation,'12345',[])			
+		}
+
+		closeDoor() {
+			const { x, y } = this.pos;
+			return this.matchCell(this.map,x,y,0,+1,this.orientation,'12345',[])
+				|| this.matchCell(this.map,x,y,0,0,this.orientation,'12345',[])
+					&& this.matchCell(this.map,x,y,0,+1,this.orientation,[],'X12345');			
+		}
+
 		displayMap(map, {x, y}) {
 			const sprites = [];
 			const index = this.doorOpening ? 0 : this.frameIndex;
 			sprites.push({ src:ASSETS.DUNGEON_MOVE, index });
-			const closeLeftHole 	= this.matchCell(map,x,y,-1,0,this.orientation,[], 'X12345');
-			const closeRightHole 	= this.matchCell(map,x,y,+1,0,this.orientation,[], 'X12345');
-			const closeWall 		= this.matchCell(map,x,y,0,+1,this.orientation,'X12345',[])
-				|| this.matchCell(map,x,y,0,0,this.orientation,'12345',[]);
-			const closeDoor         = this.matchCell(map,x,y,0,+1,this.orientation,'12345',[])
-				|| this.matchCell(map,x,y,0,0,this.orientation,'12345',[])
-				&& this.matchCell(map,x,y,0,+1,this.orientation,[],'X12345');
-
-			const farLeftHole		= this.matchCell(map,x,y,-1,+1,this.orientation,[],'X');
-			const farRightHole		= this.matchCell(map,x,y,+1,+1,this.orientation,[],'X');
+			const closeLeftHole 	= this.mazeHole({direction: LEFT, distance: CLOSE});
+			const closeRightHole 	= this.mazeHole({direction: RIGHT, distance: CLOSE});
+			const farLeftHole		= this.mazeHole({direction:LEFT, distance: FAR});
+			const farRightHole		= this.mazeHole({direction:RIGHT, distance: FAR});
+			const closeWall 		= this.closeWall();
+			const closeDoor         = this.closeDoor();
 			const farWall 			= this.matchCell(map,x,y,0,+2,this.orientation,'X12345',[]);
 			const farDoor 			= this.matchCell(map,x,y,0,+2,this.orientation,'12345',[]);
 
@@ -1034,14 +1043,14 @@ const Game = (() => {
 
 				if (this.pendingTip && this.pendingTip.progress < 1 || this.pickedUp && this.pickedUp.tip && this.pickedUp.tip.progress < 1 || this.waitCursor) {
 					const angle = this.now / 200;
-					const radius = 3;
+					const radius = 2;
 					ctx.strokeStyle = "#FFFFFF";
 					ctx.lineWidth = 1;
 					ctx.beginPath();
 					ctx.moveTo(x - Math.cos(angle) * radius, y - Math.sin(angle) * radius);
 					ctx.lineTo(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
-					ctx.moveTo(x + Math.sin(angle) * radius, y - Math.cos(angle) * radius);
-					ctx.lineTo(x - Math.sin(angle) * radius, y + Math.cos(angle) * radius);
+					// ctx.moveTo(x + Math.sin(angle) * radius, y - Math.cos(angle) * radius);
+					// ctx.lineTo(x - Math.sin(angle) * radius, y + Math.cos(angle) * radius);
 					ctx.stroke();
 				} else if (this.useItem && this.useItem === "gun" && this.arrow !== BAG) {
 					ctx.strokeStyle = Math.random() < .5 ? "#FFFFFF" : "#000000";
@@ -1273,9 +1282,8 @@ const Game = (() => {
 
 		loadScene(scene) {
 			this.initScene();
-			const { map, mode, sprites, doors, arrowGrid,
+			const { map, sprites, doors, arrowGrid,
 				onScene, onSceneRefresh, onSceneShot, onSceneHoldItem, onSceneUseItem, onSceneForward } = scene;
-			this.mode = mode;
 			this.map = toMap(map);
 			this.pos = getMapInfo(this.map, this.door);
 			this.sprites = sprites || [];
