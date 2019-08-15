@@ -1,3 +1,5 @@
+const DEMO = false;
+
 const LEFT = 1, RIGHT = 2, FORWARD = 3, BACKWARD = 4, BAG = 5, DOOR = 6, FAR = 7, CLOSE = 8;
 
 const ASSETS = {
@@ -29,7 +31,7 @@ const ASSETS = {
 	DIMMING_LIGHT: 'assets/dimming-light.png',
 	RIGHT_GUARD: 'assets/right-guard.png',
 	LEFT_GUARD: 'assets/left-guard.png',
-	ALPHABET:'assets/alphabet.png',
+	ALPHABET:'assets/alphabet.png|invert-colors',
 	GRAB_PHOTO:'assets/grab-photo.png',
 	GRAB_PHOTO_SHOT:'assets/grab-photo-shot.png',
 	ZOOM_GUARDS: 'assets/zoom-guards.png',

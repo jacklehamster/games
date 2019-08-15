@@ -54,8 +54,7 @@
 		<div class="flex-container">
 				<canvas class="flex-item" id="canvas" width=64 height=64 style="background-color: black; width: 512px; height: 512px"></canvas>
 		</div>
-		<div>
-			<b>EXPERIMENTAL (Use at your own risk):<b>
+		<div id="saves">
 			<button onClick="clearSaves()">CLEAR</button>
 			<button onClick="save()">SAVE</button>
 			<div id="savebox">
@@ -72,6 +71,10 @@
 			game = Game.start(gameConfig);
 			updateSaves();
 		});
+
+		if (DEMO) {
+			document.getElementById("saves").style.display = "none";
+		}
 
 		function clearSaves() {
 			localStorage.removeItem("saves");

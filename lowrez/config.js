@@ -310,7 +310,7 @@ const gameConfig = {
 					name: "cakelock",
 					src: ASSETS.CAKE_BOOM,
 					index: game => game.sceneData.cakebomb ? Math.min(11, Math.floor((game.now - game.sceneData.cakebomb)/100)) : 0,
-					hidden: game => game.rotation !== 0 || !game.data.cakelock,
+					hidden: game => game.rotation !== 0 || !game.data.cakelock || game.situation.explode,
 					combine: (item, game) => {
 						if (item === "lighter") {
 							game.useItem = null;						
@@ -537,6 +537,131 @@ const gameConfig = {
 				XXXXX2XX
 				XXXXXXXX
 			`,
+			sprites: [
+				{
+					custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
+				},
+				{
+					src: ASSETS.MAZE_ROTATION_BACKGROUND,
+					hidden: game => game.rotation % 2 === 0,
+				},
+				{
+					src: ASSETS.MAZE_ROTATION_WALLS,
+					side: LEFT,
+					hidden: game => game.rotation % 2 === 0 || !game.hasLeftWallWhenRotating(),
+				},
+				{
+					src: ASSETS.MAZE_ROTATION_WALLS,
+					side: RIGHT,
+					hidden: game => game.rotation % 2 === 0 || !game.hasRightWallWhenRotating(),
+				},
+				{
+					src: ASSETS.MAZE_ROTATION_CORNER,
+					hidden: game => !game.hasLeftWallWhenRotating() || !game.hasRightWallWhenRotating(),
+				},
+				{
+					src: ASSETS.DUNGEON_MOVE,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1,
+				},
+				{
+					src: ASSETS.FAR_SIDE,
+					side: LEFT,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:LEFT, distance: FAR}),
+				},
+				{ 
+					src: ASSETS.FAR_SIDE_CORNER,
+					side: LEFT,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:LEFT, distance: FAR}) || game.farWall(),
+				},
+				{
+					src: ASSETS.FAR_SIDE,
+					side: RIGHT,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:RIGHT, distance: FAR}),
+				},
+				{
+					src: ASSETS.FAR_SIDE_CORNER,
+					side: RIGHT,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:RIGHT, distance: FAR}) || game.farWall(),
+				},
+				{
+					src: ASSETS.FAR_WALL,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.farWall(),					
+				},
+				{
+					src: ASSETS.FAR_SIDE_CORNER,
+					side: LEFT,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.farWall() || game.mazeHole({direction:LEFT, distance: FAR}),
+				},
+				{
+					src: ASSETS.FAR_SIDE_CORNER,
+					side: RIGHT,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.farWall() || game.mazeHole({direction:RIGHT, distance: FAR}),
+				},
+				{
+					src: ASSETS.FAR_DOOR,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.farDoor(),
+				},
+				{
+					src: ASSETS.CLOSE_SIDE,
+					side: LEFT,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: LEFT, distance: CLOSE}),
+				},
+				{
+					src: ASSETS.CLOSE_SIDE_CORNER,
+					side: LEFT,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: LEFT, distance: CLOSE}) || game.closeWall(),
+				},
+				{
+					src: ASSETS.CLOSE_SIDE,
+					side: RIGHT,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: RIGHT, distance: CLOSE}),
+				},
+				{
+					src: ASSETS.CLOSE_SIDE_CORNER,
+					side: RIGHT,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: RIGHT, distance: CLOSE}) || game.closeWall(),
+				},
+				{
+					src: ASSETS.CLOSE_WALL,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.closeWall(),
+				},
+				{
+					src: ASSETS.CLOSE_SIDE_CORNER,
+					side: LEFT,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.closeWall() || game.mazeHole({direction: LEFT, distance: CLOSE}),
+				},
+				{
+					src: ASSETS.CLOSE_SIDE_CORNER,
+					side: RIGHT,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.closeWall() || game.mazeHole({direction: RIGHT, distance: CLOSE}),
+				},
+				{
+					src: ASSETS.DOOR_OPEN,
+					index: game => game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || !game.doorOpening,
+				},
+				{
+					src: ASSETS.CLOSE_DOOR,
+					index: game => game.doorOpening ? 0 : game.frameIndex,
+					hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.doorOpening,					
+				},
+			],
 			doors: {
 				1: {
 					exit: game => {
@@ -619,6 +744,8 @@ const gameConfig = {
 									onSelect: (game, dialog) => {
 										if (game.data.seen.badguards) {
 											game.showTip("Let's just keep that to myself");
+										} else if (DEMO) {
+											game.gotoScene("temp-end");
 										} else {
 											game.playSound(SOUNDS.BIRTHDAY);
 											dialog.guardSpeaking = true;
@@ -971,11 +1098,20 @@ const gameConfig = {
 		},
 		{
 			name: "leo-end",
-			onScene: game => {
-				game.showTip("Congrats Leo, you reached the end so far. I didn't program the rest yet.");
-			},
+			onScene: game => game.showTip("Congrats Leo, you reached the end so far. I didn't program the rest yet."),
 			sprites: [
 				{ fade: 1, fadeColor: "#cc5588" }
+			],
+		},
+		{
+			name: "temp-end",
+			onScene: game => {
+				game.showTip("Thanks for playing so far. I will unlock the rest of the game once I've completed it.", game => {
+					game.gameOver();
+				});
+			},
+			sprites: [
+				{ fade: 1, fadeColor: "#5588cc" }
 			],
 		},
 		{

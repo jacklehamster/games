@@ -316,6 +316,10 @@ const Game = (() => {
 			return ORIENTATIONS[Math.floor(this.rotation / 2) * 2];
 		}
 
+		get granular_orientation() {
+			return ORIENTATIONS[Math.floor(this.rotation)];
+		}
+
 		initScene() {
 			this.actions = [];
 			this.keyboard = [];
@@ -850,6 +854,34 @@ const Game = (() => {
 			}
 		}
 
+		hasLeftWallWhenRotating() {
+			const { x, y } = this.pos;
+			switch(this.granular_orientation) {
+				case 'NW':
+					return this.matchCell(this.map,x,y,-1,0,'N','X12345',"");
+				case 'SW':
+					return this.matchCell(this.map,x,y,0,-1,'N','X12345',"");
+				case 'SE':
+					return this.matchCell(this.map,x,y,1,0,'N','X12345',"");
+				case 'NE':
+					return this.matchCell(this.map,x,y,0,1,'N','X12345',"");
+			}
+		}
+
+		hasRightWallWhenRotating() {
+			const { x, y } = this.pos;
+			switch(this.granular_orientation) {
+				case 'NW':
+					return this.matchCell(this.map,x,y,0,1,'N','X12345',"");
+				case 'SW':
+					return this.matchCell(this.map,x,y,-1,0,'N','X12345',"");
+				case 'SE':
+					return this.matchCell(this.map,x,y,0,-1,'N','X12345',"");
+				case 'NE':
+					return this.matchCell(this.map,x,y,1,0,'N','X12345',"");
+			}
+		}
+
 		matchCell(map,x, y, dx, dy, orientation, types, nottypes) {
 			const cell = getCell(map, ... Game.getPosition(x,y,dx,dy,orientation));
 			return (types.length === 0 || types.indexOf(cell) >= 0) && (!nottypes.length || nottypes.indexOf(cell) < 0);
@@ -874,77 +906,14 @@ const Game = (() => {
 					&& this.matchCell(this.map,x,y,0,+1,this.orientation,[],'X12345');			
 		}
 
-		displayMap(map, {x, y}) {
-			const sprites = [];
-			const index = this.doorOpening ? 0 : this.frameIndex;
-			sprites.push({ src:ASSETS.DUNGEON_MOVE, index });
-			const closeLeftHole 	= this.mazeHole({direction: LEFT, distance: CLOSE});
-			const closeRightHole 	= this.mazeHole({direction: RIGHT, distance: CLOSE});
-			const farLeftHole		= this.mazeHole({direction:LEFT, distance: FAR});
-			const farRightHole		= this.mazeHole({direction:RIGHT, distance: FAR});
-			const closeWall 		= this.closeWall();
-			const closeDoor         = this.closeDoor();
-			const farWall 			= this.matchCell(map,x,y,0,+2,this.orientation,'X12345',[]);
-			const farDoor 			= this.matchCell(map,x,y,0,+2,this.orientation,'12345',[]);
+		farWall() {
+			const { x, y } = this.pos;
+			return this.matchCell(this.map,x,y,0,+2,this.orientation,'X12345',[]);
+		}
 
-
-			if (farLeftHole) {
-				sprites.push({ src:ASSETS.FAR_SIDE, side: LEFT, index });
-				if (!farWall) {
-					sprites.push({ src:ASSETS.FAR_SIDE_CORNER, side: LEFT, index });
-				}
-			}
-			if(farRightHole) {
-				sprites.push({ src:ASSETS.FAR_SIDE, side: RIGHT, index });
-				if (!farWall) {
-					sprites.push({ src:ASSETS.FAR_SIDE_CORNER, side: RIGHT, index });
-				}
-			}
-			if (farWall) {
-				sprites.push({ src: ASSETS.FAR_WALL, index });
-				if (!farLeftHole) {
-					sprites.push({ src:ASSETS.FAR_SIDE_CORNER, side: LEFT, index });
-				}
-				if (!farRightHole) {
-					sprites.push({ src:ASSETS.FAR_SIDE_CORNER, side: RIGHT, index });
-				}
-			}			
-			if (farDoor) {
-				sprites.push({ src: ASSETS.FAR_DOOR, index });
-			}
-
-			if (closeLeftHole) {
-				sprites.push({ src:ASSETS.CLOSE_SIDE, side: LEFT, index });
-				if (!closeWall) {
-					sprites.push({ src:ASSETS.CLOSE_SIDE_CORNER, side: LEFT, index });
-				}
-			}
-			if (closeRightHole) {
-				sprites.push({ src:ASSETS.CLOSE_SIDE, side: RIGHT, index });
-				if (!closeWall) {
-					sprites.push({ src:ASSETS.CLOSE_SIDE_CORNER, side: RIGHT, index });
-				}
-			}
-
-			if (closeWall) {
-				sprites.push({ src: ASSETS.CLOSE_WALL, index });
-				if (!closeLeftHole) {
-					sprites.push({ src:ASSETS.CLOSE_SIDE_CORNER, side: LEFT, index });
-				}
-				if (!closeRightHole) {
-					sprites.push({ src:ASSETS.CLOSE_SIDE_CORNER, side: RIGHT, index });				
-				}
-			}
-			if (closeDoor) {
-				if (this.doorOpening) {
-					sprites.push({ src: ASSETS.DOOR_OPEN, index: this.frameIndex });
-				} else {
-					sprites.push({ src: ASSETS.CLOSE_DOOR, index });
-				}
-			}
-
-			this.sprites.forEach(({src}) => { if(src)this.prepareImage(src); });
-			sprites.forEach(sprite => this.displayImage(ctx, sprite));
+		farDoor() {
+			const { x, y } = this.pos;
+			return this.matchCell(this.map,x,y,0,+2,this.orientation,'12345',[]);
 		}
 
 		displayArrows() {
@@ -1049,8 +1018,6 @@ const Game = (() => {
 					ctx.beginPath();
 					ctx.moveTo(x - Math.cos(angle) * radius, y - Math.sin(angle) * radius);
 					ctx.lineTo(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
-					// ctx.moveTo(x + Math.sin(angle) * radius, y - Math.cos(angle) * radius);
-					// ctx.lineTo(x - Math.sin(angle) * radius, y + Math.cos(angle) * radius);
 					ctx.stroke();
 				} else if (this.useItem && this.useItem === "gun" && this.arrow !== BAG) {
 					ctx.strokeStyle = Math.random() < .5 ? "#FFFFFF" : "#000000";
@@ -1172,12 +1139,8 @@ const Game = (() => {
 			if (fade > 0) {
 				ctx.globalAlpha = 1 - fade;
 			}
-			ctx.shadowColor = "white";
-			ctx.shadowBlur = 1;			
-			for (let i = 0; i < 20; i++) {
-				ctx.drawImage(tempCanvas, 0, 0);
-			}
-			ctx.shadowBlur = 0;
+			this.displayOutlinedImage(tempCanvas, "black", 20);
+
 			if (fade > 0) {
 				ctx.globalAlpha = 1;
 			}
@@ -1241,6 +1204,33 @@ const Game = (() => {
 		}
 
 		prepareImage(src, callback) {
+			if (src.split("|")[1] === "invert-colors") {
+				this.prepareImage(src.split("|")[0], stock => {
+					const tempCanvas = document.createElement("canvas");
+					tempCanvas.width = stock.img.naturalWidth;
+					tempCanvas.height = stock.img.naturalHeight;
+					const tempCtx = tempCanvas.getContext("2d");
+					tempCtx.drawImage(stock.img, 0, 0);
+					const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+					const { data } = imageData;
+					for (let i = 0; i < data.length; i+=4) {
+						if (data[i + 3]) {
+							data[i + 0] = 255 - data[i + 0];
+							data[i + 1] = 255 - data[i + 1];
+							data[i + 2] = 255 - data[i + 2];
+						}
+					}
+					tempCtx.putImageData(imageData, 0, 0);
+					document.body.appendChild(tempCanvas);
+					imageStock[src] = {
+						loaded: true,
+						img: tempCanvas,
+					};
+					callback(imageStock[src]);
+				});
+				return;
+			}
+
 			const spriteData = imageStock[src];
 			if (!spriteData) {
 				const stock = {}
@@ -1301,31 +1291,33 @@ const Game = (() => {
 			return this.data.time;
 		}
 
-		refresh(dt) {
-			this.data.time += dt;
+		handleSceneEvents() {
 			if (!this.sceneTime) {
 				this.sceneTime = this.data.time;
 				this.onScene(this);
 			}
-			this.onSceneRefresh(game);
+			this.onSceneRefresh(this);
+		}
+
+		displaySprites() {
+			this.sprites.forEach(({src}) => { if(src)this.prepareImage(src); });
+			this.sprites.forEach(sprite => this.displayImage(ctx, sprite));
+		}
+
+		refresh(dt) {
+			this.data.time += dt;
+			this.handleSceneEvents();
 			this.refreshMove();
 			this.refreshActions();
 			this.checkMouseHover();
 			this.checkUseItem();
-			if (this.map) {
-				this.displayMap(this.map, this.pos);
-			}
-			this.sprites.forEach(({src}) => { if(src)this.prepareImage(src); });
-			this.sprites.forEach(sprite => this.displayImage(ctx, sprite));
+
+			this.displaySprites();
 			this.displayFade(this);
 
-			if (this.dialog) {
-				this.displayDialog(this.dialog);
-			}
+			this.displayDialog();
 			this.displayInventory();
-			if (this.pickedUp) {
-				this.displayPickedUp(this.pickedUp);
-			} 
+			this.displayPickedUp();
 
 			this.displayGameOver();
 			this.displayArrows();
@@ -1351,12 +1343,7 @@ const Game = (() => {
 				this.displayTextLine(tempCtx, {msg: "GAME OVER",  x:11, y:20 });
 				this.displayTextLine(tempCtx, {msg: "try again",  x:16, y:40 });
 				this.displayTextLine(tempCtx, {msg: "start over", x:14, y:50 });
-				ctx.shadowColor = "white";
-				ctx.shadowBlur = 2;
-				for (let i = 0; i < 4; i++) {
-					ctx.drawImage(tempCtx.canvas, 0, 0);
-				}
-				ctx.shadowBlur = 0;
+				this.displayOutlinedImage(tempCtx.canvas, "black", 4, 2);
 			}
 		}
 
@@ -1366,7 +1353,7 @@ const Game = (() => {
 				offsetX: 20, offsetY: 20,
 				index: game => Math.floor(game.now / 100) % 62,
 			};				
-			letterTemplate.offsetY = y;//row * 7 + 43;
+			letterTemplate.offsetY = y;
 			let spaceX = x;
 			for (let c = 0; c < msg.length; c++) {
 				const code = msg.charCodeAt(c);
@@ -1398,11 +1385,14 @@ const Game = (() => {
 			}
 		}
 
-		displayDialog(dialog) {
-			const { index, conversation, time } = dialog;
+		displayDialog() {
+			if (!this.dialog) {
+				return;
+			}
+			const { index, conversation, time } = this.dialog;
 			const frame = Math.min(3, Math.floor((this.now - time) / 80));
 			if (frame < 3 || this.bagOpening || this.useItem || this.pendingTip) {
-				dialog.hovered = null;
+				this.dialog.hovered = null;
 				return;
 			}
 
@@ -1413,27 +1403,22 @@ const Game = (() => {
 			const y = this.mouse ? Math.floor((this.mouse.y - 43) / 7) : -1;
 			ctx.fillStyle = "#009988";
 			if (y >= 0 && y < filteredOptions.length) {
-				dialog.hovered = filteredOptions[y];
+				this.dialog.hovered = filteredOptions[y];
 				ctx.fillRect(0, y * 7 + 42, 64, 7);
 			} else {
-				dialog.hovered = null;
+				this.dialog.hovered = null;
 			}
 
 			tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 			filteredOptions.forEach(({msg}, row) => {
 				this.displayTextLine(tempCtx, {msg, x: 2, y: row * 7 + 43});
 			});
-			ctx.shadowColor = "white";
-			ctx.shadowBlur = 1;			
-			for (let i = 0; i < 16; i++) {
-				ctx.drawImage(tempCtx.canvas, 0, 0);
-			}
-			ctx.shadowBlur = 0;
+			this.displayOutlinedImage(tempCtx.canvas, "black", 16);
 		}
 
-		displayOutlinedImage(image, color, intensity) {
+		displayOutlinedImage(image, color, intensity, size) {
 			ctx.shadowColor = color;
-			ctx.shadowBlur = 1;
+			ctx.shadowBlur = size || 1;
 			for (let i = 0; i < intensity; i++) {
 				ctx.drawImage(image, 0, 0);
 			}
@@ -1455,7 +1440,11 @@ const Game = (() => {
 			}
 		}
 
-		displayPickedUp({item, time, image, tip}) {
+		displayPickedUp() {
+			if (!this.pickedUp) {
+				return;
+			}
+			const {item, time, image, tip} = this.pickedUp;
 			this.displayFade({
 				fade: Math.min(.8, (this.now - time) / 500),
 				fadeColor:"#333333",
@@ -1487,13 +1476,6 @@ const Game = (() => {
 			}
 
 			const spriteData = imageStock[src];
-			if (!spriteData || !spriteData.loaded || this.loadPending) {
-				return;
-			}
-			if (this.evaluate(hidden, sprite)) {
-				return;
-			}
-
 			const [ imgWidth, imgHeight ] = size || [64,64];
 			let frameIndex = this.evaluate(index, sprite) || 0;
 			let dstX = offsetX||0;
@@ -1586,6 +1568,10 @@ const Game = (() => {
 				this.hideCursor = false;
 				this.waitCursor = false;
 			}
+		}
+
+		clear() {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);			
 		}
 	}
 
