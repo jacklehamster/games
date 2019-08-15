@@ -1204,11 +1204,11 @@ const Game = (() => {
 		}
 
 		prepareImage(src, callback) {
-			if (src.split("|")[1] === "invert-colors") {
-				this.prepareImage(src.split("|")[0], stock => {
+			if (src.split("|").pop() === "invert-colors") {
+				this.prepareImage(src.split("|").slice(0,-1).join("|"), stock => {
 					const tempCanvas = document.createElement("canvas");
-					tempCanvas.width = stock.img.naturalWidth;
-					tempCanvas.height = stock.img.naturalHeight;
+					tempCanvas.width = stock.img.naturalWidth || stock.img.width;
+					tempCanvas.height = stock.img.naturalHeight || stock.img.height;
 					const tempCtx = tempCanvas.getContext("2d");
 					tempCtx.drawImage(stock.img, 0, 0);
 					const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
@@ -1221,7 +1221,59 @@ const Game = (() => {
 						}
 					}
 					tempCtx.putImageData(imageData, 0, 0);
-					document.body.appendChild(tempCanvas);
+					imageStock[src] = {
+						loaded: true,
+						img: tempCanvas,
+					};
+					callback(imageStock[src]);
+				});
+				return;
+			}
+
+			if (src.split("|").pop() === "darken") {
+				this.prepareImage(src.split("|").slice(0,-1).join("|"), stock => {
+					const tempCanvas = document.createElement("canvas");
+					tempCanvas.width = stock.img.naturalWidth || stock.img.width;
+					tempCanvas.height = stock.img.naturalHeight || stock.img.height;
+					const tempCtx = tempCanvas.getContext("2d");
+					tempCtx.drawImage(stock.img, 0, 0);
+					const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+					const { data } = imageData;
+					for (let i = 0; i < data.length; i+=4) {
+						if (data[i + 3]) {
+							data[i + 0] = Math.max(0, Math.floor(data[i + 0]/2));
+							data[i + 1] = Math.max(0, Math.floor(data[i + 1]/2));
+							data[i + 2] = Math.max(0, Math.floor(data[i + 2]/2));
+						}
+					}
+					tempCtx.putImageData(imageData, 0, 0);
+					imageStock[src] = {
+						loaded: true,
+						img: tempCanvas,
+					};
+					callback(imageStock[src]);
+				});
+				return;
+			}
+
+			if (src.split("|").pop() === "rotate-colors") {
+				this.prepareImage(src.split("|").slice(0,-1).join("|"), stock => {
+					const tempCanvas = document.createElement("canvas");
+					tempCanvas.width = stock.img.naturalWidth || stock.img.width;
+					tempCanvas.height = stock.img.naturalHeight || stock.img.height;
+					const tempCtx = tempCanvas.getContext("2d");
+					tempCtx.drawImage(stock.img, 0, 0);
+					const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+					const { data } = imageData;
+					for (let i = 0; i < data.length; i+=4) {
+						if (data[i + 3]) {
+							const temp = data[i + 0];
+							data[i + 0] = data[i + 2];
+							data[i + 2] = data[i + 1];
+							data[i + 1] = temp;
+						}
+					}
+					tempCtx.putImageData(imageData, 0, 0);
 					imageStock[src] = {
 						loaded: true,
 						img: tempCanvas,
