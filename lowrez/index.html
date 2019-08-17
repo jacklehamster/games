@@ -17,6 +17,8 @@
 
 			html, body {
 			    height: 100%;
+			    background-color: black;
+			    color: silver;
 			}
 			body {
 			    margin: 0;
@@ -39,6 +41,9 @@
 			}
 			.flex-item {
 			    text-align: center;
+			}
+			button {
+				min-height: 10px;
 			}
 
 			pre {outline: 1px solid #ccc; padding: 2px; margin: 2px; }
@@ -104,8 +109,20 @@
 			button.addEventListener("click", () => {
 				game.data = JSON.parse(JSON.stringify(data));
 				game.gotoScene(game.sceneIndex, game.door);
+				if (game.data.theme) {
+					game.playTheme(game.data.theme);
+				}
+
 				game.showTip(`GAME ${index} LOADED.`);
 			});
 		}
+
+		addEventListener("focus", () => {
+			game.resume();
+		});
+		addEventListener("blur", () => {
+			game.pause();
+		});
+
 	</script>
 </html>

@@ -25,22 +25,6 @@ const Game = (() => {
 		return lines;
 	}
 
-	function getMapInfo(map, door) {
-		if (!map) {
-			return null;
-		}
-		for (let row = 0; row < map.length; row++) {
-			for(let col = 0; col < map[row].length; col++) {
-				if (map[row][col] == door) {
-					return {
-						x: col, y: row + 1,
-					};
-				}
-			}
-		}
-		throw new Error(`Invalid map. Missing door ${door}`);
-	}
-
 	function getCell(map, x, y) {
 		if (y < 0 || y >= map.length || !map[y] || x < 0 || x >= map[y].length) {
 			return 'X';
@@ -51,7 +35,6 @@ const Game = (() => {
 	const imageStock = {};
 	const soundStock = {};
 	let gameInstance;
-	window.o = { imageStock, soundStock };
 
 	class Game {
 		static start(gameConfig) {
@@ -65,6 +48,36 @@ const Game = (() => {
 			return gameInstance;
 		}
 
+		getMapInfo(map, door) {
+			if (!map) {
+				return null;
+			}
+			for (let row = 0; row < map.length; row++) {
+				for(let col = 0; col < map[row].length; col++) {
+					if (map[row][col] == door) {
+						for (let rotation = 0; rotation < ORIENTATIONS.length; rotation+=2) {
+							if (this.matchCell(map,col,row,0,1,ORIENTATIONS[rotation],'','X12345')) {
+								const [ x, y ] = Game.getPosition(col, row, 0, 1, ORIENTATIONS[rotation]);
+								return {
+									pos: {
+										x, y,
+									},
+									rotation,
+								};
+							}
+						}
+
+						return this.matchCell(this.map,col,row,0,+1,this.orientation,'12345',[]);
+
+						return {
+							x: col, y: row + 1,
+						};
+					}
+				}
+			}
+			throw new Error(`Invalid map. Missing door ${door}`);
+		}
+
 		emptyBag() {
 			for (let i in this.inventory) {
 				return false;
@@ -73,7 +86,23 @@ const Game = (() => {
 		}
 
 		addToInventory(obj) {
-			this.inventory[obj.item] = obj;			
+			if (this.inventory[obj.item]) {
+				const { count } = obj;
+				this.inventory[obj.item].count = (this.inventory[obj.item].count||1) + count;
+			} else {
+				this.inventory[obj.item] = obj;
+			}
+		}
+
+		removeFromInventory(item) {
+			if (this.inventory[item]) {
+				if (this.inventory[item].count) {
+					this.inventory[item].count--;
+				}
+				if (!this.inventory[item].count) {
+					delete this.inventory[item];
+				}
+			}
 		}
 
 		set sceneIndex(index) {
@@ -90,6 +119,8 @@ const Game = (() => {
 		}
 
 		constructor() {
+			this.imageStock = imageStock;
+			this.soundStock = soundStock;
 			document.addEventListener("keydown", ({keyCode}) => {
 				this.keyboard[keyCode] = true;
 			});
@@ -118,7 +149,19 @@ const Game = (() => {
 				}
 			});
 
-			canvas.addEventListener("mousedown", ({currentTarget, offsetX, offsetY}) => {
+			canvas.addEventListener("mousedown", e => {
+				e.preventDefault();
+				const {currentTarget, offsetX, offsetY} = e;
+				if (this.battle) {
+					if (this.battle.fist === LEFT && !this.battle.playerLeftAttack) {
+						this.battle.playerLeftAttack = this.now;
+						this.battle.playerLeftAttackLanded = 0;
+					} else if (this.battle.fist === RIGHT && !this.battle.playerRightAttack) {
+						this.battle.playerRightAttack = this.now;
+						this.battle.playerRightAttackLanded = 0;
+					}
+					return;
+				}
 				if (this.pendingTip && this.pendingTip.progress < 1 || this.waitCursor || this.hideCursor) {
 					return;
 				}
@@ -144,6 +187,13 @@ const Game = (() => {
 					}
 					return;
 				}
+				if (this.useItem) {
+					const { image, item, message } = this.inventory[this.useItem];
+					if (game.isMouseHover({ src: image, index: 3 }, 0, this.mouse)) {
+						this.pickUp({item, image, message:message||""});
+						return;
+					}
+				}				
 				if (this.dialog && this.dialog.hovered) {
 					if (this.dialog.hovered.onSelect) {
 						this.dialog.hovered.onSelect(this, this.dialog);
@@ -186,7 +236,7 @@ const Game = (() => {
 									} else if (this.doors) {
 										const cell = getCell(this.map, ... Game.getPosition(x,y,0,1,this.orientation));
 										if (this.doors[cell].exit) {
-											this.doors[cell].exit(this);
+											this.doors[cell].exit(this, this.doors[cell]);
 										} else {
 											this.actionDown = this.arrow;
 										}
@@ -209,7 +259,7 @@ const Game = (() => {
 									} else if (this.doors) {
 										const cell = getCell(this.map, ... Game.getPosition(x,y,0,1,this.orientation));
 										if (this.doors[cell].exit) {
-											this.doors[cell].exit(this);
+											this.doors[cell].exit(this, this.doors[cell]);
 										} else {
 											this.actionDown = this.arrow;
 										}
@@ -222,6 +272,9 @@ const Game = (() => {
 								break;
 							}
 							case BACKWARD: {
+								if (this.onSceneBackward(this)) {
+									return;
+								}
 								this.actionDown = this.arrow;
 								break;
 							}
@@ -262,7 +315,8 @@ const Game = (() => {
 			this.prepareSounds();
 		}
 
-		gotoScene(index, door) {
+		gotoScene(index, entrance) {
+			const {door} = entrance || {};
 			if (typeof(index) === "string") {
 				index = this.config.scenes.map(({name}, idx) => name === index ? idx : -1).filter(index => index >= 0)[0];
 				if (typeof(index) === 'undefined') {
@@ -270,7 +324,7 @@ const Game = (() => {
 				}
 			}
 			this.sceneIndex = index;
-			this.door = door;
+			this.door = door || 1;
 			this.loadScene(this.config.scenes[this.sceneIndex]);
 		}
 
@@ -294,6 +348,22 @@ const Game = (() => {
 			return data.situation[sceneIndex];
 		}
 
+		hasVisited(sceneName) {
+			const { data, config } = this;
+			const index = config.scenes.map(({name}, idx) => name === sceneName ? idx : -1).filter(index => index >= 0)[0];
+			return data.situation[index];
+		}
+
+		pause() {
+			this.paused = this.now;
+			this.resumed = 0;
+		}
+
+		resume() {
+			this.paused = 0;
+			this.resumed = this.now;
+		}
+
 		initGame() {
 			this.data = {
 				time: 0,
@@ -303,11 +373,13 @@ const Game = (() => {
 				shot: {},
 				inventory: {},
 				situation: {},
-				gameOver: false,
+				gameOver: 0,
+				battle: null,
 			};
 			this.config = null;
 			this.mouse = null;
 			this.timeOffset = 0;
+			this.paused = false;
 
 			this.initScene();
 		}
@@ -351,6 +423,7 @@ const Game = (() => {
 			this.pos = null;
 			this.sprites = null;
 			this.doors = null;
+			this.events = null;
 			this.arrowGrid = null;
 			this.sceneTime = 0;
 			this.dialog = null;
@@ -360,6 +433,8 @@ const Game = (() => {
 			this.onSceneHoldItem = null;
 			this.onSceneUseItem = null;
 			this.onSceneForward = null;
+			this.onSceneBackward = null;
+			this.onSceneBattle = null;
 		}
 
 		markPickedUp(item) {
@@ -368,7 +443,7 @@ const Game = (() => {
 			}
 		}
 
-		pickUp(item, image, message, onPicked) {
+		pickUp({item, image, message, count, onPicked}) {
 			if (!item) {
 				console.error(`Your item (${image}) needs a name.`);
 			}
@@ -377,7 +452,9 @@ const Game = (() => {
 			this.addToInventory({
 				item,
 				image,
+				count: count || 1,
 			});
+			this.playSound(SOUNDS.PICKUP);
 
 			this.pickedUp = {
 				item,
@@ -622,7 +699,7 @@ const Game = (() => {
 			});
 		}
 
-		showTip(message, onDone) {
+		showTip(message, onDone, speed) {
 			if (Array.isArray(message)) {
 				let index = 0;
 
@@ -631,7 +708,7 @@ const Game = (() => {
 					index,
 					text: message[index],
 					time: this.now + 200,
-					speed: 100 * TEXTSPEEDER,
+					speed: speed || 100 * TEXTSPEEDER,
 					end: 0,
 					onDone: message.length === 1 ? onDone : game => {
 						index++;
@@ -648,7 +725,7 @@ const Game = (() => {
 				this.pendingTip = {
 					text: message,
 					time: this.now + 200,
-					speed: 110 * TEXTSPEEDER,
+					speed: speed || 110 * TEXTSPEEDER,
 					end: 0,
 					onDone,
 				};
@@ -682,15 +759,12 @@ const Game = (() => {
 									} else if (!combine || !combine(this.useItem, this)) {
 										if (this.useItem !== "gun") {
 											this.showTip(combineMessage && combineMessage(this.useItem, this) ||
-												(name ? `You can't use the ${this.useItem} on the ${name}.`
-													: `You can't use ${this.useItem} like that.`
-												)
-											);
+												(name ? `You can't use the ${this.useItem} on the ${name}.` : `You can't use ${this.useItem} like that.`),
+												() => {}, 70);
 											this.useItem = null;
 										}
 									}
-
-								} else {
+								} else if (sprite.onClick) {
 									sprite.onClick(this, sprite);
 								}
 								return;
@@ -739,7 +813,7 @@ const Game = (() => {
 		}
 
 		canMove({x, y}, direction) {
-			if (this.fade > 0) {
+			if (this.fade > 0 || this.battle) {
 				return false;
 			}
 			const closeWallWithDirection = this.matchCell(this.map,x,y,0,direction,this.orientation,"X",'');;
@@ -758,7 +832,17 @@ const Game = (() => {
 			return closeDoor && !this.doorOpened;			
 		}
 
-		checkMonster() {
+		checkEvents() {
+			const { events, pos, orientation } = this;
+			if (events) {
+				const { x, y } = pos;
+				const cell = getCell(this.map, ... Game.getPosition(x,y,0,1,orientation));
+				if (events[cell]) {
+					const { onEvent } = events[cell];
+					onEvent(this, events[cell]);
+					return true;
+				}
+			}
 			return false;
 		}
 
@@ -776,12 +860,12 @@ const Game = (() => {
 					game.doorOpening = 1;
 					game.doorOpened = 1;
 					game.frameIndex = 3;
-					if (this.checkMonster()) {
+					if (this.checkEvents()) {
 						action.active = false;
 					}
 				}
 				: (game, action) => {
-					if (this.checkMonster()) {
+					if (this.checkEvents()) {
 						action.active = false;
 					}
 				};
@@ -921,7 +1005,7 @@ const Game = (() => {
 			if (useItem || bagOpening || hideArrows || pickedUp || hideCursor) {
 				return;
 			}
-			if (this.data.gameOver) {
+			if (this.data.gameOver || this.battle && this.arrow !== BAG) {
 				return;
 			}
 
@@ -1114,6 +1198,8 @@ const Game = (() => {
 			if (this.now < time) {
 				return;
 			}
+
+			this.prepareImage(ASSETS.ALPHABET);
 			const spriteData = imageStock[ASSETS.ALPHABET];
 			if (!spriteData || !spriteData.loaded || this.loadPending) {
 				return;
@@ -1171,6 +1257,9 @@ const Game = (() => {
 		}
 
 		prepareSound(src, callback) {
+			if (!src) {
+				console.error("Invalid sound.");
+			}
 			const soundData = soundStock[src];
 			if (!soundData) {
 				const stock = {}
@@ -1192,14 +1281,42 @@ const Game = (() => {
 			}
 		}
 
-		playSound(src) {
+		playTheme(src, options) {
+			const {volume} = options || {};
+			if(this.data.theme) {
+				this.stopSound(this.data.theme);
+			}			
+			if (src) {
+				this.playSound(src, {loop: true, volume});
+			}
+			this.data.theme = src;
+		}
+
+		playSound(src, options) {
+			const {loop, volume} = options || {};
 			if (soundStock[src]) {
 				const { audio } = soundStock[src];
-				audio.cloneNode(true).play();
+				if (loop) {
+					audio.volume = volume || 1;
+					audio.loop = true;
+					audio.play();
+				} else {
+					const soundBite = audio.cloneNode(true);
+					soundBite.volume = volume || .5;
+					soundBite.play();
+				}
 			} else {
 				this.prepareSound(src, ({audio}) => {
+					audio.volume = volume || 1;
 					audio.play();
 				})
+			}
+		}
+
+		stopSound(src) {
+			if (soundStock[src]) {
+				const { audio } = soundStock[src];
+				audio.pause();
 			}
 		}
 
@@ -1324,12 +1441,15 @@ const Game = (() => {
 
 		loadScene(scene) {
 			this.initScene();
-			const { map, sprites, doors, arrowGrid,
-				onScene, onSceneRefresh, onSceneShot, onSceneHoldItem, onSceneUseItem, onSceneForward } = scene;
+			const { map, sprites, doors, arrowGrid, events,
+				onScene, onSceneRefresh, onSceneShot, onSceneHoldItem, onSceneUseItem, onSceneForward, onSceneBackward, onSceneBattle } = scene;
 			this.map = toMap(map);
-			this.pos = getMapInfo(this.map, this.door);
+			const { pos, rotation } = this.getMapInfo(this.map, this.door) || { pos:null, rotation: 0 };
+			this.pos = pos;
+			this.rotation = rotation;
 			this.sprites = sprites || [];
 			this.doors = doors;
+			this.events = events;
 			this.arrowGrid = arrowGrid || null;
 			this.onSceneRefresh = onSceneRefresh || nop;
 			this.onScene = onScene || nop;
@@ -1337,10 +1457,16 @@ const Game = (() => {
 			this.onSceneHoldItem = onSceneHoldItem || nop;
 			this.onSceneUseItem = onSceneUseItem || nop;
 			this.onSceneForward = onSceneForward || nop;
+			this.onSceneBackward = onSceneBackward || nop;
+			this.onSceneBattle = onSceneBattle || nop;
 		}
 
 		get now() {
 			return this.data.time;
+		}
+
+		get battle() {
+			return this.data.battle;
 		}
 
 		handleSceneEvents() {
@@ -1349,6 +1475,9 @@ const Game = (() => {
 				this.onScene(this);
 			}
 			this.onSceneRefresh(this);
+			if(this.battle) {
+				this.onSceneBattle(this, this.battle);
+			}
 		}
 
 		displaySprites() {
@@ -1357,6 +1486,9 @@ const Game = (() => {
 		}
 
 		refresh(dt) {
+			if (this.paused) {
+				return;
+			}
 			this.data.time += dt;
 			this.handleSceneEvents();
 			this.refreshMove();
@@ -1448,22 +1580,26 @@ const Game = (() => {
 				return;
 			}
 
-
-
 			const {message, options} = conversation[index];
 			const filteredOptions = options.filter(({hidden}) => !hidden || !this.evaluate(hidden));
 			const y = this.mouse ? Math.floor((this.mouse.y - 43) / 7) : -1;
 			ctx.fillStyle = "#009988";
 			if (y >= 0 && y < filteredOptions.length) {
-				this.dialog.hovered = filteredOptions[y];
-				ctx.fillRect(0, y * 7 + 42, 64, 7);
+				if (filteredOptions[y].msg && !filteredOptions[y].cantSelect) {
+					this.dialog.hovered = filteredOptions[y];
+					ctx.fillRect(0, y * 7 + 42, 64, 7);
+				} else {
+					this.dialog.hovered = null;
+				}
 			} else {
 				this.dialog.hovered = null;
 			}
 
 			tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 			filteredOptions.forEach(({msg}, row) => {
-				this.displayTextLine(tempCtx, {msg, x: 2, y: row * 7 + 43});
+				if (msg) {
+					this.displayTextLine(tempCtx, {msg, x: 2, y: row * 7 + 43});
+				}
 			});
 			this.displayOutlinedImage(tempCtx.canvas, "black", 16);
 		}
@@ -1487,8 +1623,13 @@ const Game = (() => {
 				}
 			}
 			if (this.useItem) {
-				const { image } = this.inventory[this.useItem];
-				this.displayImage(ctx, { src: image, index: 3 });
+				if (!this.inventory[this.useItem]) {
+					// fix bug
+					this.useItem = null;
+				} else {
+					const { image } = this.inventory[this.useItem];
+					this.displayImage(ctx, { src: image, index: 3 });
+				}
 			}
 		}
 
@@ -1526,12 +1667,15 @@ const Game = (() => {
 				}
 				return;
 			}
+			if (!imageStock[src]) {
+				return;
+			}
 
 			const spriteData = imageStock[src];
 			const [ imgWidth, imgHeight ] = size || [64,64];
 			let frameIndex = this.evaluate(index, sprite) || 0;
-			let dstX = offsetX||0;
-			let dstY = offsetY||0;
+			let dstX = this.evaluate(offsetX)||0;
+			let dstY = this.evaluate(offsetY)||0;
 			let srcX = (frameIndex % (col||2)) * imgWidth;
 			let srcY = Math.floor(frameIndex / (col||2)) * imgHeight;
 			let srcW = imgWidth;
@@ -1551,7 +1695,16 @@ const Game = (() => {
 			if (alpha) {
 				ctx.globalAlpha = this.evaluate(alpha);
 			}
-			ctx.drawImage(imageStock[src].img, srcX, srcY, srcW, srcH, dstX, dstY, dstW, dstH);
+			let shiftX = 0, shiftY = 0;
+			if (this.battle) {
+				const hitTime = Math.max(1, this.now - this.battle.playerHit);
+				if (hitTime < 500) {
+					const intensity = 0;//1;
+					shiftX = Math.round((Math.random() - .5) * intensity * (200 / hitTime));
+					shiftY = Math.round((Math.random() - .5) * intensity * (200 / hitTime));
+				}
+			}
+			ctx.drawImage(imageStock[src].img, srcX, srcY, srcW, srcH, dstX + shiftX, dstY + shiftY, dstW, dstH);
 			if (alpha) {
 				ctx.globalAlpha = 1.0;
 			}
@@ -1606,8 +1759,12 @@ const Game = (() => {
 		}
 
 		load() {
+			this.playTheme(null);
 			this.data = JSON.parse(localStorage.getItem("lastContinue"));
 			this.gotoScene(this.sceneIndex, this.door);
+			if (this.data.theme) {
+				this.playTheme(this.data.theme);
+			}
 		}
 
 		restart() {
@@ -1619,6 +1776,7 @@ const Game = (() => {
 				this.data.gameOver = this.now;
 				this.hideCursor = false;
 				this.waitCursor = false;
+				this.playTheme(null);
 			}
 		}
 
