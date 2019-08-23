@@ -5,14 +5,35 @@
 		<meta charset="utf-8"/>
 		<style>
 			canvas {  
+		        cursor: none;
+			}
+
+			.overlay {
+			    pointer-events:none;
+			}
+
+			.crisp {
 		        image-rendering: optimizeSpeed;
 				image-rendering: -moz-crisp-edges;
 				image-rendering: -webkit-crisp-edges;
 				image-rendering: pixelated;
 				image-rendering: crisp-edges;
 		        image-rendering: optimize-contrast;
-		        -ms-interpolation-mode: nearest-neighbor;
-		        cursor: none;
+		        -ms-interpolation-mode: nearest-neighbor;				
+			}
+
+			.scanline {
+			    filter: alpha(opacity=20);
+			    -moz-opacity: 0.2;
+			    -khtml-opacity: 0.2;
+			    opacity: 0.2;				
+			    background: url(assets/scanline.png);
+			    background-size: 8px;
+			    pointer-events:none;
+			}
+
+			.noise {
+			    pointer-events:none;
 			}
 
 			html, body {
@@ -57,7 +78,17 @@
 
 	<body style="margin: 0;">
 		<div class="flex-container">
-				<canvas class="flex-item" id="canvas" width=64 height=64 style="background-color: black; width: 512px; height: 512px"></canvas>
+				<canvas class="flex-item crisp" id="canvas" width=64 height=64 style="background-color: black; width: 512px; height: 512px; display:">					
+				</canvas>
+				<canvas class="flex-item overlay" id="canvas2" width=128 height=128 style="background-color: black; width: 512px; height: 512px; position: absolute;">					
+				</canvas>
+				<div id="scanline" class="scanline" style="position: absolute; width: 512px; height: 512px;"></div>
+				<canvas class="noise" id="noise" width=512 height=512
+					style="position: absolute; width: 512px; height: 512px"
+				></canvas>
+		</div>
+		<div>
+			<input checked id="scanlines" type="checkbox" onChange="setScanline(event.currentTarget.checked)"><label for="scanlines">scanline</label>
 		</div>
 		<div id="saves">
 			<button onClick="clearSaves()">CLEAR</button>
@@ -71,10 +102,29 @@
 	<script src="config.js"></script>
 	<script src="game.js"></script>
 	<script>
+		function setScanline(checked) {
+			const noise = document.getElementById("noise");
+			const scanline = document.getElementById("scanline");
+			if (checked) {
+				canvas2.style.display = "";
+				noise.style.display = "";
+				scanline.style.display = "";
+			} else {
+				canvas2.style.display = "none";
+				noise.style.display = "none";
+				scanline.style.display = "none";
+			}
+		}
+
 		let game;
 		document.addEventListener("DOMContentLoaded", e => {
 			game = Game.start(gameConfig);
 			updateSaves();
+
+			game.refreshCallback = () => {
+				ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+				ctx2.drawImage(canvas, 0, 0, canvas2.width, canvas2.height);
+			};
 		});
 
 		if (DEMO) {
@@ -107,10 +157,11 @@
 			const button = saveBox.appendChild(document.createElement("button"));
 			button.innerText = index;
 			button.addEventListener("click", () => {
+				game.playTheme(null);
 				game.data = JSON.parse(JSON.stringify(data));
 				game.gotoScene(game.sceneIndex, game.door);
 				if (game.data.theme) {
-					game.playTheme(game.data.theme);
+					game.playTheme(game.data.theme.src, game.data.theme.volume);
 				}
 
 				game.showTip(`GAME ${index} LOADED.`);
@@ -124,5 +175,39 @@
 			game.pause();
 		});
 
+		const noiseCanvases = [];
+		for (let i = 0; i < 10; i++) {
+			const noiseCanvas = document.createElement("canvas");
+			noiseCanvas.width = 512;
+			noiseCanvas.height = 512;
+			const noiseCtx = noiseCanvas.getContext("2d");
+			const noiseData = noiseCtx.getImageData(0, 0, noiseCtx.canvas.width, noiseCtx.canvas.height);
+			const { data } = noiseData;
+			for(let n = 0; n < data.length; n+=4) {
+				data[n + 3] = Math.random() < .6 + ((1-i/10*i/10) * .3) ? 0 : 40;
+			}
+			noiseCtx.putImageData(noiseData, 0, 0);
+			noiseCanvases.push(noiseCanvas);
+		}
+
+		const canvas2 = document.getElementById("canvas2");
+		const ctx2 = canvas2.getContext("2d");
+		ctx2.msImageSmoothingEnabled = false;
+		ctx2.mozImageSmoothingEnabled = false;
+		ctx2.webkitImageSmoothingEnabled = false;
+		ctx2.imageSmoothingEnabled = false;
+
+		let time = 0;
+		const noiseCtx = document.getElementById("noise").getContext("2d");
+		function noise(dt) {
+			time += dt;
+			if (time > 100) {
+				noiseCtx.clearRect(0,0,512,512);
+				noiseCtx.drawImage(noiseCanvases[Math.floor(Math.random() * noiseCanvases.length)], 0, 0);
+				time -= 100;
+			}
+			requestAnimationFrame(noise);
+		}
+		requestAnimationFrame(noise);
 	</script>
 </html>

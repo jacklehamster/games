@@ -2,6 +2,7 @@ const Game = (() => {
 
 	const canvas = document.getElementById("canvas");
 	const ctx = canvas.getContext("2d");
+	ctx.filter = "blur(80)";
 	const maskCanvas = document.createElement("canvas");
 	maskCanvas.width = canvas.width;
 	maskCanvas.height = canvas.height;
@@ -88,7 +89,7 @@ const Game = (() => {
 		addToInventory(obj) {
 			if (this.inventory[obj.item]) {
 				const { count } = obj;
-				this.inventory[obj.item].count = (this.inventory[obj.item].count||1) + count;
+				this.inventory[obj.item].count = (this.inventory[obj.item].count||1) + (count||1);
 			} else {
 				this.inventory[obj.item] = obj;
 			}
@@ -252,6 +253,10 @@ const Game = (() => {
 								if (this.onSceneForward(this)) {
 									return;
 								}
+								if (!this.pos) {
+									this.actionDown = this.arrow;
+									return;
+								}
 								const { x, y } = this.pos;
 								if (this.matchCell(this.map,x,y,0,1,this.orientation,"12345",[])) {
 									if (!this.doorOpening) {
@@ -348,6 +353,15 @@ const Game = (() => {
 			return data.situation[sceneIndex];
 		}
 
+		getSituation(sceneName) {
+			const { data, config } = this;
+			const index = config.scenes.map(({name}, idx) => name === sceneName ? idx : -1).filter(index => index >= 0)[0];
+			if (!data.situation[index]) {
+				data.situation[index] = {};
+			}			
+			return data.situation[index];
+		}
+
 		hasVisited(sceneName) {
 			const { data, config } = this;
 			const index = config.scenes.map(({name}, idx) => name === sceneName ? idx : -1).filter(index => index >= 0)[0];
@@ -435,6 +449,7 @@ const Game = (() => {
 			this.onSceneForward = null;
 			this.onSceneBackward = null;
 			this.onSceneBattle = null;
+			this.customCursor = null;
 		}
 
 		markPickedUp(item) {
@@ -741,9 +756,9 @@ const Game = (() => {
 				let hovered = null;
 				for (let i = this.sprites.length - 1; i >= 0; i--) {
 					const sprite = this.sprites[i];
-					if ((sprite.onClick || this.evaluate(sprite.tip) || this.useItem && sprite.name) && !this.actionDown && !this.clicking) {
+					if ((sprite.onClick || sprite.onHover || this.evaluate(sprite.tip) || this.useItem && sprite.name || this.useItem && sprite.combine) && !this.actionDown) {
 						if (this.isMouseHover(sprite, 0, this.mouse)) {
-							if (this.mouseDown) {
+							if (this.mouseDown && !this.clicking) {
 								this.clicking = true;
 								if (this.useItem && !sprite.bag) {
 									const { combine, combineMessage, name, onShot } = sprite;
@@ -778,9 +793,18 @@ const Game = (() => {
 					}
 				}
 				if (this.hoverSprite !== hovered) {
+					if (this.hoverSprite !== null) {
+						if (this.hoverSprite.onHoverOut) {
+							this.hoverSprite.onHoverOut(this, this.hoverSprite);
+						}
+						this.hoverSprite.hoverTime = 0;
+					}
 					this.hoverSprite = hovered;
 					if (hovered) {
 						hovered.hoverTime = game.now;
+						if (this.hoverSprite.onHover) {
+							this.hoverSprite.onHover(this, this.hoverSprite);
+						}
 					}
 				}
 			}
@@ -1094,7 +1118,12 @@ const Game = (() => {
 				const { x, y } = this.mouse;
 				const px = Math.floor(x)+.5, py = Math.floor(y)+.5;
 
-				if (this.pendingTip && this.pendingTip.progress < 1 || this.pickedUp && this.pickedUp.tip && this.pickedUp.tip.progress < 1 || this.waitCursor) {
+				const customCursor = this.customCursor ? this.customCursor(this, ctx) : null;
+				if (customCursor==="none") {
+					return;
+				}
+
+				if (this.pendingTip && this.pendingTip.progress < 1 || this.pickedUp && this.pickedUp.tip && this.pickedUp.tip.progress < 1 || this.waitCursor || customCursor==="wait") {
 					const angle = this.now / 200;
 					const radius = 2;
 					ctx.strokeStyle = "#FFFFFF";
@@ -1213,7 +1242,7 @@ const Game = (() => {
 			tip.progress = Math.min(1, frame / fullWrappedText.length);
 			const lines = fullWrappedText.substr(0, Math.min(text.length, frame)).split("\n").slice(-3);
 			const letterTemplate = {
-				src: ASSETS.ALPHABET, col:9, row:8, size:[5,6],
+				src: ASSETS.ALPHABET, col:10, row:9, size:[5,6],
 				offsetX: 20, offsetY: 20,
 				index: game => Math.floor(game.now / 100) % 62,
 			};
@@ -1284,12 +1313,15 @@ const Game = (() => {
 		playTheme(src, options) {
 			const {volume} = options || {};
 			if(this.data.theme) {
-				this.stopSound(this.data.theme);
-			}			
+				this.stopSound(this.data.theme.song);
+			}
 			if (src) {
 				this.playSound(src, {loop: true, volume});
 			}
-			this.data.theme = src;
+			this.data.theme = {
+				song: src,
+				volume,
+			}
 		}
 
 		playSound(src, options) {
@@ -1314,13 +1346,29 @@ const Game = (() => {
 		}
 
 		stopSound(src) {
-			if (soundStock[src]) {
+			if (src && soundStock[src]) {
 				const { audio } = soundStock[src];
 				audio.pause();
 			}
 		}
 
 		prepareImage(src, callback) {
+			const spriteData = imageStock[src];
+			if (spriteData) {
+				if (spriteData.loaded) {
+					if (callback) {
+						callback(spriteData);
+					}
+				} else {
+					if (callback) {
+						spriteData.img.addEventListener("load", () => {
+							callback(stock);
+						});
+					};
+				}
+				return;
+			}
+
 			if (src.split("|").pop() === "invert-colors") {
 				this.prepareImage(src.split("|").slice(0,-1).join("|"), stock => {
 					const tempCanvas = document.createElement("canvas");
@@ -1342,7 +1390,9 @@ const Game = (() => {
 						loaded: true,
 						img: tempCanvas,
 					};
-					callback(imageStock[src]);
+					if (callback) {
+						callback(imageStock[src]);
+					}
 				});
 				return;
 			}
@@ -1368,7 +1418,9 @@ const Game = (() => {
 						loaded: true,
 						img: tempCanvas,
 					};
-					callback(imageStock[src]);
+					if (callback) {
+						callback(imageStock[src]);
+					}
 				});
 				return;
 			}
@@ -1395,12 +1447,13 @@ const Game = (() => {
 						loaded: true,
 						img: tempCanvas,
 					};
-					callback(imageStock[src]);
+					if (callback) {
+						callback(imageStock[src]);
+					}
 				});
 				return;
 			}
 
-			const spriteData = imageStock[src];
 			if (!spriteData) {
 				const stock = {}
 				const img = new Image();
@@ -1419,7 +1472,9 @@ const Game = (() => {
 				});
 				stock.img = img;
 				imageStock[src] = stock;
-			}	
+			} else if (callback) {
+				callback(spriteData);
+			}
 		}
 
 		createLoop(callback) {
@@ -1441,7 +1496,7 @@ const Game = (() => {
 
 		loadScene(scene) {
 			this.initScene();
-			const { map, sprites, doors, arrowGrid, events,
+			const { map, sprites, doors, arrowGrid, events, customCursor,
 				onScene, onSceneRefresh, onSceneShot, onSceneHoldItem, onSceneUseItem, onSceneForward, onSceneBackward, onSceneBattle } = scene;
 			this.map = toMap(map);
 			const { pos, rotation } = this.getMapInfo(this.map, this.door) || { pos:null, rotation: 0 };
@@ -1459,6 +1514,7 @@ const Game = (() => {
 			this.onSceneForward = onSceneForward || nop;
 			this.onSceneBackward = onSceneBackward || nop;
 			this.onSceneBattle = onSceneBattle || nop;
+			this.customCursor = customCursor;
 		}
 
 		get now() {
@@ -1496,18 +1552,23 @@ const Game = (() => {
 			this.checkMouseHover();
 			this.checkUseItem();
 
-			this.displaySprites();
-			this.displayFade(this);
+			if (this.sceneTime) {
+				this.displaySprites();
+				this.displayFade(this);
 
-			this.displayDialog();
-			this.displayInventory();
-			this.displayPickedUp();
+				this.displayDialog();
+				this.displayInventory();
+				this.displayPickedUp();
 
-			this.displayGameOver();
-			this.displayArrows();
-			this.displayCursor();
-			this.displayTips();
-			this.cleanupData();
+				this.displayGameOver();
+				this.displayArrows();
+				this.displayCursor();
+				this.displayTips();
+				this.cleanupData();
+			}
+			if (this.refreshCallback) {
+				this.refreshCallback();
+			}
 		}
 
 		displayGameOver() {
@@ -1531,9 +1592,86 @@ const Game = (() => {
 			}
 		}
 
-		displayTextLine(ctx, {msg, x, y}) {
+		displayEnding() {
+			if (this.data.theEnd) {
+				tempCtx.globalAlpha = Math.min(1, (this.now - this.data.theEnd) / 3000);
+				tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+				tempCtx.globalAlpha = 1;
+				const progress = Math.min(1, Math.max(0, (this.now - this.data.theEnd) / 10000));
+				const antiProgress = 1 - progress;
+				const letter = 5;
+				const y = Math.round(antiProgress * 20 + progress * 25);
+
+				if (this.now - this.data.theEnd < 1000) {
+					this.displayTextLine(tempCtx, {
+						msg: "ESCAPE FROM",
+						x: 10, y:10,
+					});
+				} else if (this.now - this.data.theEnd > 10000) {					
+					this.displayTextLine(tempCtx, {
+						msg: "upcoming:",
+						x: 10, y:10,
+					});
+					this.displayTextLine(tempCtx, {
+						msg: "the saga",
+						x: 10, y:40,
+					});
+					this.displayTextLine(tempCtx, {
+						msg: "continues",
+						x: 15, y:45,
+					});
+				}
+
+
+				this.displayTextLine(tempCtx, {
+					msg: "L",
+					x: 5 + Math.round((antiProgress * 0 + progress * 8) * letter), y,
+				});
+				this.displayTextLine(tempCtx, {
+					msg: "A",
+					x: 5 + Math.round((antiProgress * 1 + progress * 1) * letter), y,
+				});
+				this.displayTextLine(tempCtx, {
+					msg: "B",
+					x: 5 + Math.round((antiProgress * 2 + progress * 0) * letter), y
+				});
+				this.displayTextLine(tempCtx, {
+					msg: "B",
+					x: 5 + Math.round((antiProgress * 3 + progress * 2) * letter), y
+				});
+				this.displayTextLine(tempCtx, {
+					msg: "Y",
+					x: 5 + Math.round((antiProgress * 4 + progress * 3) * letter), y
+				});
+				this.displayTextLine(tempCtx, {
+					msg: "R",
+					x: 5 + Math.round((antiProgress * 5 + progress * 10) * letter), y
+				});
+				this.displayTextLine(tempCtx, {
+					msg: "I",
+					x: 5 + Math.round((antiProgress * 6 + progress * 6) * letter), y
+				});
+				this.displayTextLine(tempCtx, {
+					msg: "T",
+					x: 5 + Math.round((antiProgress * 7 + progress * 7) * letter), y
+				});
+				this.displayTextLine(tempCtx, {
+					msg: "H",
+					x: 5 + Math.round((antiProgress * 8 + progress * 5) * letter), y
+				});
+				this.displayTextLine(tempCtx, {
+					msg: "E",
+					x: 5 + Math.round((antiProgress * 9 + progress * 9) * letter), y
+				});
+
+
+				this.displayOutlinedImage(tempCtx.canvas, "#660000", 4, 2);
+			}
+		}
+
+		displayTextLine(ctx, {msg, x, y, spacing}) {
 			const letterTemplate = {
-				src: ASSETS.ALPHABET, col:9, row:8, size:[5,6],
+				src: ASSETS.ALPHABET, col:10, row:9, size:[5,6],
 				offsetX: 20, offsetY: 20,
 				index: game => Math.floor(game.now / 100) % 62,
 			};				
@@ -1547,8 +1685,11 @@ const Game = (() => {
 				letterTemplate.index = index;
 				this.displayImage(ctx, letterTemplate);
 				if (!ALPHA.width) {
+					maskCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+					this.displayImage(maskCtx, letterTemplate);
+
 					const { offsetX, offsetY } = letterTemplate;
-					const { data } = ctx.getImageData(offsetX, offsetY, 5, 6);
+					const { data } = maskCtx.getImageData(offsetX, offsetY, 5, 6);
 
 					let foundW = 0;
 					for (let w = 4; w >= 0; w--) {
@@ -1563,9 +1704,9 @@ const Game = (() => {
 							break;
 						}
 					}
-					ALPHA.width = foundW;
+					ALPHA.width = foundW + 1;
 				}
-				spaceX += ALPHA.width + 2;
+				spaceX += ALPHA.width + (spacing || 1);
 			}
 		}
 
@@ -1648,8 +1789,12 @@ const Game = (() => {
 		}
 
 		displayImage(ctx, sprite) {
-			const {src, index, side, col, row, size, hidden, offsetX, offsetY, alpha, custom } = sprite;			
+			const {src, index, side, col, row, size, hidden, offsetX, offsetY, alpha, custom, ending } = sprite;			
 			if (this.evaluate(hidden, sprite)) {
+				return;
+			}
+			if (ending) {
+				this.displayEnding();
 				return;
 			}
 			if (custom) {
@@ -1674,8 +1819,8 @@ const Game = (() => {
 			const spriteData = imageStock[src];
 			const [ imgWidth, imgHeight ] = size || [64,64];
 			let frameIndex = this.evaluate(index, sprite) || 0;
-			let dstX = this.evaluate(offsetX)||0;
-			let dstY = this.evaluate(offsetY)||0;
+			let dstX = this.evaluate(offsetX, sprite)||0;
+			let dstY = this.evaluate(offsetY, sprite)||0;
 			let srcX = (frameIndex % (col||2)) * imgWidth;
 			let srcY = Math.floor(frameIndex / (col||2)) * imgHeight;
 			let srcW = imgWidth;
@@ -1763,7 +1908,7 @@ const Game = (() => {
 			this.data = JSON.parse(localStorage.getItem("lastContinue"));
 			this.gotoScene(this.sceneIndex, this.door);
 			if (this.data.theme) {
-				this.playTheme(this.data.theme);
+				this.playTheme(this.data.theme.song, {volume:this.data.theme.volume});
 			}
 		}
 

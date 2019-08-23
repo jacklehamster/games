@@ -2,6 +2,28 @@ const DEMO = false;
 
 const LEFT = 1, RIGHT = 2, FORWARD = 3, BACKWARD = 4, BAG = 5, DOOR = 6, FAR = 7, CLOSE = 8;
 
+const MAZE_ASSETS = {
+	MAZE_ROTATION_BACKGROUND: "assets/maze-rotation-background.png",
+	MAZE_ROTATION_WALLS: "assets/maze-rotation-walls.png",
+	MAZE_ROTATION_CORNER: "assets/maze-rotation-corner.png",
+	DUNGEON_MOVE:'assets/dungeon-move.png',
+	FAR_SIDE:'assets/far-side.png',
+	FAR_SIDE_CORNER:'assets/far-side-corner.png',
+	FAR_WALL:'assets/far-wall.png',
+	FAR_DOOR:'assets/far-door.png',
+	CLOSE_SIDE:'assets/close-side.png',
+	CLOSE_SIDE_CORNER:'assets/close-side-corner.png',
+	CLOSE_WALL:'assets/close-wall.png',
+	DOOR_OPEN:'assets/door-open.png',
+	CLOSE_DOOR:'assets/close-door.png',
+};
+
+const MAZE_ASSETS_BLUE = Object.assign(...Object.entries(MAZE_ASSETS).map(([k,v])=>({[`${k}_BLUE`]:`${v}|rotate-colors`})));
+
+//Object.assign(...Object.entries({a:1, b:2}).map(([k,v])=>({[k]:v})));
+
+
+
 const ASSETS = {
 	ARROW_SIDE:'assets/arrow-side.png',
 	ARROW_FORWARD:'assets/arrow-forward.png',
@@ -54,33 +76,46 @@ const ASSETS = {
 	EATER: "assets/eater.png",
 	ALIEN_EATER: "assets/alien-eater.png",
 	CAKE_BOOM: "assets/cake-boom.png",
-	MAZE_ROTATION_BACKGROUND: "assets/maze-rotation-background.png|darken|rotate-colors",
-	MAZE_ROTATION_WALLS: "assets/maze-rotation-walls.png|darken|rotate-colors",
-	MAZE_ROTATION_CORNER: "assets/maze-rotation-corner.png|darken|rotate-colors",
-	DUNGEON_MOVE:'assets/dungeon-move.png|darken|rotate-colors',
-	FAR_SIDE:'assets/far-side.png|darken|rotate-colors',
-	FAR_SIDE_CORNER:'assets/far-side-corner.png|darken|rotate-colors',
-	FAR_WALL:'assets/far-wall.png|darken|rotate-colors',
-	FAR_DOOR:'assets/far-door.png|darken|rotate-colors',
-	CLOSE_SIDE:'assets/close-side.png|darken|rotate-colors',
-	CLOSE_SIDE_CORNER:'assets/close-side-corner.png|darken|rotate-colors',
-	CLOSE_WALL:'assets/close-wall.png|darken|rotate-colors',
-	DOOR_OPEN:'assets/door-open.png|darken|rotate-colors',
-	CLOSE_DOOR:'assets/close-door.png|darken|rotate-colors',
 
-	MAZE_ROTATION_BACKGROUND_2: "assets/maze-rotation-background.png|darken",
-	MAZE_ROTATION_WALLS_2: "assets/maze-rotation-walls.png|darken",
-	MAZE_ROTATION_CORNER_2: "assets/maze-rotation-corner.png|darken",
-	DUNGEON_MOVE_2:'assets/dungeon-move.png|darken',
-	FAR_SIDE_2:'assets/far-side.png|darken',
-	FAR_SIDE_CORNER_2:'assets/far-side-corner.png|darken',
-	FAR_WALL_2:'assets/far-wall.png|darken',
-	FAR_DOOR_2:'assets/far-door.png|darken',
-	CLOSE_SIDE_2:'assets/close-side.png|darken',
-	CLOSE_SIDE_CORNER_2:'assets/close-side-corner.png|darken',
-	CLOSE_WALL_2:'assets/close-wall.png|darken',
-	DOOR_OPEN_2:'assets/door-open.png|darken',
-	CLOSE_DOOR_2:'assets/close-door.png|darken',
+	...MAZE_ASSETS,
+	...Object.assign(...Object.entries(MAZE_ASSETS).map(([k,v])=>({[`${k}_1`]:`${v}|darken`}))),
+	...Object.assign(...Object.entries(MAZE_ASSETS).map(([k,v])=>({[`${k}_2`]:`${v}|darken|darken`}))),
+
+	...MAZE_ASSETS_BLUE,
+	...Object.assign(...Object.entries(MAZE_ASSETS_BLUE).map(([k,v])=>({[`${k}_1`]:`${v}|darken`}))),
+	...Object.assign(...Object.entries(MAZE_ASSETS_BLUE).map(([k,v])=>({[`${k}_2`]:`${v}|darken|darken`}))),
+
+	// ...{
+	// 	MAZE_ROTATION_BACKGROUND: "assets/maze-rotation-background.png|darken|rotate-colors",
+	// 	MAZE_ROTATION_WALLS: "assets/maze-rotation-walls.png|darken|rotate-colors",
+	// 	MAZE_ROTATION_CORNER: "assets/maze-rotation-corner.png|darken|rotate-colors",
+	// 	DUNGEON_MOVE:'assets/dungeon-move.png|darken|rotate-colors',
+	// 	FAR_SIDE:'assets/far-side.png|darken|rotate-colors',
+	// 	FAR_SIDE_CORNER:'assets/far-side-corner.png|darken|rotate-colors',
+	// 	FAR_WALL:'assets/far-wall.png|darken|rotate-colors',
+	// 	FAR_DOOR:'assets/far-door.png|darken|rotate-colors',
+	// 	CLOSE_SIDE:'assets/close-side.png|darken|rotate-colors',
+	// 	CLOSE_SIDE_CORNER:'assets/close-side-corner.png|darken|rotate-colors',
+	// 	CLOSE_WALL:'assets/close-wall.png|darken|rotate-colors',
+	// 	DOOR_OPEN:'assets/door-open.png|darken|rotate-colors',
+	// 	CLOSE_DOOR:'assets/close-door.png|darken|rotate-colors',
+	// },
+
+	// ...{
+	// 	MAZE_ROTATION_BACKGROUND_2: "assets/maze-rotation-background.png|darken",
+	// 	MAZE_ROTATION_WALLS_2: "assets/maze-rotation-walls.png|darken",
+	// 	MAZE_ROTATION_CORNER_2: "assets/maze-rotation-corner.png|darken",
+	// 	DUNGEON_MOVE_2:'assets/dungeon-move.png|darken',
+	// 	FAR_SIDE_2:'assets/far-side.png|darken',
+	// 	FAR_SIDE_CORNER_2:'assets/far-side-corner.png|darken',
+	// 	FAR_WALL_2:'assets/far-wall.png|darken',
+	// 	FAR_DOOR_2:'assets/far-door.png|darken',
+	// 	CLOSE_SIDE_2:'assets/close-side.png|darken',
+	// 	CLOSE_SIDE_CORNER_2:'assets/close-side-corner.png|darken',
+	// 	CLOSE_WALL_2:'assets/close-wall.png|darken',
+	// 	DOOR_OPEN_2:'assets/door-open.png|darken',
+	// 	CLOSE_DOOR_2:'assets/close-door.png|darken',
+	// },
 
 	GUARD: "assets/guard.png",
 	MONSTER: "assets/monster.png",
@@ -106,6 +141,17 @@ const ASSETS = {
 	LOCK_BACK: "assets/lock-back.png",
 	LOCK_DIGIT: "assets/lock-digit.png",
 	LOCK_BLOCK: "assets/lock-block.png",
+	ACCESS_CARD: "assets/access-card.png",
+	GRAB_ACCESS_CARD: "assets/grab-access-card.png",
+	SCAN_CARD: "assets/scan-card.png",
+	FINAL_EXIT: "assets/final-exit.png",
+	GATE: "assets/gate.png",
+	OUTDOOR: "assets/outdoor.png",
+	CONGRATS: "assets/congrats.png|darken",
+	COINSTART: "assets/coinstart.png",
+	FLASH_SCREEN: "assets/flash-screen.png",
+	ARCADE_HANDS: "assets/arcade-hands.png",
+	TOP_5: "assets/top-5.png",
 };
 
 const SOUNDS = {
@@ -125,14 +171,17 @@ const SOUNDS = {
 	JAIL_CELL_THEME: 'sounds/jail-cell-theme.mp3',
 	CHIN_TOK_THEME: 'sounds/chintok.mp3',
 	ERROR: 'sounds/error.mp3',
+	FUTURE_SONG_THEME: 'sounds/future-song.mp3',
+	JINGLE: 'sounds/jingle.mp3',
 //	DARK_THEME: 'sounds/dark.mp3',
 };
 
 const ALPHAS = (() => {
-	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz.,?'#@!♪ ";
+	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz.,?'#@!♪()[]/ "
+   	   + new Array(10).fill(null).map((a, index) => String.fromCharCode(1000 + index)).join("");
 	const array = [];
 	for(let c = 0; c < letters.length; c++) {
-		array[letters.charCodeAt(c)] = { index: c };
+		array[letters.charCodeAt(c)] = { char: letters[c], index: c };
 	}
 	array[" ".charCodeAt(0)].width = 1;
 	return array;
@@ -146,3 +195,8 @@ const ARROWS = [
 	{ src:ASSETS.ARROW_FORWARD},
 	{ src:ASSETS.ARROW_BACKWARD},
 ];
+
+const Cursor = {
+	WAIT: "wait",
+	NONE: "none",
+};

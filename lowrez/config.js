@@ -3,6 +3,7 @@ const shortcut = {
 	1: game => game.matchCell(game.map,game.pos.x,game.pos.y,0,1,game.orientation,"12345",[]) && !game.doorOpening ? DOOR : FORWARD,
 	2: game => game.matchCell(game.map,game.pos.x,game.pos.y,0,1,game.orientation,"12345",[]) ? (!game.doorOpening ? DOOR : FORWARD) : null,
 	3: game => game.battle ? BAG : BACKWARD,
+	4: game => game.sceneData.forwardUnlocked ? FORWARD : null,
 };
 
 function s(index) {
@@ -79,6 +80,7 @@ const gameConfig = {
 				}
 			},
 			onScene: game => {
+				game.playTheme(null);
 				if (location.search.indexOf("bad-guards") >= 0) {
 					game.see("badguards");
 				}
@@ -519,7 +521,7 @@ const gameConfig = {
 					bag: true,
 					src: ASSETS.BAG_OUT,
 					index: game => game.frameIndex,
-					hidden: game => game.arrow !== BAG && !game.bagOpening || game.sceneData.firstShot,
+					hidden: game => !game.bagOpening && (game.arrow !== BAG || game.sceneData.firstShot),
 					alpha: game => game.emptyBag() && game.frameIndex === 0 ? .2 : 1,
 					onClick: game => game.clickBag(),
 				},
@@ -551,122 +553,122 @@ const gameConfig = {
 					custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_BACKGROUND,
+					src: ASSETS.MAZE_ROTATION_BACKGROUND_BLUE_1,
 					hidden: game => game.rotation % 2 === 0,
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_WALLS,
+					src: ASSETS.MAZE_ROTATION_WALLS_BLUE_1,
 					side: LEFT,
 					hidden: game => game.rotation % 2 === 0 || !game.hasLeftWallWhenRotating(),
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_WALLS,
+					src: ASSETS.MAZE_ROTATION_WALLS_BLUE_1,
 					side: RIGHT,
 					hidden: game => game.rotation % 2 === 0 || !game.hasRightWallWhenRotating(),
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_CORNER,
-					hidden: game => !game.hasLeftWallWhenRotating() || !game.hasRightWallWhenRotating(),
+					src: ASSETS.MAZE_ROTATION_CORNER_BLUE_1,
+					hidden: game => game.hasLeftWallWhenRotating() !== game.hasRightWallWhenRotating(),
 				},
 				{
-					src: ASSETS.DUNGEON_MOVE,
+					src: ASSETS.DUNGEON_MOVE_BLUE_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1,
 				},
 				{
-					src: ASSETS.FAR_SIDE,
+					src: ASSETS.FAR_SIDE_BLUE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:LEFT, distance: FAR}),
 				},
 				{ 
-					src: ASSETS.FAR_SIDE_CORNER,
+					src: ASSETS.FAR_SIDE_CORNER_BLUE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:LEFT, distance: FAR}) || game.farWall(),
 				},
 				{
-					src: ASSETS.FAR_SIDE,
+					src: ASSETS.FAR_SIDE_BLUE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:RIGHT, distance: FAR}),
 				},
 				{
-					src: ASSETS.FAR_SIDE_CORNER,
+					src: ASSETS.FAR_SIDE_CORNER_BLUE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:RIGHT, distance: FAR}) || game.farWall(),
 				},
 				{
-					src: ASSETS.FAR_WALL,
+					src: ASSETS.FAR_WALL_BLUE_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farWall(),					
 				},
 				{
-					src: ASSETS.FAR_SIDE_CORNER,
+					src: ASSETS.FAR_SIDE_CORNER_BLUE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farWall() || game.mazeHole({direction:LEFT, distance: FAR}),
 				},
 				{
-					src: ASSETS.FAR_SIDE_CORNER,
+					src: ASSETS.FAR_SIDE_CORNER_BLUE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farWall() || game.mazeHole({direction:RIGHT, distance: FAR}),
 				},
 				{
-					src: ASSETS.FAR_DOOR,
+					src: ASSETS.FAR_DOOR_BLUE_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farDoor(),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE,
+					src: ASSETS.CLOSE_SIDE_BLUE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: LEFT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER,
+					src: ASSETS.CLOSE_SIDE_CORNER_BLUE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: LEFT, distance: CLOSE}) || game.closeWall(),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE,
+					src: ASSETS.CLOSE_SIDE_BLUE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: RIGHT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER,
+					src: ASSETS.CLOSE_SIDE_CORNER_BLUE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: RIGHT, distance: CLOSE}) || game.closeWall(),
 				},
 				{
-					src: ASSETS.CLOSE_WALL,
+					src: ASSETS.CLOSE_WALL_BLUE_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeWall(),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER,
+					src: ASSETS.CLOSE_SIDE_CORNER_BLUE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeWall() || game.mazeHole({direction: LEFT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER,
+					src: ASSETS.CLOSE_SIDE_CORNER_BLUE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeWall() || game.mazeHole({direction: RIGHT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.DOOR_OPEN,
+					src: ASSETS.DOOR_OPEN_BLUE_1,
 					index: game => game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || !game.doorOpening,
 				},
 				{
-					src: ASSETS.CLOSE_DOOR,
+					src: ASSETS.CLOSE_DOOR_BLUE_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.doorOpening,					
 				},
@@ -720,122 +722,122 @@ const gameConfig = {
 					custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_BACKGROUND,
+					src: ASSETS.MAZE_ROTATION_BACKGROUND_BLUE_1,
 					hidden: game => game.rotation % 2 === 0,
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_WALLS,
+					src: ASSETS.MAZE_ROTATION_WALLS_BLUE_1,
 					side: LEFT,
 					hidden: game => game.rotation % 2 === 0 || !game.hasLeftWallWhenRotating(),
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_WALLS,
+					src: ASSETS.MAZE_ROTATION_WALLS_BLUE_1,
 					side: RIGHT,
 					hidden: game => game.rotation % 2 === 0 || !game.hasRightWallWhenRotating(),
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_CORNER,
-					hidden: game => !game.hasLeftWallWhenRotating() || !game.hasRightWallWhenRotating(),
+					src: ASSETS.MAZE_ROTATION_CORNER_BLUE_1,
+					hidden: game => game.hasLeftWallWhenRotating() !== game.hasRightWallWhenRotating(),
 				},
 				{
-					src: ASSETS.DUNGEON_MOVE,
+					src: ASSETS.DUNGEON_MOVE_BLUE_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1,
 				},
 				{
-					src: ASSETS.FAR_SIDE,
+					src: ASSETS.FAR_SIDE_BLUE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:LEFT, distance: FAR}),
 				},
 				{ 
-					src: ASSETS.FAR_SIDE_CORNER,
+					src: ASSETS.FAR_SIDE_CORNER_BLUE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:LEFT, distance: FAR}) || game.farWall(),
 				},
 				{
-					src: ASSETS.FAR_SIDE,
+					src: ASSETS.FAR_SIDE_BLUE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:RIGHT, distance: FAR}),
 				},
 				{
-					src: ASSETS.FAR_SIDE_CORNER,
+					src: ASSETS.FAR_SIDE_CORNER_BLUE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:RIGHT, distance: FAR}) || game.farWall(),
 				},
 				{
-					src: ASSETS.FAR_WALL,
+					src: ASSETS.FAR_WALL_BLUE_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farWall(),					
 				},
 				{
-					src: ASSETS.FAR_SIDE_CORNER,
+					src: ASSETS.FAR_SIDE_CORNER_BLUE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farWall() || game.mazeHole({direction:LEFT, distance: FAR}),
 				},
 				{
-					src: ASSETS.FAR_SIDE_CORNER,
+					src: ASSETS.FAR_SIDE_CORNER_BLUE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farWall() || game.mazeHole({direction:RIGHT, distance: FAR}),
 				},
 				{
-					src: ASSETS.FAR_DOOR,
+					src: ASSETS.FAR_DOOR_BLUE_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farDoor(),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE,
+					src: ASSETS.CLOSE_SIDE_BLUE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: LEFT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER,
+					src: ASSETS.CLOSE_SIDE_CORNER_BLUE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: LEFT, distance: CLOSE}) || game.closeWall(),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE,
+					src: ASSETS.CLOSE_SIDE_BLUE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: RIGHT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER,
+					src: ASSETS.CLOSE_SIDE_CORNER_BLUE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: RIGHT, distance: CLOSE}) || game.closeWall(),
 				},
 				{
-					src: ASSETS.CLOSE_WALL,
+					src: ASSETS.CLOSE_WALL_BLUE_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeWall(),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER,
+					src: ASSETS.CLOSE_SIDE_CORNER_BLUE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeWall() || game.mazeHole({direction: LEFT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER,
+					src: ASSETS.CLOSE_SIDE_CORNER_BLUE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeWall() || game.mazeHole({direction: RIGHT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.DOOR_OPEN,
+					src: ASSETS.DOOR_OPEN_BLUE_1,
 					index: game => game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || !game.doorOpening,
 				},
 				{
-					src: ASSETS.CLOSE_DOOR,
+					src: ASSETS.CLOSE_DOOR_BLUE_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.doorOpening,					
 				},
@@ -1063,6 +1065,7 @@ const gameConfig = {
 			},
 			sprites: [
 				{
+					name: "zoom-guards",
 					src: ASSETS.ZOOM_GUARDS,
 					index: game => {
 						if (game.dialog && game.dialog.guardSpeaking) {
@@ -1086,7 +1089,7 @@ const gameConfig = {
 					bag: true,
 					src: ASSETS.BAG_OUT,
 					index: game => game.frameIndex,
-					hidden: ({arrow, bagOpening, dialog}) => arrow !== BAG && !bagOpening || dialog && dialog.conversation[dialog.index].options.length > 2,
+					hidden: ({arrow, bagOpening, dialog}) => !bagOpening && (arrow !== BAG || dialog && dialog.conversation[dialog.index].options.length > 2),
 					alpha: game => game.emptyBag() ? .2 : 1,
 					onClick: game => game.clickBag(),
 				}
@@ -1354,7 +1357,7 @@ const gameConfig = {
 					src: ASSETS.TOILETS,
 					side: LEFT,
 					combineMessage: (item, game) => {
-						if (item === "bottle") {
+						if (item === "empty bottle") {
 							return "Why get the water from the toilet when there's a water fountain next to it?";
 						}
 						return `The ${item} has no effect on the toilet.`;
@@ -1421,7 +1424,7 @@ const gameConfig = {
 					bag: true,
 					src: ASSETS.BAG_OUT,
 					index: game => game.frameIndex,
-					hidden: ({arrow, bagOpening, dialog}) => arrow !== BAG && !bagOpening || dialog && dialog.conversation[dialog.index].options.length > 2,
+					hidden: ({arrow, bagOpening, dialog}) => !bagOpening && (arrow !== BAG || dialog && dialog.conversation[dialog.index].options.length > 2),
 					alpha: game => game.emptyBag() ? .2 : 1,
 					onClick: game => game.clickBag(),
 				}
@@ -1703,7 +1706,7 @@ const gameConfig = {
 				{ src: ASSETS.VENDING_MACHINE_CLOSEUP },
 				{
 					src: ASSETS.VENDING_MACHINE_BOTTLE,
-					index: game => !game.situation.gotBottle ? 0 : Math.min(3, Math.floor((game.now - game.situation.gotBottle) / 100)),
+					index: game => !game.situation.gotBottle ? 0 : Math.min(4, Math.floor((game.now - game.situation.gotBottle) / 100)),
 					onClick: game => {
 						if (!game.situation.coin || game.situation.gotBottle) {
 							game.playSound(SOUNDS.ERROR);
@@ -1715,10 +1718,10 @@ const gameConfig = {
 							}
 							delete game.data.pickedUp["coin 1"];
 							game.situation.gotBottle = game.now;
+							game.playSound(SOUNDS.DUD);
 						}
 					},
 					tip: "Looks like a bottle. Is that water?",
-					hidden: game => game.situation.grabbedBottle,
 				},
 				{
 					src: ASSETS.VENDING_MACHINE_APPLE,
@@ -1734,7 +1737,7 @@ const gameConfig = {
 					combine: (item, game) => {
 						if (item === "coin") {
 							game.useItem = null;
-							game.playSound(SOUNDS.PICKUP);
+							game.playSound(SOUNDS.DUD);
 							game.sceneData.putCoin = game.now;
 							game.situation.coin = (game.situation.coin||0) + 1;
 							game.removeFromInventory("coin");
@@ -1768,7 +1771,7 @@ const gameConfig = {
 					bag: true,
 					src: ASSETS.BAG_OUT,
 					index: game => game.frameIndex,
-					hidden: ({arrow, bagOpening, dialog}) => arrow !== BAG && !bagOpening || dialog && dialog.conversation[dialog.index].options.length > 2,
+					hidden: ({arrow, bagOpening, dialog}) => !bagOpening && (arrow !== BAG || dialog && dialog.conversation[dialog.index].options.length > 2),
 					alpha: game => game.emptyBag() ? .2 : 1,
 					onClick: game => game.clickBag(),
 				}
@@ -1803,7 +1806,8 @@ const gameConfig = {
 					src: ASSETS.VENDING_MACHINE,
 				},
 				{
-					src: ASSETS.MACHINE,
+					src: ASSETS.MACHINE, col: 1, row: 2,
+					index: game => game.getSituation("zoom-vending-machine").grabbedBottle ? 1 : 0,
 					tip: "Looks like a vending machine. There's a big hole in it.",
 					onClick: game => game.gotoScene("zoom-vending-machine"),
 				},
@@ -1821,6 +1825,14 @@ const gameConfig = {
 					offsetY: 15,
 					hidden: game => game.bagOpening || game.useItem || game.pendingTip,
 					index: game => Math.min(3, Math.floor((game.now - game.sceneTime) / 80)),
+				},
+				{
+					bag: true,
+					src: ASSETS.BAG_OUT,
+					index: game => game.frameIndex,
+					hidden: ({arrow, bagOpening, dialog}) => !bagOpening && (arrow !== BAG || dialog && dialog.conversation[dialog.index].options.length > 2),
+					alpha: game => game.emptyBag() ? .2 : 1,
+					onClick: game => game.clickBag(),
 				},
 			],
 		},
@@ -1866,25 +1878,6 @@ const gameConfig = {
 		},
 		{
 			name: "zoom-arcade",
-			onScene: ({sceneData}) => {
-				sceneData.putCoin = 0;
-				game.startDialog({
-					time: game.now,
-					index: 0,
-					conversation: [
-						{
-							message: "",
-							options: [
-								{ },
-								{ },
-								{ msg: "LEAVE", onSelect: game => {
-									game.gotoScene("arcade-room")
-								}},
-							],
-						},
-					],
-				});
-			},
 			arrowGrid: [
 				[],
 				[],
@@ -1892,15 +1885,627 @@ const gameConfig = {
 				[ null, null, null,  null, null ],
 				[ null, null, BAG ,  null, null ],
 			],
+			onScene: ({sceneData, now, situation}) => {
+				sceneData.hand = {
+					dx: 0,
+					dy: 0,
+					lastMove: 0,
+				};
+				if (!situation.highscores) {
+					situation.highscores = [
+						{ score: 9845, 	player: 0 },
+						{ score: 4035, 	player: 1 },
+						{ score: 575, 	player: 2 },
+						{ score: 235, 	player: 3 },
+						{ score: 105, 	player: 4 },
+					];
+				}
+
+				sceneData.gameStarted = 0;
+				situation.coin = situation.coin || 0;
+				sceneData.score = 0;
+				sceneData.missiles = [];
+				sceneData.alienMissiles = [];
+				sceneData.dusts = [];
+				sceneData.aliens = [
+					{orgX:21, orgY:16, nextShot:now + 5000 * Math.random(), born:0, destroyed:now+3000},
+					{orgX:30, orgY:16, nextShot:now + 5000 * Math.random(), born:0, destroyed:now+4000},
+					{orgX:40, orgY:16, nextShot:now + 5000 * Math.random(), born:0, destroyed:now+3000},
+				];
+				sceneData.gameScreen = {
+					x: 17, y: 9,
+					width: 28, height: 32,
+				};
+				const { gameScreen } = sceneData;
+				sceneData.stars = new Array(10).fill(null).map(() => {
+					return {
+						x: Math.floor(Math.random()*gameScreen.width + gameScreen.x),
+						y: Math.floor(Math.random()*gameScreen.height + gameScreen.y),
+						dy: Math.random()/4,
+					};
+				});
+				sceneData.ship = {
+					x: gameScreen.x + gameScreen.width / 2,
+					y: gameScreen.y + gameScreen.height - 2,
+					born: now,
+					destroyed: 0,
+					lives: 2,
+				};
+			},
 			onSceneRefresh: game => {
+				const { sceneData, situation, now } = game;
+				const { gameScreen, hand } = sceneData;
+				const { showHighScore } = situation;
+				if (showHighScore) {
+					return;
+				}
+				if (situation.putCoin && now - situation.putCoin > 400) {
+					situation.putCoin = 0;
+					game.playSound(SOUNDS.DUD);	
+					game.situation.coin = (game.situation.coin||0) + 1;
+				}
+
+				if (sceneData.gameStarted) {
+					const { ship } = sceneData;
+					if (game.mouse) {
+						const { x, y } = game.mouse;
+						const { gameScreen } = sceneData;
+						if (x >= gameScreen.x + 1 && x <= gameScreen.x + gameScreen.width - 2 && y >= gameScreen.y + 10 && y <= gameScreen.y + gameScreen.height - 2) {
+							const dx = x - ship.x;
+							const dy = y - ship.y;
+							if (dx !== 0 || dy !== 0) {
+								hand.dx = dx;
+								hand.dy = dy;
+								hand.lastMove = now;
+							}
+							ship.x = x;
+							ship.y = y;
+						}
+					}
+
+					if (ship.destroyed && now - ship.destroyed > 8000) {
+						if (ship.lives > 0) {
+							ship.x = gameScreen.x + gameScreen.width / 2;
+							ship.y =  gameScreen.y + gameScreen.height - 2;
+							ship.born = now;
+							ship.destroyed = 0;
+							ship.lives --;
+						} else if (sceneData.score > situation.highscores[situation.highscores.length-1].score && !situation.showHighScore) {
+							situation.highscores[situation.highscores.length-1] = { score: sceneData.score, player: 4 };
+							situation.highscores.sort((a,b) => b.score-a.score);
+							situation.showHighScore = now;
+							game.showTip(`That was fun!`);							
+						} else if(!situation.showHighScore) {
+							sceneData.gameStarted = 0;
+							if (!ship.lives && ship.destroyed && sceneData.score <= situation.highscores[situation.highscores.length-1].score) {
+								const ALIEN_DIGIT_0 = 1000;
+
+								let s = sceneData.score;
+								let str = "";
+								while (s > 0 || str.length < 4) {
+									const num = s % 10;
+									str = ALPHAS[ALIEN_DIGIT_0 + s % 10].char + str;
+									s = Math.floor(s / 10);
+								}
+								game.showTip(`Darn it! I can do better. I wanna play again`);
+							}
+						}
+					}
+
+					const maxDistDown = ship.destroyed 
+						? Math.min(15, Math.max(5000 + ship.destroyed - now, 0) / 100)
+						: Math.min(15, (now - ship.born) / 3000 * 15);
+					sceneData.aliens.forEach(alien => {
+						if (alien.destroyed) {
+							if (now > alien.destroyed + 2000) {
+								alien.destroyed = 0;
+								alien.born = now;
+							} else {
+								return;
+							}
+						}
+						const time = now - alien.born;
+						alien.x = Math.round(3 * Math.sin(time / 500) + alien.orgX);
+						alien.y = Math.round(alien.orgY + Math.max(0, Math.sin(time / 2000)) * maxDistDown);
+						if (now > alien.nextShot) {
+							alien.nextShot = now + Math.random() * 5000;
+							if (!ship.destroyed) {
+								sceneData.alienMissiles.push({
+									x: alien.x,
+									y: alien.y,
+								});
+							}
+						}
+					});
+
+					sceneData.stars.forEach(star => {
+						star.y += star.dy;
+						if (star.y > gameScreen.y + gameScreen.height) {
+							star.y = gameScreen.y;
+							star.x = Math.floor(Math.random()*gameScreen.width + gameScreen.x);
+							star.dy = Math.random()/4;
+						}
+					});		
+					sceneData.missiles.forEach(missile => missile.y-=1);
+					sceneData.alienMissiles.forEach(missile => missile.y+=.5);
+
+					sceneData.dusts.forEach(dust => {
+						dust.x += dust.dx;
+						dust.y += dust.dy;
+					});
+
+					sceneData.missiles.forEach(missile => {
+						const {x, y} = missile;
+						sceneData.aliens.forEach(alien => {
+							if (alien.destroyed) {
+								return;
+							}
+							if (Math.abs(alien.x - x)<=2 && Math.abs(alien.y - y)<=2) {
+								alien.destroyed = now;
+								missile.destroyed = now;
+								game.playSound(SOUNDS.HIT_LAND);
+								sceneData.score = Math.min(9999, sceneData.score + 5);
+								for (let i = 0; i < 5; i++) {
+									sceneData.dusts.push({
+										x: alien.x,
+										y: alien.y,
+										dx: Math.random()-.5,
+										dy: -Math.random(),
+										color: "#cc6699",
+									});
+								}
+							}
+						});
+					});
+
+					if (!ship.destroyed) {
+						sceneData.alienMissiles.forEach(missile => {
+							const {x, y, destroyed} = missile;
+							if (destroyed) {
+								return;
+							}
+							if (Math.abs(ship.x - x)<=1 && Math.abs(ship.y - y)<=2) {
+								ship.destroyed = now;
+								missile.destroyed = now;
+								game.playSound(SOUNDS.PLAYER_HURT);
+								for (let i = 0; i < 10; i++) {
+									sceneData.dusts.push({
+										x: ship.x,
+										y: ship.y,
+										dx: (Math.random()-.5) * 2,
+										dy: (Math.random()-.5) * 2,
+										color: "#4488aa",
+									});
+								}							
+							}
+						});
+
+						sceneData.aliens.forEach(({x, y, destroyed}) => {
+							if (destroyed) {
+								return;
+							}
+							if (Math.abs(ship.x - x)<=2 && Math.abs(ship.y - y)<=2) {
+								ship.destroyed = now;
+								game.playSound(SOUNDS.PLAYER_HURT);
+								for (let i = 0; i < 10; i++) {
+									sceneData.dusts.push({
+										x: ship.x, y: ship.y,
+										dx: (Math.random()-.5) * 2,
+										dy: (Math.random()-.5) * 2,
+										color: "#4488aa",
+									});
+								}							
+							}
+						});
+					}
+
+					sceneData.missiles = sceneData.missiles.filter(({x, y, destroyed}) => y > gameScreen.y + 2);
+					sceneData.alienMissiles = sceneData.alienMissiles.filter(({y,destroyed}) => !destroyed && y <= gameScreen.y + gameScreen.height);
+					sceneData.dusts = sceneData.dusts.filter(({x, y}) => {
+						return x < gameScreen.x + gameScreen.width && x > gameScreen.x
+						&& y < gameScreen.y + gameScreen.height && y > gameScreen.y;
+					});
+				}
+			},
+			customCursor: game => {
+				const { x, y } = game.mouse;
+				const { sceneData, situation } = game;
+				const { gameScreen, gameStarted } = sceneData;
+				if (gameStarted && !situation.showHighScore) {
+					if (x >= gameScreen.x && x <= gameScreen.x + gameScreen.width && y >= gameScreen.y && y <= gameScreen.y + gameScreen.height) {
+						return Cursor.NONE;
+					} else {
+						return Cursor.WAIT;
+					}
+				}
 			},
 			sprites: [
-				{ src: ASSETS.ZOOM_ARCADE },
 				{
-					src: ASSETS.SPEECH_OUT,
-					offsetY: 15,
-					hidden: game => game.bagOpening || game.useItem || game.pendingTip,
-					index: game => Math.min(3, Math.floor((game.now - game.sceneTime) / 80)),
+					custom: (game, sprite, ctx) => {
+						ctx.fillStyle = "#7E7A18";
+						ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+					},
+					onClick: ({sceneData, situation}) => {
+						const { gameStarted } = sceneData;
+						const { showHighScore } = situation;
+						if (!gameStarted || showHighScore) {
+							game.gotoScene("arcade-room");
+						}
+					},
+				},
+				{ 
+					src: ASSETS.ZOOM_ARCADE,
+					combine: (item, game) => {
+						if (item === "coin") {
+							game.situation.putCoin = game.now;
+							game.removeFromInventory(item);
+							game.useItem = null;
+							return true;
+						}
+					},
+				},
+				{
+					hidden: ({situation, sceneData}) => !sceneData.gameStarted,
+					custom: (game, sprite, ctx) => {
+						const { sceneData, situation } = game;
+						const { gameScreen } = sceneData;
+						const { showHighScore } = situation;
+						if (showHighScore) {
+							return;
+						}
+						ctx.fillStyle = "#000012";
+						ctx.fillRect(gameScreen.x, gameScreen.y, gameScreen.width, gameScreen.height);
+
+						ctx.fillStyle = "#222233";
+						sceneData.stars.forEach(({x,y}) => {
+							ctx.fillRect(Math.round(x),Math.round(y),1,1);
+						});		
+
+						ctx.lineWidth = 1;
+
+						const { ship } = sceneData;
+						{
+							ctx.strokeStyle = "#4488aa";
+							ctx.beginPath();
+							const { x, y, destroyed } = ship;
+							if (!destroyed) {
+								const px = Math.round(x)+.5;
+								const py = Math.round(y)+.5;
+
+								ctx.moveTo(px, py);
+								ctx.lineTo(px-1, py+2);
+								ctx.lineTo(px+1, py+2);
+								ctx.lineTo(px, py);
+							}
+							for (let i = 0; i < ship.lives; i++) {
+								const lx = gameScreen.x + 1 + i * 4 + .5, ly = gameScreen.y + 1 + .5;
+								ctx.moveTo(lx, ly);
+								ctx.lineTo(lx-1, ly+2);
+								ctx.lineTo(lx+1, ly+2);
+								ctx.lineTo(lx, ly);
+							}
+							ctx.stroke();
+						}
+
+						ctx.strokeStyle = "#FFFFFF";
+						ctx.beginPath();
+						sceneData.missiles.forEach(({x,y,destroyed}) => {
+							if (destroyed) {
+								return;
+							}
+							ctx.moveTo(x,y);
+							ctx.lineTo(x,y-3);
+						});
+						ctx.stroke();
+
+						ctx.strokeStyle = "#FFFF99";
+						ctx.lineWidth = .5;
+						ctx.beginPath();
+						sceneData.alienMissiles.forEach(({x,y,destroyed}) => {
+							if (destroyed) {
+								return;
+							}
+							ctx.moveTo(x+.5,y);
+							ctx.lineTo(x+.5,y-2);
+						});
+						ctx.stroke();
+
+						ctx.fillStyle = "#cc6699";
+						sceneData.aliens.forEach(({x,y,destroyed}) => {
+							if (destroyed) {
+								return;
+							}
+							ctx.beginPath();
+							ctx.moveTo(x+.5,y+.5-2);
+							ctx.lineTo(x+.5+2,y+.5);
+							ctx.lineTo(x+.5,y+.5+2);
+							ctx.lineTo(x+.5-2,y+.5);
+							ctx.closePath();
+							ctx.fill();
+						});
+
+						sceneData.dusts.forEach(({x,y,color}) => {
+							ctx.fillStyle = color;
+							ctx.fillRect(x,y,1,1);
+						});
+					},
+					onClick: ({sceneData, situation, now}) => {
+						const { gameScreen, ship, gameStarted, missiles } = sceneData;
+						const { showHighScore } = situation;
+						ship.lastShot = now;
+						if (gameStarted) {
+							const { x, y } = game.mouse;
+							if (missiles.length > 2) {
+								return;
+							}
+							if (x >= gameScreen.x && x <= gameScreen.x + gameScreen.width && y >= gameScreen.y && y <= gameScreen.y + gameScreen.height) {
+								if (!ship.destroyed) {
+									game.playSound(SOUNDS.ERROR);
+									const px = Math.round(ship.x)+.5;
+									const py = Math.round(ship.y)+.5;
+									missiles.push({x:px, y:py});
+								}
+							}
+						}
+					},
+					tip: ({sceneData}) => sceneData.gameStarted ? null : "That looks like a fun game!",
+				},
+				{
+					hidden: ({situation,sceneData}) => !sceneData.gameStarted,
+					custom: (game, sprite, ctx) => {
+						const { sceneData, situation } = game;
+						const { score } = sceneData;
+						const { showHighScore } = situation;
+						if (showHighScore) {
+							return;
+						}
+						const ALIEN_DIGIT_0 = 1000;
+
+						let s = score;
+						let str = "";
+						while (s > 0 || str.length < 4) {
+							const num = s % 10;
+							str = ALPHAS[ALIEN_DIGIT_0 + s % 10].char + str;
+							s = Math.floor(s / 10);
+						}
+
+						game.displayTextLine(ctx, {
+							msg: str,
+							x:30, y:9,
+						});
+					},
+				},
+				{
+					src: ASSETS.FLASH_SCREEN, col: 2, row: 2,
+					hidden: ({situation, now, sceneData}) => {
+						const { ship } = sceneData;
+						const { gameStarted } = sceneData;
+						return gameStarted && now >= gameStarted && (ship.lives || !ship.destroyed);
+					},
+					index: ({situation, now, sceneData}) => {
+						const { showHighScore } = situation;
+						if (showHighScore) {
+							return 3;
+						}
+
+						const { ship } = sceneData;
+						if (situation.coin && !sceneData.gameStarted) {
+							return Math.floor(now / 500) % 2;
+						} else if (sceneData.gameStarted && sceneData.gameStarted > now) {
+							return Math.floor(now / 80) % 2;
+						}
+						return !ship.lives && ship.destroyed && sceneData.gameStarted ? 2 : 0;
+					},
+					combineMessage: (item, game) => {
+						if (item === "coin") {
+							return "That goes into the coin slot.";
+						} else {
+							return `I can't use ${item} like that.`;
+						}
+					},
+					onHover: ({sceneData, now}) => {
+						sceneData.hoverScreen = now;
+						sceneData.hoverOutScreen = 0;
+					},
+					onHoverOut: ({sceneData, now}) => {
+						sceneData.hoverScreen = 0;
+						sceneData.hoverOutScreen = now;
+					},
+					onClick: ({sceneData, now, situation, playSound}) => {
+						const { ship, aliens } = sceneData;
+						if (situation.coin > 0 && !sceneData.gameStarted) {
+							const splashTime = 2500;
+							sceneData.gameStarted = now + splashTime;
+							situation.coin --;
+							ship.destroyed = 0;
+							ship.lastShot = now;
+							ship.born = now;
+							ship.lives = 2;
+							aliens[0].destroyed = now  + splashTime + 3000;
+							aliens[1].destroyed = now + splashTime + 4000;
+							aliens[2].destroyed = now + splashTime + 3000;
+							playSound(SOUNDS.JINGLE);
+						} else if (situation.showHighScore) {
+							ship.lastShot = now;
+							game.playSound(SOUNDS.ERROR);
+							if (situation.initial === 2) {
+								situation.showHighScore = 0;
+								situation.initial = 0;
+								ship.destroyed = 0;
+								sceneData.gameStarted = 0;
+							} else {
+								situation.initial = (situation.initial||0) + 1;
+							}
+						}
+					},
+				},
+				{
+					hidden: ({situation}) => !situation.showHighScore,
+					custom: ({sceneData, situation}, sprite, ctx) => {
+						const { gameScreen } = sceneData;
+						const { showHighScore } = situation;
+						const ALIEN_DIGIT_0 = 1000;
+						for (let i = 0; i < situation.highscores.length; i++) {
+							let s = situation.highscores[i].score;
+							let str = "";
+							while (s > 0 || str.length < 4) {
+								const num = s % 10;
+								str = ALPHAS[ALIEN_DIGIT_0 + s % 10].char + str;
+								s = Math.floor(s / 10);
+							}
+
+							game.displayTextLine(ctx, {
+								msg: str,
+								x: gameScreen.x + 14, y: gameScreen.y + 2 + i * 6,
+							});
+						}
+					},
+				},
+				{
+					hidden: ({situation, now, sceneData}) => sceneData.gameStarted && now >= sceneData.gameStarted,
+					custom: (game, sprite, ctx) => {
+						const { sceneData, situation } = game;
+						const { score } = sceneData;
+						const { showHighScore } = situation;
+						if (showHighScore) {
+							return;
+						}
+						const ALIEN_DIGIT_0 = 1000;
+
+						let s = score;
+						let str = `${ALPHAS[ALIEN_DIGIT_0 + Math.min(9, situation.coin||0)].char}/${ALPHAS[ALIEN_DIGIT_0 + 1].char}`;
+
+						game.displayTextLine(ctx, {
+							msg: str,
+							x:27, y:35,
+						});
+					},
+				},
+				{
+					src: ASSETS.TOP_5, col: 3, row: 4,
+					index: 0,
+					offsetY: ({situation}, {index})=> {
+						const { highscores } = situation;
+						for (let i = 0; i < highscores.length; i++) {
+							if (highscores[i].player === index) {
+								return i * 6;
+							}
+						}
+						return 0;
+					},
+					hidden: game => !game.situation.showHighScore,
+				},
+				{
+					src: ASSETS.TOP_5, col: 3, row: 4,
+					index: 1,
+					offsetY: ({situation}, {index})=> {
+						const { highscores } = situation;
+						for (let i = 0; i < highscores.length; i++) {
+							if (highscores[i].player === index) {
+								return i * 6;
+							}
+						}
+						return 0;
+					},
+					hidden: game => !game.situation.showHighScore,
+				},
+				{
+					src: ASSETS.TOP_5, col: 3, row: 4,
+					index: 2,
+					offsetY: ({situation}, {index})=> {
+						const { highscores } = situation;
+						for (let i = 0; i < highscores.length; i++) {
+							if (highscores[i].player === index) {
+								return i * 6;
+							}
+						}
+						return 0;
+					},
+					hidden: game => !game.situation.showHighScore,
+				},
+				{
+					src: ASSETS.TOP_5, col: 3, row: 4,
+					index: 3,
+					offsetY: ({situation}, {index})=> {
+						const { highscores } = situation;
+						for (let i = 0; i < highscores.length; i++) {
+							if (highscores[i].player === index) {
+								return i * 6;
+							}
+						}
+						return 0;
+					},
+					hidden: game => !game.situation.showHighScore,
+				},
+				{
+					src: ASSETS.TOP_5, col: 3, row: 4,
+					index: ({now, situation}) => {
+						const index = 4 + (situation.initial||0) * 2;
+						return Math.floor(now / 200) % 2 + index;
+					},
+					offsetY: ({situation}, {index})=> {
+						const { highscores } = situation;
+						for (let i = 0; i < highscores.length; i++) {
+							if (highscores[i].player === 4) {
+								return i * 6;
+							}
+						}
+						return 0;
+					},
+					hidden: game => !game.situation.showHighScore,
+				},
+				{
+					src: ASSETS.COINSTART,
+					index: game => Math.min(3, Math.floor((game.now - game.situation.putCoin) / 100)),
+					hidden: game => !game.situation.putCoin,
+				},
+				{
+					src: ASSETS.ARCADE_HANDS,
+					side: LEFT,
+					offsetY: ({sceneData,now,situation}) => {
+						const { coin, showHighScore } = situation;
+						if (sceneData.gameStarted) {
+							const { hand } = sceneData;
+							if (hand.lastMove && now - hand.lastMove < 50) {
+								return hand.dy < 0 ? 0 : hand.dy > 0 ? 2 : 1;
+							}
+						} else if ((coin || showHighScore) && sceneData.hoverScreen) {
+							const diff = now - sceneData.hoverScreen;
+							return Math.max(0, 40 - diff / 5);
+						} else if ((coin || showHighScore) && sceneData.hoverOutScreen) {
+							const diff = now - sceneData.hoverOutScreen;
+							return Math.max(0, diff / 5);
+						} else {
+							return 40;
+						}
+					},
+					offsetX: ({sceneData,now}) => {
+						const { hand } = sceneData;
+						if (hand.lastMove && now - hand.lastMove < 100) {
+							return hand.dx < 0 ? -2 : hand.dx > 0 ? 0 : -1;
+						}
+						return 0;
+					},
+				},
+				{
+					src: ASSETS.ARCADE_HANDS,
+					side: RIGHT,
+					offsetY: ({sceneData, now, situation}) => {
+						const { coin, showHighScore } = situation;
+						const { ship } = sceneData;
+						const buttonDown = ship.lastShot && now - ship.lastShot < 100 ? 1 : 0;
+						if (sceneData.gameStarted) {
+							return buttonDown;
+						} else if ((coin || showHighScore) && sceneData.hoverScreen) {
+							const diff = now - sceneData.hoverScreen;
+							return Math.max(0, 40 - diff / 5) + buttonDown;
+						} else if ((coin || showHighScore) && sceneData.hoverOutScreen) {
+							const diff = now - sceneData.hoverOutScreen;
+							return Math.max(0, diff / 5);
+						} else {
+							return 40;
+						}
+					},
 				},
 				{
 					name: "self",
@@ -1922,7 +2527,7 @@ const gameConfig = {
 					bag: true,
 					src: ASSETS.BAG_OUT,
 					index: game => game.frameIndex,
-					hidden: ({arrow, bagOpening, dialog}) => arrow !== BAG && !bagOpening || dialog && dialog.conversation[dialog.index].options.length > 2,
+					hidden: ({arrow, bagOpening, dialog}) => !bagOpening && (arrow !== BAG || dialog && dialog.conversation[dialog.index].options.length > 2),
 					alpha: game => game.emptyBag() ? .2 : 1,
 					onClick: game => game.clickBag(),
 				}
@@ -1947,6 +2552,7 @@ const gameConfig = {
 				X.XX3.....X
 				X.XXXXXXX.X
 				X.X.......X
+				X.X.XX.XX.X
 				X.X1XX.XX.X
 				X.XXXX.XX.X
 				X......XX2X
@@ -1957,122 +2563,122 @@ const gameConfig = {
 					custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_BACKGROUND_2,
+					src: ASSETS.MAZE_ROTATION_BACKGROUND_1,
 					hidden: game => game.rotation % 2 === 0,
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_WALLS_2,
+					src: ASSETS.MAZE_ROTATION_WALLS_1,
 					side: LEFT,
 					hidden: game => game.rotation % 2 === 0 || !game.hasLeftWallWhenRotating(),
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_WALLS_2,
+					src: ASSETS.MAZE_ROTATION_WALLS_1,
 					side: RIGHT,
 					hidden: game => game.rotation % 2 === 0 || !game.hasRightWallWhenRotating(),
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_CORNER_2,
-					hidden: game => !game.hasLeftWallWhenRotating() || !game.hasRightWallWhenRotating(),
+					src: ASSETS.MAZE_ROTATION_CORNER_1,
+					hidden: game => game.hasLeftWallWhenRotating() !== game.hasRightWallWhenRotating(),
 				},
 				{
-					src: ASSETS.DUNGEON_MOVE_2,
+					src: ASSETS.DUNGEON_MOVE_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1,
 				},
 				{
-					src: ASSETS.FAR_SIDE_2,
+					src: ASSETS.FAR_SIDE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:LEFT, distance: FAR}),
 				},
 				{ 
-					src: ASSETS.FAR_SIDE_CORNER_2,
+					src: ASSETS.FAR_SIDE_CORNER_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:LEFT, distance: FAR}) || game.farWall(),
 				},
 				{
-					src: ASSETS.FAR_SIDE_2,
+					src: ASSETS.FAR_SIDE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:RIGHT, distance: FAR}),
 				},
 				{
-					src: ASSETS.FAR_SIDE_CORNER_2,
+					src: ASSETS.FAR_SIDE_CORNER_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:RIGHT, distance: FAR}) || game.farWall(),
 				},
 				{
-					src: ASSETS.FAR_WALL_2,
+					src: ASSETS.FAR_WALL_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farWall(),					
 				},
 				{
-					src: ASSETS.FAR_SIDE_CORNER_2,
+					src: ASSETS.FAR_SIDE_CORNER_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farWall() || game.mazeHole({direction:LEFT, distance: FAR}),
 				},
 				{
-					src: ASSETS.FAR_SIDE_CORNER_2,
+					src: ASSETS.FAR_SIDE_CORNER_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farWall() || game.mazeHole({direction:RIGHT, distance: FAR}),
 				},
 				{
-					src: ASSETS.FAR_DOOR_2,
+					src: ASSETS.FAR_DOOR_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farDoor(),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_2,
+					src: ASSETS.CLOSE_SIDE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: LEFT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER_2,
+					src: ASSETS.CLOSE_SIDE_CORNER_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: LEFT, distance: CLOSE}) || game.closeWall(),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_2,
+					src: ASSETS.CLOSE_SIDE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: RIGHT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER_2,
+					src: ASSETS.CLOSE_SIDE_CORNER_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: RIGHT, distance: CLOSE}) || game.closeWall(),
 				},
 				{
-					src: ASSETS.CLOSE_WALL_2,
+					src: ASSETS.CLOSE_WALL_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeWall(),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER_2,
+					src: ASSETS.CLOSE_SIDE_CORNER_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeWall() || game.mazeHole({direction: LEFT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER_2,
+					src: ASSETS.CLOSE_SIDE_CORNER_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeWall() || game.mazeHole({direction: RIGHT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.DOOR_OPEN_2,
+					src: ASSETS.DOOR_OPEN_1,
 					index: game => game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || !game.doorOpening,
 				},
 				{
-					src: ASSETS.CLOSE_DOOR_2,
+					src: ASSETS.CLOSE_DOOR_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.doorOpening,					
 				},
@@ -2136,6 +2742,12 @@ const gameConfig = {
 					src: ASSETS.LOCKER_ROOM,
 				},
 				{
+					name: "access card",
+					src: ASSETS.ACCESS_CARD,
+					hidden: (game, {name}) => !game.situation.midLockerOpen || game.data.pickedUp[name],
+					onClick: (game, {name}) => game.pickUp({item:name, image:ASSETS.GRAB_ACCESS_CARD, message:"An access card!"}),
+				},
+				{
 					src: ASSETS.LOCKER_DOOR,
 					index: ({situation}) => situation.rightLockerOpen ? 1 : 0,
 					onClick: ({situation}) => situation.rightLockerOpen = !situation.rightLockerOpen,
@@ -2145,7 +2757,7 @@ const gameConfig = {
 					index: ({situation}) => situation.midLockerOpen ? 3 : 2,
 					onClick: (game) => {
 						const {situation} = game;
-						if (situation.midLockerUnlocked) {
+						if (game.data.lock_unlocked) {
 							situation.midLockerOpen = !situation.midLockerOpen;
 						} else {
 							game.gotoScene("lock-zoom");
@@ -2154,12 +2766,21 @@ const gameConfig = {
 				},
 				{
 					src: ASSETS.LOCK_BLOCK,
+					hidden: game => game.data.lock_unlocked,
 				},
 				{
 					src: ASSETS.SPEECH_OUT,
 					offsetY: 15,
 					hidden: game => game.bagOpening || game.useItem || game.pendingTip,
 					index: game => Math.min(3, Math.floor((game.now - game.sceneTime) / 80)),
+				},
+				{
+					bag: true,
+					src: ASSETS.BAG_OUT,
+					index: game => game.frameIndex,
+					hidden: game => game.arrow !== BAG && !game.bagOpening || game.sceneData.firstShot,
+					alpha: game => game.emptyBag() && game.frameIndex === 0 ? .2 : 1,
+					onClick: game => game.clickBag(),
 				},
 			],
 		},
@@ -2184,24 +2805,65 @@ const gameConfig = {
 					],
 				});
 			},
+			onSceneRefresh: (game) => {
+				const { situation } = game;
+				if (!game.data.lock_unlocked) {
+					const code = [situation.digit1||0, situation.digit2||0, situation.digit3||0, situation.digit4||0].join("");
+					if (code === "2505") {
+						game.data.lock_unlocked = game.now;
+						game.playSound(SOUNDS.DUD);
+						game.showTip("Looks like the right combination!", game => {
+							game.gotoScene("locker-room");
+						});
+					}
+				}
+			},
 			sprites: [
 				{
 					src: ASSETS.LOCK_BACK,
 				},
 				{
-					src: ASSETS.LOCK_DIGIT,
+					src: ASSETS.LOCK_DIGIT, col: 3, row: 3,
+					index: game => game.situation.digit1 || 0,
+					onClick: game => {
+						if (game.data.lock_unlocked) {
+							return;
+						}
+						game.situation.digit1 = ((game.situation.digit1||0) + 1) % 8;
+					},
 				},
 				{
-					src: ASSETS.LOCK_DIGIT,
+					src: ASSETS.LOCK_DIGIT, col: 3, row: 3,
 					offsetX: 11,
+					index: game => game.situation.digit2 || 0,
+					onClick: game => {
+						if (game.data.lock_unlocked) {
+							return;
+						}
+						game.situation.digit2 = ((game.situation.digit2||0) + 1) % 8;
+					},
 				},
 				{
-					src: ASSETS.LOCK_DIGIT,
+					src: ASSETS.LOCK_DIGIT, col: 3, row: 3,
 					offsetX: 22,
+					index: game => game.situation.digit3 || 0,
+					onClick: game => {
+						if (game.data.lock_unlocked) {
+							return;
+						}
+						game.situation.digit3 = ((game.situation.digit3||0) + 1) % 8;
+					},
 				},
 				{
-					src: ASSETS.LOCK_DIGIT,
+					src: ASSETS.LOCK_DIGIT, col: 3, row: 3,
 					offsetX: 33,
+					index: game => game.situation.digit4 || 0,
+					onClick: game => {
+						if (game.data.lock_unlocked) {
+							return;
+						}
+						game.situation.digit4 = ((game.situation.digit4||0) + 1) % 8;
+					},
 				},
 				{
 					src: ASSETS.SPEECH_OUT,
@@ -2225,7 +2887,7 @@ const gameConfig = {
 			],
 			map: `
 				XXXXXXXXXXX
-				X1........X
+				X1.......2X
 				XXXXXXXXXXX
 			`,
 			sprites: [
@@ -2233,122 +2895,122 @@ const gameConfig = {
 					custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_BACKGROUND_2,
+					src: ASSETS.MAZE_ROTATION_BACKGROUND_1,
 					hidden: game => game.rotation % 2 === 0,
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_WALLS_2,
+					src: ASSETS.MAZE_ROTATION_WALLS_1,
 					side: LEFT,
 					hidden: game => game.rotation % 2 === 0 || !game.hasLeftWallWhenRotating(),
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_WALLS_2,
+					src: ASSETS.MAZE_ROTATION_WALLS_1,
 					side: RIGHT,
 					hidden: game => game.rotation % 2 === 0 || !game.hasRightWallWhenRotating(),
 				},
 				{
-					src: ASSETS.MAZE_ROTATION_CORNER_2,
-					hidden: game => !game.hasLeftWallWhenRotating() || !game.hasRightWallWhenRotating(),
+					src: ASSETS.MAZE_ROTATION_CORNER_1,
+					hidden: game => game.hasLeftWallWhenRotating() !== game.hasRightWallWhenRotating(),
 				},
 				{
-					src: ASSETS.DUNGEON_MOVE_2,
+					src: ASSETS.DUNGEON_MOVE_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1,
 				},
 				{
-					src: ASSETS.FAR_SIDE_2,
+					src: ASSETS.FAR_SIDE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:LEFT, distance: FAR}),
 				},
 				{ 
-					src: ASSETS.FAR_SIDE_CORNER_2,
+					src: ASSETS.FAR_SIDE_CORNER_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:LEFT, distance: FAR}) || game.farWall(),
 				},
 				{
-					src: ASSETS.FAR_SIDE_2,
+					src: ASSETS.FAR_SIDE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:RIGHT, distance: FAR}),
 				},
 				{
-					src: ASSETS.FAR_SIDE_CORNER_2,
+					src: ASSETS.FAR_SIDE_CORNER_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction:RIGHT, distance: FAR}) || game.farWall(),
 				},
 				{
-					src: ASSETS.FAR_WALL_2,
+					src: ASSETS.FAR_WALL_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farWall(),					
 				},
 				{
-					src: ASSETS.FAR_SIDE_CORNER_2,
+					src: ASSETS.FAR_SIDE_CORNER_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farWall() || game.mazeHole({direction:LEFT, distance: FAR}),
 				},
 				{
-					src: ASSETS.FAR_SIDE_CORNER_2,
+					src: ASSETS.FAR_SIDE_CORNER_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farWall() || game.mazeHole({direction:RIGHT, distance: FAR}),
 				},
 				{
-					src: ASSETS.FAR_DOOR_2,
+					src: ASSETS.FAR_DOOR_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.farDoor(),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_2,
+					src: ASSETS.CLOSE_SIDE_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: LEFT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER_2,
+					src: ASSETS.CLOSE_SIDE_CORNER_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: LEFT, distance: CLOSE}) || game.closeWall(),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_2,
+					src: ASSETS.CLOSE_SIDE_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: RIGHT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER_2,
+					src: ASSETS.CLOSE_SIDE_CORNER_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: RIGHT, distance: CLOSE}) || game.closeWall(),
 				},
 				{
-					src: ASSETS.CLOSE_WALL_2,
+					src: ASSETS.CLOSE_WALL_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeWall(),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER_2,
+					src: ASSETS.CLOSE_SIDE_CORNER_1,
 					side: LEFT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeWall() || game.mazeHole({direction: LEFT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.CLOSE_SIDE_CORNER_2,
+					src: ASSETS.CLOSE_SIDE_CORNER_1,
 					side: RIGHT,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeWall() || game.mazeHole({direction: RIGHT, distance: CLOSE}),
 				},
 				{
-					src: ASSETS.DOOR_OPEN_2,
+					src: ASSETS.DOOR_OPEN_1,
 					index: game => game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || !game.doorOpening,
 				},
 				{
-					src: ASSETS.CLOSE_DOOR_2,
+					src: ASSETS.CLOSE_DOOR_1,
 					index: game => game.doorOpening ? 0 : game.frameIndex,
 					hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.doorOpening,					
 				},
@@ -2363,7 +3025,160 @@ const gameConfig = {
 						}});
 					},
 				},
+				2: {
+					scene: "final-exit",
+					exit: (game, {scene}) => {
+						const fadeDuration = 1000;
+						game.fadeOut(game.now, {duration:fadeDuration * 1.5, fadeDuration, color:"#000000", onDone: game => {
+							game.gotoScene(scene);
+						}});
+					},
+				},
 			},
+		},
+		{
+			name: "final-exit",
+			arrowGrid: [
+				[],
+				[ null, null, s(4),  null, null ],
+				[ null, null, s(4),  null, null ],
+				[ null, null, s(4),  null, null ],
+				[ null, null, BAG ,  null, null ],
+			],
+			onScene: game => {
+				game.save();
+				game.startDialog({
+					time: game.now,
+					index: 0,
+					conversation: [
+						{
+							message: "",
+							options: [
+								{ },
+								{ msg: "LEAVE", onSelect: game => {
+									const fadeDuration = 1000;
+									game.fadeOut(game.now, {duration:fadeDuration * 1.5, fadeDuration, color:"#000000", onDone: game => {
+										game.gotoScene("maze-4", {door:2})
+									}});
+								}},
+							],
+						},
+					],
+				});
+			},
+			onSceneRefresh: game => {
+				if (!game.sceneData.forwardUnlocked && game.situation.openGate && (game.situation.openGate - game.now) / 1000 < -15) {
+					game.sceneData.forwardUnlocked = game.now;
+				}
+			},
+			onSceneForward: game => {
+				if (!game.sceneData.clickedExit) {
+					game.hideCursor = true;
+					game.sceneData.clickedExit = true;
+					const fadeDuration = 3000;
+					game.fadeOut(game.now, {duration:fadeDuration * 1.5, fadeDuration, color:"#FFFFFF", onDone: game => {
+						game.gotoScene("congrats");
+					}});
+				}
+			},
+			sprites: [
+				{
+					src: ASSETS.OUTDOOR,
+					hidden: game => !game.situation.openGate,
+				},
+				{
+					src: ASSETS.GATE,
+					offsetY: game => !game.situation.openGate ? 0 : Math.max(-20, (game.situation.openGate - game.now) / 1000),
+				},
+				{
+					src: ASSETS.FINAL_EXIT,
+				},
+				{
+					name: "scanner",
+					src: ASSETS.SCAN_CARD,
+					combine: (item, game) => {
+						if (item === "access card") {
+							game.useItem = null;
+							game.playSound(SOUNDS.DRINK);
+							game.situation.openGate = game.now;
+							game.dialog = null;
+							return true;
+						}
+					},
+				},
+				{
+					src: ASSETS.SPEECH_OUT,
+					offsetY: 9,
+					hidden: game => game.situation.openGate || game.bagOpening || game.useItem || game.pendingTip,
+					index: game => Math.min(3, Math.floor((game.now - game.sceneTime) / 80)),
+				},
+				{
+					name: "self",
+					src: ASSETS.EATER, col:2, row:2,
+					index: (game, sprite) => game.situation.openGate || game.hoverSprite === sprite ? Math.min(2, Math.floor((game.now - sprite.hoverTime) / 100)) : 0,
+					hidden: game => game.useItem !== 'water bottle',
+					combine: (item, game) => {
+						if (item === 'water bottle') {
+							game.removeFromInventory(item);
+							game.useItem = null;
+							game.playSound(SOUNDS.DRINK);
+							game.addToInventory({item:"empty bottle", image:ASSETS.GRAB_BOTTLE},)
+							game.showTip("Refreshing!");
+						}
+						return true;
+					},
+				},
+				{
+					bag: true,
+					src: ASSETS.BAG_OUT,
+					index: game => game.frameIndex,
+					hidden: game => game.situation.openGate || !game.bagOpening && (game.arrow !== BAG || game.sceneData.firstShot),
+					alpha: game => game.emptyBag() && game.frameIndex === 0 ? .2 : 1,
+					onClick: game => game.clickBag(),
+				},
+			],
+		},
+		{
+			name: "congrats",
+			onScene: game => {
+				game.fade = 0;
+				game.hideCursor = true;
+				game.showTip([
+					"Congratulation, you win!",
+					"This game was produced for #LOWREZJAM\n2019.",
+					"By Jack Le\nHamster (that's\nme applauding and looking very impressed).",
+					"I didn't actually finished making this game, which is supposed to be a sequel to a previous game I made.",
+					"But please come back again and follow this game's progress.",
+					"Hopefully, when I'm done, you can play the game as it was meant to be...",
+				], game => {
+					const fadeDuration = 3000;
+					game.fadeOut(game.now, {duration:fadeDuration * 1.5, fadeDuration, color:"#000000", onDone: game => {
+						game.gotoScene("final-title");
+					}});
+				});
+			},
+			sprites: [
+				{
+					src: ASSETS.CONGRATS, col: 3, row: 3,
+					index: ({now}) => Math.floor(now / 100) % 9,
+				},
+			],
+		},
+		{
+			name: "final-title",
+			onScene: game => {
+				game.hideCursor = true;
+				game.data.theEnd = game.now + 3000;
+				game.playTheme(SOUNDS.FUTURE_SONG_THEME);
+			},
+			sprites: [
+				{
+					custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
+				},
+				{
+					ending: true,
+				},
+			],
 		},
 	],
 };
