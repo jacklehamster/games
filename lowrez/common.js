@@ -1,6 +1,6 @@
 const DEMO = false;
 
-const LEFT = 1, RIGHT = 2, FORWARD = 3, BACKWARD = 4, BAG = 5, DOOR = 6, FAR = 7, CLOSE = 8;
+const LEFT = 1, RIGHT = 2, FORWARD = 3, BACKWARD = 4, BAG = 5, DOOR = 6, FAR = 7, CLOSE = 8, FURTHER = 9;
 
 const MAZE_ASSETS = {
 	MAZE_ROTATION_BACKGROUND: "assets/maze-rotation-background.png",
@@ -16,13 +16,12 @@ const MAZE_ASSETS = {
 	CLOSE_WALL:'assets/close-wall.png',
 	DOOR_OPEN:'assets/door-open.png',
 	CLOSE_DOOR:'assets/close-door.png',
+	FURTHER_SIDE:'assets/further-side.png',
+	CLOSE_FURTHER_SIDE:'assets/close-further-side.png',
 };
 
 const MAZE_ASSETS_BLUE = Object.assign(...Object.entries(MAZE_ASSETS).map(([k,v])=>({[`${k}_BLUE`]:`${v}|rotate-colors`})));
-
-//Object.assign(...Object.entries({a:1, b:2}).map(([k,v])=>({[k]:v})));
-
-
+const MAZE_ASSETS_RED = Object.assign(...Object.entries(MAZE_ASSETS).map(([k,v])=>({[`${k}_RED`]:`${v}|rotate-colors|rotate-colors`})));
 
 const ASSETS = {
 	ARROW_SIDE:'assets/arrow-side.png',
@@ -85,37 +84,9 @@ const ASSETS = {
 	...Object.assign(...Object.entries(MAZE_ASSETS_BLUE).map(([k,v])=>({[`${k}_1`]:`${v}|darken`}))),
 	...Object.assign(...Object.entries(MAZE_ASSETS_BLUE).map(([k,v])=>({[`${k}_2`]:`${v}|darken|darken`}))),
 
-	// ...{
-	// 	MAZE_ROTATION_BACKGROUND: "assets/maze-rotation-background.png|darken|rotate-colors",
-	// 	MAZE_ROTATION_WALLS: "assets/maze-rotation-walls.png|darken|rotate-colors",
-	// 	MAZE_ROTATION_CORNER: "assets/maze-rotation-corner.png|darken|rotate-colors",
-	// 	DUNGEON_MOVE:'assets/dungeon-move.png|darken|rotate-colors',
-	// 	FAR_SIDE:'assets/far-side.png|darken|rotate-colors',
-	// 	FAR_SIDE_CORNER:'assets/far-side-corner.png|darken|rotate-colors',
-	// 	FAR_WALL:'assets/far-wall.png|darken|rotate-colors',
-	// 	FAR_DOOR:'assets/far-door.png|darken|rotate-colors',
-	// 	CLOSE_SIDE:'assets/close-side.png|darken|rotate-colors',
-	// 	CLOSE_SIDE_CORNER:'assets/close-side-corner.png|darken|rotate-colors',
-	// 	CLOSE_WALL:'assets/close-wall.png|darken|rotate-colors',
-	// 	DOOR_OPEN:'assets/door-open.png|darken|rotate-colors',
-	// 	CLOSE_DOOR:'assets/close-door.png|darken|rotate-colors',
-	// },
-
-	// ...{
-	// 	MAZE_ROTATION_BACKGROUND_2: "assets/maze-rotation-background.png|darken",
-	// 	MAZE_ROTATION_WALLS_2: "assets/maze-rotation-walls.png|darken",
-	// 	MAZE_ROTATION_CORNER_2: "assets/maze-rotation-corner.png|darken",
-	// 	DUNGEON_MOVE_2:'assets/dungeon-move.png|darken',
-	// 	FAR_SIDE_2:'assets/far-side.png|darken',
-	// 	FAR_SIDE_CORNER_2:'assets/far-side-corner.png|darken',
-	// 	FAR_WALL_2:'assets/far-wall.png|darken',
-	// 	FAR_DOOR_2:'assets/far-door.png|darken',
-	// 	CLOSE_SIDE_2:'assets/close-side.png|darken',
-	// 	CLOSE_SIDE_CORNER_2:'assets/close-side-corner.png|darken',
-	// 	CLOSE_WALL_2:'assets/close-wall.png|darken',
-	// 	DOOR_OPEN_2:'assets/door-open.png|darken',
-	// 	CLOSE_DOOR_2:'assets/close-door.png|darken',
-	// },
+	...MAZE_ASSETS_RED,
+	...Object.assign(...Object.entries(MAZE_ASSETS_RED).map(([k,v])=>({[`${k}_1`]:`${v}|darken`}))),
+	...Object.assign(...Object.entries(MAZE_ASSETS_RED).map(([k,v])=>({[`${k}_2`]:`${v}|darken|darken`}))),
 
 	GUARD: "assets/guard.png",
 	MONSTER: "assets/monster.png",
@@ -152,6 +123,14 @@ const ASSETS = {
 	FLASH_SCREEN: "assets/flash-screen.png",
 	ARCADE_HANDS: "assets/arcade-hands.png",
 	TOP_5: "assets/top-5.png",
+	MOON_BASE: "assets/moon-base.png",
+	TOILET_ZOOM: "assets/toilet-zoom.png",
+	TOILET_ZOOM_BACKGROUND: "assets/toilet-zoom-background.png",
+	MAP: "assets/map.png",
+	FAR_MAP: "assets/far-map.png",
+	SIDE_MAP:'assets/side-map.png',
+	SIDE_FAR_MAP:'assets/side-far-map.png',
+	FLOOR_CEILING:'assets/floor-ceiling.png',
 };
 
 const SOUNDS = {
@@ -173,7 +152,7 @@ const SOUNDS = {
 	ERROR: 'sounds/error.mp3',
 	FUTURE_SONG_THEME: 'sounds/future-song.mp3',
 	JINGLE: 'sounds/jingle.mp3',
-//	DARK_THEME: 'sounds/dark.mp3',
+	DARK_THEME: 'sounds/dark.mp3',
 };
 
 const ALPHAS = (() => {

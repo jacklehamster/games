@@ -78,33 +78,72 @@
 
 	<body style="margin: 0;">
 		<div class="flex-container">
-				<canvas class="flex-item crisp" id="canvas" width=64 height=64 style="background-color: black; width: 512px; height: 512px; display:">					
+				<canvas class="flex-item crisp" id="canvas" width=64 height=64 style="background-color: black; width: 512px; height: 512px; display:">		
 				</canvas>
-				<canvas class="flex-item overlay" id="canvas2" width=128 height=128 style="background-color: black; width: 512px; height: 512px; position: absolute;">					
+				<canvas class="flex-item overlay" id="canvas2" width=128 height=128 style="background-color: black; width: 512px; height: 512px; position: absolute;
+					border-radius: 50px; border: 40px solid #000000;">					
 				</canvas>
 				<div id="scanline" class="scanline" style="position: absolute; width: 512px; height: 512px;"></div>
 				<canvas class="noise" id="noise" width=512 height=512
 					style="position: absolute; width: 512px; height: 512px"
 				></canvas>
 		</div>
-		<div>
-			<input checked id="scanlines" type="checkbox" onChange="setScanline(event.currentTarget.checked)"><label for="scanlines">scanline</label>
-		</div>
-		<div id="saves">
-			<button onClick="clearSaves()">CLEAR</button>
-			<button onClick="save()">SAVE</button>
-			<div id="savebox">
+		<div style="display:">
+			<div>
+				<input checked id="scanlines" type="checkbox"
+					onChange="setScanline(event.currentTarget.checked)">
+				<label for="scanlines">scanline</label>
+			</div>
+			<div id="saves">
+				<button onClick="clearSaves()">CLEAR</button>
+				<button onClick="save()">SAVE</button>
+				<div id="savebox">
+				</div>
 			</div>
 		</div>
 </body>
 
 	<script src="common.js"></script>
 	<script src="config.js"></script>
+
+	<script src="config/alien.js"></script>
+	<script src="config/arcade-room.js"></script>
+	<script src="config/birthday.js"></script>
+	<script src="config/bring-cake.js"></script>
+	<script src="config/cake-face.js"></script>
+	<script src="config/congrats.js"></script>
+	<script src="config/final-exit.js"></script>
+	<script src="config/final-title.js"></script>
+	<script src="config/guards-attack.js"></script>
+	<script src="config/guards-laughing.js"></script>
+	<script src="config/guards-laughing-2.js"></script>
+	<script src="config/jail-cell.js"></script>
+	<script src="config/load-screen.js"></script>
+	<script src="config/lock-zoom.js"></script>
+	<script src="config/locker-room.js"></script>
+	<script src="config/maze-2.js"></script>
+	<script src="config/maze-3.js"></script>
+	<script src="config/maze-4.js"></script>
+	<script src="config/maze.js"></script>
+	<script src="config/poor-hitman.js"></script>
+	<script src="config/start-screen.js"></script>
+	<script src="config/temp-end.js"></script>
+	<script src="config/tile-hole.js"></script>
+	<script src="config/toilet-monster.js"></script>
+	<script src="config/toilet-zoom.js"></script>
+	<script src="config/toilets.js"></script>
+	<script src="config/vending-machine.js"></script>
+	<script src="config/what-so-funny.js"></script>
+	<script src="config/zoom-arcade.js"></script>
+	<script src="config/zoom-guards.js"></script>
+	<script src="config/zoom-vending-machine.js"></script>
+
 	<script src="game.js"></script>
 	<script>
 		function setScanline(checked) {
-			const noise = document.getElementById("noise");
-			const scanline = document.getElementById("scanline");
+			const noise 	= document.getElementById("noise");
+			const scanline 	= document.getElementById("scanline");
+			const canvas2 	= document.getElementById("canvas2");
 			if (checked) {
 				canvas2.style.display = "";
 				noise.style.display = "";
@@ -118,6 +157,7 @@
 
 		let game;
 		document.addEventListener("DOMContentLoaded", e => {
+			const canvas2 	= document.getElementById("canvas2");
 			game = Game.start(gameConfig);
 			updateSaves();
 
@@ -137,43 +177,42 @@
 		}
 
 		function save() {
-			const saves = JSON.parse(localStorage.getItem("saves") || "[]");
-			saves.push(JSON.parse(JSON.stringify(game.data)));
-			localStorage.setItem("saves", JSON.stringify(saves));
+			const saves = game.getSaveList();
+			let index = 0;
+			while(saves[index]) {
+				index++;
+			}
+			game.save(index);
 			updateSaves();
 		}
 
 		function updateSaves() {
 			const saveBox = document.getElementById("savebox");
 			saveBox.innerHTML ="";
-			const saves = JSON.parse(localStorage.getItem("saves") || "[]");
-			for(let i = 0; i < saves.length; i++) {
-				addSaveBox(i, saves[i]);
+			const saves = game.getSaveList();
+			for (let name in saves) {
+				addSaveBox(name);
 			}
 		}
 
-		function addSaveBox(index, data) {
+		function addSaveBox(name) {
 			const saveBox = document.getElementById("savebox");
 			const button = saveBox.appendChild(document.createElement("button"));
-			button.innerText = index;
+			button.innerText = name;
 			button.addEventListener("click", () => {
 				game.playTheme(null);
-				game.data = JSON.parse(JSON.stringify(data));
+				game.load(name);
 				game.gotoScene(game.sceneIndex, game.door);
 				if (game.data.theme) {
-					game.playTheme(game.data.theme.src, game.data.theme.volume);
+					game.playTheme(game.data.theme.song, game.data.theme);
 				}
 
-				game.showTip(`GAME ${index} LOADED.`);
+				game.showTip(`GAME\n${name}\nLOADED.`, null, null, {removeLock: true});
 			});
 		}
 
-		addEventListener("focus", () => {
-			game.resume();
-		});
-		addEventListener("blur", () => {
-			game.pause();
-		});
+		addEventListener("focus", () => {if (game) game.resume()});
+		addEventListener("blur", () => {if (game) game.pause()});
 
 		const noiseCanvases = [];
 		for (let i = 0; i < 10; i++) {
@@ -183,15 +222,14 @@
 			const noiseCtx = noiseCanvas.getContext("2d");
 			const noiseData = noiseCtx.getImageData(0, 0, noiseCtx.canvas.width, noiseCtx.canvas.height);
 			const { data } = noiseData;
-			for(let n = 0; n < data.length; n+=4) {
-				data[n + 3] = Math.random() < .6 + ((1-i/10*i/10) * .3) ? 0 : 40;
+			for(let n = 0; n < data.length; n += 4) {
+				data[n + 3] = Math.random() < .6 + (1-i/10*i/10) * .3 ? 0 : 40;
 			}
 			noiseCtx.putImageData(noiseData, 0, 0);
 			noiseCanvases.push(noiseCanvas);
 		}
 
-		const canvas2 = document.getElementById("canvas2");
-		const ctx2 = canvas2.getContext("2d");
+		const ctx2 = document.getElementById("canvas2").getContext("2d");
 		ctx2.msImageSmoothingEnabled = false;
 		ctx2.mozImageSmoothingEnabled = false;
 		ctx2.webkitImageSmoothingEnabled = false;
@@ -202,7 +240,7 @@
 		function noise(dt) {
 			time += dt;
 			if (time > 100) {
-				noiseCtx.clearRect(0,0,512,512);
+				noiseCtx.clearRect(0, 0, 512, 512);
 				noiseCtx.drawImage(noiseCanvases[Math.floor(Math.random() * noiseCanvases.length)], 0, 0);
 				time -= 100;
 			}

@@ -1,0 +1,2 @@
+gameConfig.scenes.push(
+);
