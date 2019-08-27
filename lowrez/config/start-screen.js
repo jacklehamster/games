@@ -5,27 +5,45 @@ gameConfig.scenes.push(
 			{
 				custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
 			},
-			{
-				custom: ({sceneData}, sprite, ctx) => {
-					if (sceneData.savedImages && sceneData.savedImages.length) {
-						const image = sceneData.savedImages[0];
-						ctx.drawImage(image, 0, 0);
-					}
-				},
-			},
+			... (new Array(4).fill(null).map((a, index) => {
+				return {
+					index,
+					isSaveFile: true,
+					custom: ({sceneData}, {index, hoverTime}, ctx) => {
+						if (sceneData.loadSave) {
+							const { img } = sceneData.loadSave[index];
+							ctx.drawImage(img, 2 + index % 2 * 32, 2 + Math.floor(index / 2) * 32);
+							if (hoverTime) {
+								ctx.beginPath();
+								ctx.lineWidth = "2px"
+								ctx.strokeStyle = "#aaccff";
+								ctx.rect(2 + index % 2 * 32, 2 + Math.floor(index / 2) * 32, 28, 28);
+								ctx.stroke();														
+							}
+						}
+					},
+					onClick: (game, {index}) => {
+						const {sceneData} = game;
+						game.load(sceneData.loadSave[index].name);
+					},
+					hidden: ({sceneData}, sprite) => !sceneData.loadSave || !sceneData.loadSave[sprite.index],
+				};
+			})),
 			{
 				src: ASSETS.MOON_BASE,
-				hidden: game => game.dialog && game.dialog.index === 2,
+				hidden: ({dialog}) => dialog && dialog.index === 2,
 			},
 		],
 		onScene: game => {
 			const list = game.getSaveList();
-			game.sceneData.savedImages = [];
+			game.sceneData.loadSave = {};
 			for (let name in list) {
-				const { image } = list[name];
-				const img = new Image();
-				img.src = image;
-				game.sceneData.savedImages.push(img);
+				if (name !== "last") {
+					const { image } = list[name];
+					const img = new Image();
+					img.src = image;
+					game.sceneData.loadSave[name] = { img, name, };
+				}
 			}
 
 			const backSelection = {
@@ -40,6 +58,9 @@ gameConfig.scenes.push(
 					{
 						options: [
 							{
+								hidden: ({sceneData}) => Object.keys(sceneData.loadSave).length,
+							},
+							{
 								msg: "New Game",
 								onSelect: game => {
 									game.dialog = null;
@@ -51,6 +72,7 @@ gameConfig.scenes.push(
 								}
 							},
 							{
+								hidden: ({sceneData}) => !Object.keys(sceneData.loadSave).length,
 								msg: "Load",
 								onSelect: (game, dialog) => dialog.index = 2,
 							},

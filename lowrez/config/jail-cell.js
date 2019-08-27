@@ -2,10 +2,10 @@ gameConfig.scenes.push(
 	{
 		name: "jail-cell",
 		arrowGrid: [
+			[null, null,  MENU, null, null ],
 			[],
-			[],
-			[ null, null, null,  null, null  ],
-			[ LEFT, null, s(0),  null, RIGHT ],
+			[ null, null, null, null, null  ],
+			[ LEFT, null, s(0), null, RIGHT ],
 			[ LEFT, null, BAG , null, RIGHT ],
 		],
 		onSceneForward: game => {
@@ -513,6 +513,7 @@ gameConfig.scenes.push(
 				alpha: game => game.emptyBag() && game.frameIndex === 0 ? .2 : 1,
 				onClick: game => game.clickBag(),
 			},
+			...standardMenu(),
 		],
 	},
 );

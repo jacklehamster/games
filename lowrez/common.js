@@ -1,6 +1,6 @@
 const DEMO = false;
 
-const LEFT = 1, RIGHT = 2, FORWARD = 3, BACKWARD = 4, BAG = 5, DOOR = 6, FAR = 7, CLOSE = 8, FURTHER = 9;
+const LEFT = 1, RIGHT = 2, FORWARD = 3, BACKWARD = 4, BAG = 5, DOOR = 6, FAR = 7, CLOSE = 8, FURTHER = 9, MENU = 10;
 
 const MAZE_ASSETS = {
 	MAZE_ROTATION_BACKGROUND: "assets/maze-rotation-background.png",
@@ -10,14 +10,24 @@ const MAZE_ASSETS = {
 	FAR_SIDE:'assets/far-side.png',
 	FAR_SIDE_CORNER:'assets/far-side-corner.png',
 	FAR_WALL:'assets/far-wall.png',
+	FURTHER_WALL:'assets/further-wall.png',
 	FAR_DOOR:'assets/far-door.png',
 	CLOSE_SIDE:'assets/close-side.png',
 	CLOSE_SIDE_CORNER:'assets/close-side-corner.png',
+	FAR_FAR_SIDE:'assets/side-far-far.png',
 	CLOSE_WALL:'assets/close-wall.png',
 	DOOR_OPEN:'assets/door-open.png',
 	CLOSE_DOOR:'assets/close-door.png',
 	FURTHER_SIDE:'assets/further-side.png',
 	CLOSE_FURTHER_SIDE:'assets/close-further-side.png',
+
+	DUNGEON_MOVE_SOLID:'assets/dungeon-move-solid.png',
+	FAR_WALL_SOLID:'assets/far-wall-solid.png',
+	CLOSE_WALL_SOLID:'assets/close-wall-solid.png',
+	MAZE_ROTATION_BACKGROUND_SOLID: "assets/maze-rotation-background-solid.png",
+	MAZE_ROTATION_WALLS_SOLID: "assets/maze-rotation-walls-solid.png",
+	MAZE_ROTATION_CORNER_SOLID: "assets/maze-rotation-corner-solid.png",
+	CLOSE_SIDE_SOLID:'assets/close-side-solid.png',
 };
 
 const MAZE_ASSETS_BLUE = Object.assign(...Object.entries(MAZE_ASSETS).map(([k,v])=>({[`${k}_BLUE`]:`${v}|rotate-colors`})));
@@ -130,7 +140,12 @@ const ASSETS = {
 	FAR_MAP: "assets/far-map.png",
 	SIDE_MAP:'assets/side-map.png',
 	SIDE_FAR_MAP:'assets/side-far-map.png',
+	SIDE_FURTHER_MAP:'assets/side-further-map.png',
 	FLOOR_CEILING:'assets/floor-ceiling.png',
+	MENU_OUT:'assets/menu-out.png',
+	MENU_DISK:'assets/menu-disk.png',
+	MENU_SOUND_ON:'assets/menu-sound-on.png',
+	MENU_SOUND_OFF:'assets/menu-sound-off.png',
 };
 
 const SOUNDS = {

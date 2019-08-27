@@ -146,7 +146,7 @@ const Game = (() => {
 					return;
 				}
 
-				if (this.arrowGrid) {
+				if (this.arrowGrid && !this.hideCursor && !this.waitCursor) {
 					this.arrow = this.getArrow(offsetX, offsetY, offsetWidth, offsetHeight);
 					if (this.mouseDown) {
 						this.actionDown = this.arrow;
@@ -170,7 +170,7 @@ const Game = (() => {
 				if (this.pendingTip && this.pendingTip.progress < 1 && !this.pendingTip.removeLock || this.waitCursor || this.hideCursor) {
 					return;
 				}
-				if (this.useItem === "gun" && (!this.hoverSprite || !this.hoverSprite.bag)) {
+				if (this.useItem === "gun" && (!this.hoverSprite || !this.hoverSprite.bag && !this.hoverSprite.menu)) {
 					const { bullet, gun } = this.inventory;
 					if (bullet && bullet.count) {
 						bullet.count--;
@@ -218,7 +218,7 @@ const Game = (() => {
 				}
 
 				this.mouseDown = this.now;
-				if (!this.hoverSprite || this.hoverSprite.bag) {
+				if (!this.hoverSprite || this.hoverSprite.bag || this.hoverSprite.menu) {
 					const { offsetWidth, offsetHeight } = currentTarget;
 					if (this.arrowGrid && !this.useItem && !this.bagOpening) {
 						this.arrow = this.getArrow(offsetX, offsetY, offsetWidth, offsetHeight);
@@ -322,7 +322,7 @@ const Game = (() => {
 			this.createLoop(this.refresh.bind(this));
 		}
 
-		gotoScene(index, entrance) {
+		gotoScene(index, entrance, restoreMapInfo) {
 			const {door} = entrance || {};
 			if (typeof(index) === "string") {
 				index = this.config.scenes.map(({name}, idx) => name === index ? idx : -1).filter(index => index >= 0)[0];
@@ -332,7 +332,7 @@ const Game = (() => {
 			}
 			this.sceneIndex = index;
 			this.door = door || 1;
-			this.loadScene(this.config.scenes[this.sceneIndex]);
+			this.loadScene(this.config.scenes[this.sceneIndex], restoreMapInfo);
 		}
 
 		set door (value) {
@@ -353,6 +353,24 @@ const Game = (() => {
 				data.situation[sceneIndex] = {};
 			}
 			return data.situation[sceneIndex];
+		}
+
+		get mute() {
+			return this.data.mute || false;
+		}
+
+		set mute(value) {
+			if (this.mute !== value) {
+				this.data.mute = value;
+				const { theme } = this.data;
+				if (theme) {
+					if (this.mute) {
+						this.stopSound(theme.song);
+					} else {
+						this.playTheme(theme.song, theme);					
+					}
+				}
+			}
 		}
 
 		getSituation(sceneName) {
@@ -395,8 +413,11 @@ const Game = (() => {
 				shot: {},
 				inventory: {},
 				situation: {},
+				pos: { x:0, y:0 },
+				rotation: 0,
 				gameOver: 0,
 				battle: null,
+				mute: false,
 			};
 			this.config = null;
 			this.mouse = null;
@@ -404,6 +425,8 @@ const Game = (() => {
 			this.paused = false;
 			this.loadCount = 0;
 			this.loadTotal = 0;
+			this.pos = null;
+			this.rotation = 0;
 
 			this.prepareAssets();
 			this.prepareSounds();
@@ -423,6 +446,7 @@ const Game = (() => {
 			this.frameIndex = 0;
 			this.doorOpening = 0;
 			this.bagOpening = 0;
+			this.menuOpening = 0;
 			this.doorOpened = 0;
 			this.arrow = 0;
 			this.actionDown = 0;
@@ -441,11 +465,9 @@ const Game = (() => {
 			this.sceneData = {};
 			this.sceneIntro = false;
 			this.mouseHand = null;
-			this.rotation = 0;
 			this.gunFired = 0;
 
 			this.map = null;
-			this.pos = null;
 			this.sprites = null;
 			this.doors = null;
 			this.events = null;
@@ -581,6 +603,24 @@ const Game = (() => {
 			});
 		}
 
+		openMenu(now, onClose) {
+			this.actions.push({
+				time: now,
+				command: "openmenu",
+				onStart: () => this.menuOpening = !this.menuOpening ? 1 : -this.menuOpening,
+				onDone: game => {
+					if(game.menuOpening < 0) {
+						game.menuOpening = 0;
+						if (onClose) {
+							onClose(game);
+						}
+					}
+				},
+				active: true,
+				started: false,
+			});
+		}
+
 		fadeOut(now, {duration, fadeDuration, color, onDone}) {
 			this.actions.push({
 				time: now,
@@ -680,6 +720,18 @@ const Game = (() => {
 						}
 						break;
 					}
+					case "openmenu": {
+						const frame = Math.floor((this.now - time) / 50);
+						if (frame < 4) {
+							this.frameIndex = Math.min(3, this.menuOpening > 0 ? frame : 3 - frame);
+						} else {
+							if (onDone) {
+								onDone(this, action);
+							}
+							action.active = false;
+						}
+						break;						
+					}
 					case "turn": {
 						const frame = Math.floor((this.now - time) / 150);
 
@@ -774,7 +826,7 @@ const Game = (() => {
 						if (this.isMouseHover(sprite, 0, this.mouse)) {
 							if (this.mouseDown && !this.clicking) {
 								this.clicking = true;
-								if (this.useItem && !sprite.bag) {
+								if (this.useItem && !sprite.bag && !sprite.menu) {
 									const { combine, combineMessage, name, onShot } = sprite;
 									if (this.useItem == "gun" && this.gunFired) {
 										this.data.shot[name] = this.now;
@@ -799,7 +851,7 @@ const Game = (() => {
 								return;
 							}
 							hovered = sprite;
-							if (!hovered.bag) {
+							if (!hovered.bag && !hovered.menu) {
 								this.arrow = 0;
 							}
 							break;
@@ -809,7 +861,7 @@ const Game = (() => {
 				if (this.hoverSprite !== hovered) {
 					if (this.hoverSprite !== null) {
 						if (this.hoverSprite.onHoverOut) {
-							this.hoverSprite.onHoverOut(this, this.hoverSprite);
+							this.hoverSprite.onHoverOut(this, this.hoverSprite, hovered);
 						}
 						this.hoverSprite.hoverTime = 0;
 					}
@@ -1051,6 +1103,11 @@ const Game = (() => {
 			return this.matchCell(this.map,x,y,0,+2,this.orientation,'XM12345',[]);
 		}
 
+		furtherWall() {
+			const { x, y } = this.pos;
+			return this.matchCell(this.map,x,y,0,+3,this.orientation,'XM12345',[]);
+		}
+
 		farDoor() {
 			const { x, y } = this.pos;
 			return this.matchCell(this.map,x,y,0,+2,this.orientation,'12345',[]);
@@ -1070,7 +1127,7 @@ const Game = (() => {
 			if (arrow) {
 				if (arrow === FORWARD && pos && !this.canMove(pos, 1)) {
 				} else if (arrow === BACKWARD && pos && !this.canMove(pos, -1)) {
-				} else if (arrow === BAG || arrow === DOOR) {
+				} else if (arrow === BAG || arrow === DOOR || arrow === MENU) {
 				} else {
 					const index = this.actionDown ? 1 + Math.floor(this.now / 100) % 3 : 0;
 					const { src, side } = ARROWS[arrow];
@@ -1367,16 +1424,22 @@ const Game = (() => {
 				if (loop) {
 					audio.volume = volume || 1;
 					audio.loop = true;
-					audio.play();
+					if (!this.mute) {
+						audio.play();
+					}
 				} else {
 					const soundBite = audio.cloneNode(true);
 					soundBite.volume = volume || .5;
-					soundBite.play();
+					if (!this.mute) {
+						soundBite.play();
+					}
 				}
 			} else {
 				this.prepareSound(src, ({audio}) => {
 					audio.volume = volume || 1;
-					audio.play();
+					if (!this.mute) {
+						audio.play();
+					}
 				})
 			}
 		}
@@ -1531,14 +1594,19 @@ const Game = (() => {
 			this.loadScene(firstScene);
 		}
 
-		loadScene(scene) {
+		loadScene(scene, restoreMapInfo) {
 			this.initScene();
 			const { map, sprites, doors, arrowGrid, events, customCursor,
 				onScene, onSceneRefresh, onSceneShot, onSceneHoldItem, onSceneUseItem, onSceneForward, onSceneBackward, onSceneBattle } = scene;
 			this.map = toMap(map);
-			const { pos, rotation } = this.getMapInfo(this.map, this.door) || { pos:null, rotation: 0 };
-			this.pos = pos;
-			this.rotation = rotation;
+			if (!restoreMapInfo && this.map) {
+				const mapInfo = this.getMapInfo(this.map, this.door);
+				if (mapInfo) {
+					const { pos, rotation } = mapInfo;
+					this.pos = pos;
+					this.rotation = rotation;
+				}
+			}
 			this.sprites = sprites || [];
 			this.doors = doors;
 			this.events = events;
@@ -1556,6 +1624,22 @@ const Game = (() => {
 
 		get now() {
 			return this.data.time;
+		}
+
+		get pos() {
+			return this.data.pos;
+		}
+
+		set pos(value) {
+			this.data.pos = value;
+		}
+
+		get rotation() {
+			return this.data.rotation;
+		}
+
+		set rotation(value) {
+			this.data.rotation = value;
 		}
 
 		get battle() {
@@ -1876,8 +1960,9 @@ const Game = (() => {
 				srcX += srcW;
 				dstX += dstW;
 			}
-			if (alpha) {
-				ctx.globalAlpha = this.evaluate(alpha);
+			const alphaColor = this.evaluate(alpha, sprite);
+			if (alphaColor) {
+				ctx.globalAlpha = alphaColor;
 			}
 			let shiftX = 0, shiftY = 0;
 			if (this.battle) {
@@ -1889,7 +1974,7 @@ const Game = (() => {
 				}
 			}
 			ctx.drawImage(imageStock[src].img, srcX, srcY, srcW, srcH, dstX + shiftX, dstY + shiftY, dstW, dstH);
-			if (alpha) {
+			if (alphaColor) {
 				ctx.globalAlpha = 1.0;
 			}
 		}
@@ -1917,6 +2002,10 @@ const Game = (() => {
 			});
 		}
 
+		clickMenu() {
+			this.openMenu(this.now);
+		}
+
 		see(name) {
 			if (!this.data.seen[name]) {
 				this.data.seen[name] = this.now;
@@ -1938,22 +2027,36 @@ const Game = (() => {
 			});
 		}
 
-		save(name) {
-			if (typeof(name)==='undefined') {
-				name = LAST_CONTINUE;
-			}
-			tempCtx.canvas.width = 32;
-			tempCtx.canvas.height = 32;
+		screenshot() {
+			tempCtx.canvas.width = 28;
+			tempCtx.canvas.height = 28;
+			tempCtx.imageSmoothingEnabled = true;
+
 			tempCtx.drawImage(ctx.canvas,
 				0, 0, ctx.canvas.width, ctx.canvas.height,
 				0, 0, tempCtx.canvas.width, tempCtx.canvas.height);
+			const uri = tempCtx.canvas.toDataURL();
 			tempCtx.canvas.width = canvas.width;
 			tempCtx.canvas.height = canvas.height;
+			return uri;
+		}
 
+		save(name, image) {
+			if (typeof(name)==='undefined') {
+				name = LAST_CONTINUE;
+			}
 			const saves = JSON.parse(localStorage.getItem(SAVES_LOCATION) || "{}");
 			saves[name] = JSON.parse(JSON.stringify(this.data));
-			saves[name].image = tempCtx.canvas.toDataURL();
+			saves[name].image = image || this.screenshot();
 			localStorage.setItem("saves", JSON.stringify(saves));
+		}
+
+		deleteSave(name) {
+			if (typeof(name)!=='undefined') {
+				const saves = JSON.parse(localStorage.getItem(SAVES_LOCATION) || "{}");
+				delete saves[name];
+				localStorage.setItem("saves", JSON.stringify(saves));
+			}
 		}
 
 		load(name) {
@@ -1963,7 +2066,7 @@ const Game = (() => {
 			this.playTheme(null);
 			const saves = JSON.parse(localStorage.getItem(SAVES_LOCATION) || "{}");
 			this.data = saves[name];
-			this.gotoScene(this.sceneIndex, this.door);
+			this.gotoScene(this.sceneIndex, this.door, true);
 			if (this.data.theme) {
 				this.playTheme(this.data.theme.song, {volume:this.data.theme.volume});
 			}
@@ -1974,7 +2077,8 @@ const Game = (() => {
 		}
 
 		restart() {
-			this.play(this.config);
+			this.gotoScene("start-screen");
+			this.data.gameOver = false;
 		}
 
 		gameOver() {

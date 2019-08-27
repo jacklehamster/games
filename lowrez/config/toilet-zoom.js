@@ -8,6 +8,7 @@ gameConfig.scenes.push(
 				},
 				{
 					src: ASSETS.TOILET_ZOOM,
+					offsetX: -3, offsetY: -3,
 					onClick: game => {
 						game.startDialog({
 							time: game.now,

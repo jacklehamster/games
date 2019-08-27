@@ -112,6 +112,7 @@
 	<script src="config/bring-cake.js"></script>
 	<script src="config/cake-face.js"></script>
 	<script src="config/congrats.js"></script>
+	<script src="config/disk-screen.js"></script>
 	<script src="config/final-exit.js"></script>
 	<script src="config/final-title.js"></script>
 	<script src="config/guards-attack.js"></script>
@@ -207,7 +208,7 @@
 					game.playTheme(game.data.theme.song, game.data.theme);
 				}
 
-				game.showTip(`GAME\n${name}\nLOADED.`, null, null, {removeLock: true});
+				game.showTip(`GAME ${name} LOADED.`, null, null, {removeLock: true});
 			});
 		}
 

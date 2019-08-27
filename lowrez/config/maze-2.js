@@ -5,29 +5,29 @@ gameConfig.scenes.push(
 			game.save();
 		},
 		arrowGrid: [
-			[],
+			[null, null,  MENU, null, null ],
 			[],
 			[ null, null, s(2), null, null  ],
 			[ LEFT, null, s(1), null, RIGHT ],
 			[ LEFT, null, s(3), null, RIGHT ],
 		],
 		map: `
-			XXXXXXXXXXXXXXXX
-			X.........5XXXXX
-			X.XXXXXXXXXXXXXX
-			X.XXXXXXXXMXXXXX
-			X.............2X
-			XX.XXXXXXX.XXXXX
-			XX...3XXXX.XXXXX
-			XX.XXXXXXX.XXXXX
-			XX...4XX1...MXXX
-			XXXXXXXXXXXXXXXX
+			XXXXXXXXXXXXXXXXX
+			X..........5XXXXX
+			X.XXXXXXXXXXXXXXX
+			X.XMXXXXXXXXXXXXX
+			X..............2X
+			XXX.XXXXXXX.XXXXX
+			XXX...3XXXX.XXXXX
+			XXX.XXXXXXX.XMXXX
+			XXX...4XX1....XXX
+			XXXXXXXXXXXXXXXXX
 		`,
 		sprites: [
 			{
 				custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
 			},
-			...getCommonMaze("BLUE_1"),
+			...getCommonMaze("_BLUE_1"),
 			{
 				src: ASSETS.GUARD, col: 4, row: 4,
 				index: ({now, battle}) => {
@@ -63,6 +63,7 @@ gameConfig.scenes.push(
 					return frame > 4;
 				},
 			},
+			...standardMenu(),
 		],
 		doors: {
 			1: {

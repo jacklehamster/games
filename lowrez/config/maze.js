@@ -6,7 +6,7 @@ gameConfig.scenes.push(
 			game.save();
 		},
 		arrowGrid: [
-			[],
+			[null, null,  MENU, null, null ],
 			[],
 			[ null, null, s(2),     null, null  ],
 			[ LEFT, null, s(1),     null, RIGHT ],
@@ -24,7 +24,8 @@ gameConfig.scenes.push(
 			{
 				custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
 			},
-			...getCommonMaze("BLUE_1"),
+			...getCommonMaze("_BLUE_1"),
+			...standardMenu(),
 		],
 		doors: {
 			1: {

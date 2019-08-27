@@ -2,11 +2,11 @@ gameConfig.scenes.push(
 	{
 		name: "toilets",
 		arrowGrid: [
+			[null, null,  MENU, null, null ],
 			[],
-			[],
-			[ null, null, s(2),  null, null  ],
-			[ LEFT, null, s(1),  null, RIGHT ],
-			[ LEFT, null, BAG,   null, RIGHT ],
+			[ null, null, s(2), null, null  ],
+			[ LEFT, null, s(1), null, RIGHT ],
+			[ LEFT, null, BAG,  null, RIGHT ],
 		],
 		onScene: game => {
 			game.save();
@@ -29,7 +29,7 @@ gameConfig.scenes.push(
 			XXX
 		`,
 		sprites: [
-			...getCommonMaze("BLUE"),
+			...getRoomMaze(""),
 			// {
 			// 	src: ASSETS.BATHROOM,
 			// },
@@ -63,12 +63,6 @@ gameConfig.scenes.push(
 				},
 				hidden: game => game.rotation !== 0,
 			},
-			// {
-			// 	src: ASSETS.SPEECH_OUT,
-			// 	offsetY: 9,
-			// 	hidden: game => game.bagOpening || game.useItem || game.pendingTip,
-			// 	index: game => Math.min(3, Math.floor((game.now - game.sceneTime) / 80)),
-			// },
 			{
 				name: "self",
 				src: ASSETS.EATER, col:2, row:2,
@@ -92,7 +86,8 @@ gameConfig.scenes.push(
 				hidden: ({arrow, bagOpening, dialog}) => !bagOpening && (arrow !== BAG || dialog && dialog.conversation[dialog.index].options.length > 2),
 				alpha: game => game.emptyBag() ? .2 : 1,
 				onClick: game => game.clickBag(),
-			}
+			},
+			...standardMenu(),
 		],
 	},
 );
