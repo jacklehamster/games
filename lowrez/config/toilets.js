@@ -6,19 +6,14 @@ gameConfig.scenes.push(
 			[],
 			[ null, null, s(2), null, null  ],
 			[ LEFT, null, s(1), null, RIGHT ],
-			[ LEFT, null, BAG,  null, RIGHT ],
+			[ LEFT, null, s(5), null, RIGHT ],
 		],
 		onScene: game => {
 			game.save();
 		},
 		doors: {
 			1: {
-				exit: (game, {scene}) => {
-					const fadeDuration = 1000;
-					game.fadeOut(game.now, {duration:fadeDuration * 1.5, fadeDuration, color:"#000000", onDone: game => {
-						game.gotoScene("maze-2", {door:2});
-					}});
-				},
+				exit: game => game.fadeToScene("maze-2", {door:2}),
 			},
 		},		
 		map: `
@@ -28,6 +23,16 @@ gameConfig.scenes.push(
 			X1X
 			XXX
 		`,
+		onSceneRefresh: (game) => {
+			const {orientation, sceneData, frameIndex} = game;
+			if (sceneData.orientation !== orientation) {
+				sceneData.orientation = orientation;
+
+				if (frameIndex === 3) {
+					game.frameIndex = 0;
+				}
+			}
+		},
 		sprites: [
 			...getRoomMaze(""),
 			// {

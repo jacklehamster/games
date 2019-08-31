@@ -33,6 +33,21 @@ gameConfig.scenes.push(
 				src: ASSETS.MOON_BASE,
 				hidden: ({dialog}) => dialog && dialog.index === 2,
 			},
+			{
+				src: ASSETS.MOON_BASE_GUARD, col: 1, row: 2,
+				side: LEFT,
+				index: ({now, sceneTime}) => Math.floor((now - sceneTime) / 1000) % 2,
+				offsetX: ({now, sceneTime}) => -15 + Math.floor((now - sceneTime) / 1000) % 75,
+				offsetY: -2,
+				hidden: ({dialog}) => dialog && dialog.index === 2,
+			},
+			{
+				src: ASSETS.MOON_BASE_GUARD, col: 1, row: 2,
+				side: RIGHT,
+				index: ({now, sceneTime}) => Math.floor((now - sceneTime) / 1000) % 2,
+				offsetX: ({now, sceneTime}) => +15 - Math.floor((now - sceneTime) / 1000) % 75,
+				hidden: ({dialog}) => dialog && dialog.index === 2,
+			},
 		],
 		onScene: game => {
 			const list = game.getSaveList();

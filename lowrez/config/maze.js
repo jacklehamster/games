@@ -31,20 +31,12 @@ gameConfig.scenes.push(
 			1: {
 				scene: "jail-cell",
 				exit: (game, {scene}) => {
-					const fadeDuration = game.hasVisited(scene) ? 1000 : 3000;
-					game.fadeOut(game.now, {duration:fadeDuration * 1.5, fadeDuration, color:"#000000", onDone: game => {
-						game.gotoScene(scene);
-					}});
+					game.fadeToScene(scene, null, game.hasVisited(scene) ? 1000 : 3000);
 				},
 			},
 			2: {
 				scene: "maze-2",
-				exit: (game, {scene}) => {
-					const fadeDuration = 1000;
-					game.fadeOut(game.now, {duration:fadeDuration * 1.5, fadeDuration, color:"#000000", onDone: game => {
-						game.gotoScene(scene, {door:1});
-					}});
-				},
+				exit: (game, {scene}) => game.fadeToScene(scene, {door:1}, 1000),
 			},
 		},
 	},	

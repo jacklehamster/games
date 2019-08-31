@@ -26,21 +26,11 @@ gameConfig.scenes.push(
 			doors: {
 				1: {
 					scene: "maze-3",
-					exit: (game, {scene}) => {
-						const fadeDuration = 1000;
-						game.fadeOut(game.now, {duration:fadeDuration * 1.5, fadeDuration, color:"#000000", onDone: game => {
-							game.gotoScene(scene, {door:2});
-						}});
-					},
+					exit: (game, {scene}) =>  game.fadeToScene(scene, {door:2}, 1000),
 				},
 				2: {
 					scene: "final-exit",
-					exit: (game, {scene}) => {
-						const fadeDuration = 1000;
-						game.fadeOut(game.now, {duration:fadeDuration * 1.5, fadeDuration, color:"#000000", onDone: game => {
-							game.gotoScene(scene);
-						}});
-					},
+					exit: (game, {scene}) =>  game.fadeToScene(scene, null, 1000),
 				},
 			},
 		},

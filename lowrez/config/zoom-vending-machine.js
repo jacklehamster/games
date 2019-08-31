@@ -11,9 +11,9 @@ gameConfig.scenes.push(
 							message: "",
 							options: [
 								{ },
-								{ msg: "LEAVE", onSelect: game => {
-									game.gotoScene("vending-machine")
-								}},
+								{ msg: "LEAVE",
+								  onSelect: game => game.gotoScene("vending-machine"),
+								},
 							],
 						},
 					],

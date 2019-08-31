@@ -139,14 +139,14 @@ const Game = (() => {
 				this.mouse.x = offsetX / offsetWidth * canvas.width;
 				this.mouse.y = offsetY / offsetHeight * canvas.height;
 
-				if (this.pendingTip && this.pendingTip.progress < 1 && !this.pendingTip.removeLock) {
+				if (this.pendingTip && this.pendingTip.progress < 1 && !this.pendingTip.removeLock || this.waitCursor || this.hideCursor) {
 					return;
 				}
 				if (this.pickedUp && this.pickedUp.tip && this.pickedUp.tip.progress < 1) {
 					return;
 				}
 
-				if (this.arrowGrid && !this.hideCursor && !this.waitCursor) {
+				if (this.arrowGrid) {
 					this.arrow = this.getArrow(offsetX, offsetY, offsetWidth, offsetHeight);
 					if (this.mouseDown) {
 						this.actionDown = this.arrow;
@@ -158,12 +158,16 @@ const Game = (() => {
 				e.preventDefault();
 				const {currentTarget, offsetX, offsetY} = e;
 				if (this.battle) {
-					if (this.battle.fist === LEFT && !this.battle.playerLeftAttack) {
-						this.battle.playerLeftAttack = this.now;
-						this.battle.playerLeftAttackLanded = 0;
-					} else if (this.battle.fist === RIGHT && !this.battle.playerRightAttack) {
-						this.battle.playerRightAttack = this.now;
-						this.battle.playerRightAttackLanded = 0;
+					if (this.arrow !== BLOCK && !this.battle.playerLeftAttack && !this.battle.playerRightAttack) {
+						if (this.onScenePunch(this, this.battle)) {
+							if (this.battle.fist === LEFT && !this.battle.playerLeftAttack) {
+								this.battle.playerLeftAttack = this.now;
+								this.battle.playerLeftAttackLanded = 0;
+							} else if (this.battle.fist === RIGHT && !this.battle.playerRightAttack) {
+								this.battle.playerRightAttack = this.now;
+								this.battle.playerRightAttackLanded = 0;
+							}
+						}
 					}
 					return;
 				}
@@ -322,6 +326,17 @@ const Game = (() => {
 			this.createLoop(this.refresh.bind(this));
 		}
 
+		fadeToScene(index, entrance, fadeDuration) {
+			if (!fadeDuration) {
+				fadeDuration = 1000;
+			}
+			this.waitCursor = true;
+			this.fadeOut(this.now, {duration:fadeDuration * 1.5, fadeDuration, color:"#000000", onDone: game => {
+				game.waitCursor = false;
+				game.gotoScene(index, entrance);
+			}});
+		}
+
 		gotoScene(index, entrance, restoreMapInfo) {
 			const {door} = entrance || {};
 			if (typeof(index) === "string") {
@@ -418,6 +433,7 @@ const Game = (() => {
 				gameOver: 0,
 				battle: null,
 				mute: false,
+				life: 100,
 			};
 			this.config = null;
 			this.mouse = null;
@@ -482,6 +498,7 @@ const Game = (() => {
 			this.onSceneForward = null;
 			this.onSceneBackward = null;
 			this.onSceneBattle = null;
+			this.onScenePunch = null;
 			this.customCursor = null;
 		}
 
@@ -1597,7 +1614,7 @@ const Game = (() => {
 		loadScene(scene, restoreMapInfo) {
 			this.initScene();
 			const { map, sprites, doors, arrowGrid, events, customCursor,
-				onScene, onSceneRefresh, onSceneShot, onSceneHoldItem, onSceneUseItem, onSceneForward, onSceneBackward, onSceneBattle } = scene;
+				onScene, onSceneRefresh, onSceneShot, onSceneHoldItem, onSceneUseItem, onSceneForward, onSceneBackward, onSceneBattle, onScenePunch } = scene;
 			this.map = toMap(map);
 			if (!restoreMapInfo && this.map) {
 				const mapInfo = this.getMapInfo(this.map, this.door);
@@ -1619,6 +1636,7 @@ const Game = (() => {
 			this.onSceneForward = onSceneForward || nop;
 			this.onSceneBackward = onSceneBackward || nop;
 			this.onSceneBattle = onSceneBattle || nop;
+			this.onScenePunch = onScenePunch || nop;
 			this.customCursor = customCursor;
 		}
 
@@ -1951,15 +1969,19 @@ const Game = (() => {
 			let dstW = imgWidth;
 			let dstH = imgHeight;
 
-			if (side === LEFT) {
-				srcW /= 2;
-				dstW /= 2;
-			} else if (side === RIGHT) {
-				srcW /= 2;
-				dstW /= 2;
-				srcX += srcW;
-				dstX += dstW;
+			switch(this.evaluate(side, sprite)) {
+				case LEFT:
+					srcW /= 2;
+					dstW /= 2;
+					break;
+				case RIGHT:
+					srcW /= 2;
+					dstW /= 2;
+					srcX += srcW;
+					dstX += dstW;
+					break;
 			}
+
 			const alphaColor = this.evaluate(alpha, sprite);
 			if (alphaColor) {
 				ctx.globalAlpha = alphaColor;
@@ -1968,7 +1990,7 @@ const Game = (() => {
 			if (this.battle) {
 				const hitTime = Math.max(1, this.now - this.battle.playerHit);
 				if (hitTime < 500) {
-					const intensity = 0;//1;
+					const intensity = 2;
 					shiftX = Math.round((Math.random() - .5) * intensity * (200 / hitTime));
 					shiftY = Math.round((Math.random() - .5) * intensity * (200 / hitTime));
 				}

@@ -4,6 +4,8 @@ const shortcut = {
 	2: game => game.matchCell(game.map,game.pos.x,game.pos.y,0,1,game.orientation,"12345",[]) ? (!game.doorOpening ? DOOR : FORWARD) : null,
 	3: game => game.battle ? BAG : BACKWARD,
 	4: game => game.sceneData.forwardUnlocked ? FORWARD : null,
+	5: game => game.rotation === 0 ? BAG : null,
+	6: ({battle}) => battle ? BLOCK : s(3),
 };
 
 function s(index) {
@@ -535,7 +537,7 @@ function standardMenu() {
 			menu: true,
 			src: ASSETS.MENU_OUT,
 			index: game => game.frameIndex,
-			hidden: game => !game.menuOpening && (game.arrow !== MENU || game.sceneData.firstShot) || game.hideCursor && game.frameIndex === 0,
+			hidden: game => !game.menuOpening && (game.arrow !== MENU || game.sceneData.firstShot) || game.hideCursor && game.frameIndex === 0 || game.battle,
 			onClick: game => game.clickMenu(),
 			onHoverOut: (game, sprite, hovered) => { if (game.menuOpening > 0 && game.frameIndex === 3 && (!hovered || !hovered.menu_item && !hovered.menu)) game.openMenu(game.now); },
 		},

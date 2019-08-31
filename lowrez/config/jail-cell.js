@@ -11,9 +11,7 @@ gameConfig.scenes.push(
 		onSceneForward: game => {
 			game.waitCursor = true;
 			game.hideArrows = true;
-			game.fadeOut(game.now, {duration:3000, fadeDuration:2000, color:"#000000", onDone:() => {
-				game.gotoScene("maze", {door:1});
-			}});
+			game.fadeToScene("maze", {door:1}, 2000);
 			return true;
 		},
 		onSceneUseItem: (game, item) => {
@@ -81,11 +79,11 @@ gameConfig.scenes.push(
 					game.hideArrows = true;
 					game.delayAction(game => {
 						game.showTip([
-							"My brain... it hurts...",
-							"And my body is filled with bruises...",
-							"Where am I? I don't\nremember\nanything.",
-							"WHO am I?"
-							], game => {
+									"My brain... it hurts...",
+									"And my body is filled with bruises...",
+									"Where am I? I don't\nremember\nanything.",
+									"WHO am I?",
+								], game => {
 							game.sceneIntro = false;
 							game.sceneData.beginTime = game.now;
 							game.hideCursor = false;
@@ -103,11 +101,11 @@ gameConfig.scenes.push(
 					game.hideArrows = true;
 					game.delayAction(game => {
 						game.showTip([
-							"Ohh my brain... it hurts...",
-							"And my body is filled with bruises...",
-							"... now at least, I know how I got those.",
-							"I must find a way out of here.",
-							], game => {
+									"Ohh my brain... it hurts...",
+									"And my body is filled with bruises...",
+									"... now at least, I know how I got those.",
+									"I must find a way out of here.",
+								], game => {
 							game.sceneIntro = false;
 							game.sceneData.beginTime = game.now;
 							game.hideCursor = false;

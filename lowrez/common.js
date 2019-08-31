@@ -1,6 +1,6 @@
 const DEMO = false;
 
-const LEFT = 1, RIGHT = 2, FORWARD = 3, BACKWARD = 4, BAG = 5, DOOR = 6, FAR = 7, CLOSE = 8, FURTHER = 9, MENU = 10;
+const LEFT = 1, RIGHT = 2, FORWARD = 3, BACKWARD = 4, BAG = 5, DOOR = 6, FAR = 7, CLOSE = 8, FURTHER = 9, MENU = 10, BLOCK = 11;
 
 const MAZE_ASSETS = {
 	MAZE_ROTATION_BACKGROUND: "assets/maze-rotation-background.png",
@@ -134,6 +134,7 @@ const ASSETS = {
 	ARCADE_HANDS: "assets/arcade-hands.png",
 	TOP_5: "assets/top-5.png",
 	MOON_BASE: "assets/moon-base.png",
+	MOON_BASE_GUARD: "assets/moon-base-guard.png",
 	TOILET_ZOOM: "assets/toilet-zoom.png",
 	TOILET_ZOOM_BACKGROUND: "assets/toilet-zoom-background.png",
 	MAP: "assets/map.png",
@@ -168,6 +169,7 @@ const SOUNDS = {
 	FUTURE_SONG_THEME: 'sounds/future-song.mp3',
 	JINGLE: 'sounds/jingle.mp3',
 	DARK_THEME: 'sounds/dark.mp3',
+	BATTLE_THEME: 'sounds/battle-theme.mp3',
 };
 
 const ALPHAS = (() => {
