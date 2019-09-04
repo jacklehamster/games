@@ -8,13 +8,13 @@ gameConfig.scenes.push(
 		arrowGrid: [
 			[null, null,  MENU, null, null ],
 			[],
-			[ null, null, s(2),     null, null  ],
+			[ LEFT, null, s(2),     null, RIGHT ],
 			[ LEFT, null, s(1),     null, RIGHT ],
 			[ LEFT, null, BACKWARD, null, RIGHT ],
 		],
 		map: `
 			XXXXXXXX
-			X.....XX
+			XT....XX
 			XX.XX.XX
 			XX1XX.XX
 			XXXXX2XX
@@ -25,6 +25,50 @@ gameConfig.scenes.push(
 				custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
 			},
 			...getCommonMaze("_BLUE_1"),
+			{
+				src: ASSETS.TREASURE_CHEST,
+				hidden: game => {
+					const {chest, now, rotation, moving, frameIndex} = game;
+					if (!chest || now < chest.found || rotation % 2 == 1 || moving) {
+						return true;
+					}
+					const event = game.facingEvent();
+					if (!event || !event.chest) {
+						return true;
+					}
+					return false;
+				},
+				onClick: (game, sprite) => {
+					const {now, chest, situation} = game;
+					if (situation.chestCleared) {
+						return;
+					}
+					if (chest && !chest.opened) {
+						chest.opened = now;
+						game.playSound(SOUNDS.DRINK);
+					}
+				},
+				index: ({now, chest, situation}) => situation.chestCleared ? 3 : !chest.opened ? 0 : Math.min(3, Math.floor((now - chest.opened) / 100)),
+				onRefresh: (game, sprite) => {
+					const {now, chest, situation} = game;
+					if (situation.chestCleared) {
+						game.blocked = false;
+						return;
+					}
+					if (chest.opened) {
+						const frame = Math.floor((now - chest.opened) / 100);
+						if (frame > 4 && !chest.checked) {
+							chest.checked = now;
+							const { item, image } = chest;
+							game.pickUp({item, image, message:"", onPicked: game => {
+								game.battle = null;
+								situation.chestCleared = now;
+							}});
+						}
+					}
+				},
+			},
+			...standardBag(),
 			...standardMenu(),
 		],
 		doors: {
@@ -37,6 +81,19 @@ gameConfig.scenes.push(
 			2: {
 				scene: "maze-2",
 				exit: (game, {scene}) => game.fadeToScene(scene, {door:1}, 1000),
+			},
+		},
+		events: {
+			T: {
+				chest: true,
+				blocking: true,
+				onEvent: (game, event) => {
+					const {data, now} = game;
+					game.findChest(now, {
+						item:"coin", image:ASSETS.GRAB_COIN,
+						cleared: game.situation.chestCleared,
+					});
+				},
 			},
 		},
 	},	

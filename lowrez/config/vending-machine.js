@@ -50,6 +50,15 @@ gameConfig.scenes.push(
 				},
 			},
 			{
+				name: "coin 2",
+				src: ASSETS.COIN_1,
+				hidden: (game,{name}) => !game.data.pickedUp.apple || game.data.pickedUp[name],
+				onClick: (game, {name}) => {
+					game.data.pickedUp[name] = game.now;
+					game.pickUp({item:"coin", image:ASSETS.GRAB_COIN, message:""});
+				},
+			},
+			{
 				src: ASSETS.SPEECH_OUT,
 				offsetY: 15,
 				hidden: game => game.bagOpening || game.useItem || game.pendingTip,

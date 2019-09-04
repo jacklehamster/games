@@ -12,6 +12,11 @@ const Game = (() => {
 	tempCanvas.height = canvas.height;
 	tempCtx = tempCanvas.getContext("2d");
 
+	const letterCanvas = document.createElement("canvas");
+	letterCanvas.width = canvas.width;
+	letterCanvas.height = canvas.height;
+	letterCtx = letterCanvas.getContext("2d");
+
 	const TEXTSPEEDER = 1;
 	const SAVES_LOCATION = "saves";
 	const LAST_CONTINUE = "last";
@@ -145,6 +150,9 @@ const Game = (() => {
 				if (this.pickedUp && this.pickedUp.tip && this.pickedUp.tip.progress < 1) {
 					return;
 				}
+				if (this.blocked) {
+					return;
+				}
 
 				if (this.arrowGrid) {
 					this.arrow = this.getArrow(offsetX, offsetY, offsetWidth, offsetHeight);
@@ -158,18 +166,19 @@ const Game = (() => {
 				e.preventDefault();
 				const {currentTarget, offsetX, offsetY} = e;
 				if (this.battle) {
-					if (this.arrow !== BLOCK && !this.battle.playerLeftAttack && !this.battle.playerRightAttack) {
+					if (!this.blocking() && !this.battle.playerHit && !this.battle.playerBlock && this.arrow !== BAG && !this.battle.playerLeftAttack && !this.battle.playerRightAttack) {
 						if (this.onScenePunch(this, this.battle)) {
 							if (this.battle.fist === LEFT && !this.battle.playerLeftAttack) {
 								this.battle.playerLeftAttack = this.now;
-								this.battle.playerLeftAttackLanded = 0;
+								this.battle.playerAttackLanded = 0;
+								this.battle.foeBlock = 0;
 							} else if (this.battle.fist === RIGHT && !this.battle.playerRightAttack) {
 								this.battle.playerRightAttack = this.now;
-								this.battle.playerRightAttackLanded = 0;
+								this.battle.playerAttackLanded = 0;
+								this.battle.foeBlock = 0;
 							}
 						}
 					}
-					return;
 				}
 				if (this.pendingTip && this.pendingTip.progress < 1 && !this.pendingTip.removeLock || this.waitCursor || this.hideCursor) {
 					return;
@@ -222,6 +231,7 @@ const Game = (() => {
 				}
 
 				this.mouseDown = this.now;
+
 				if (!this.hoverSprite || this.hoverSprite.bag || this.hoverSprite.menu) {
 					const { offsetWidth, offsetHeight } = currentTarget;
 					if (this.arrowGrid && !this.useItem && !this.bagOpening) {
@@ -300,6 +310,7 @@ const Game = (() => {
 				this.arrow = 0;
 				this.mouse = null;
 				this.mouseDown = 0;
+				this.actionDown = 0;
 			});
 
 			document.addEventListener("mouseup", e => {
@@ -433,8 +444,9 @@ const Game = (() => {
 				gameOver: 0,
 				battle: null,
 				mute: false,
-				life: 100,
+				stats: null,
 			};
+			this.setupStats();
 			this.config = null;
 			this.mouse = null;
 			this.timeOffset = 0;
@@ -478,7 +490,9 @@ const Game = (() => {
 			this.hideCursor = false;
 			this.waitCursor = false;
 			this.hideArrows = false;
-			this.sceneData = {};
+			this.sceneData = {
+				visited: {},
+			};
 			this.sceneIntro = false;
 			this.mouseHand = null;
 			this.gunFired = 0;
@@ -500,6 +514,9 @@ const Game = (() => {
 			this.onSceneBattle = null;
 			this.onScenePunch = null;
 			this.customCursor = null;
+			this.chest = null;
+			this.blocked = 0;
+			this.moving = 0;
 		}
 
 		markPickedUp(item) {
@@ -566,7 +583,7 @@ const Game = (() => {
 		}
 
 		turn(now, direction, callback) {
-			if (this.rotation % 2 === 0) {
+			if (this.rotation % 2 === 0 && this.canTurn(direction)) {
 				this.actions.push({
 					time: now,
 					frame: 0,
@@ -576,7 +593,14 @@ const Game = (() => {
 					active: true,
 					started: false,
 					repeat: 0,
-					onDone: callback || nop,
+					onDone: (game, action) => {
+						if (game.checkEvents()) {
+							action.active = false;
+						}
+						if (callback) {
+							callback(game, action);
+						}
+					},
 				});
 				this.tips = {};
 			}
@@ -587,6 +611,7 @@ const Game = (() => {
 				const {x, y} = this.pos;
 				const closeDoor = this.matchCell(this.map,x,y,0,1,this.orientation,'12345','');;
 				if (closeDoor) {
+					this.playSound(SOUNDS.DOOR);
 					this.actions.push({
 						time: now,
 						frame: 0,
@@ -638,7 +663,7 @@ const Game = (() => {
 			});
 		}
 
-		fadeOut(now, {duration, fadeDuration, color, onDone}) {
+		fadeOut(now, {duration, fadeDuration, color, onDone, max}) {
 			this.actions.push({
 				time: now,
 				command: "fadeOut",
@@ -648,6 +673,7 @@ const Game = (() => {
 				fadeDuration,
 				active: true,
 				started: false,
+				max: max || 1,
 			});
 		}
 
@@ -695,10 +721,10 @@ const Game = (() => {
 							if (onDone) {
 								onDone(this, action);
 							}
-							if (action.repeat && action.active) {
+							const dy = direction === "forward" ? 1 : -1;
+							if (action.repeat && action.active && this.canMove(this.pos, dy)) {
 								action.repeat--;
 								const {x, y} = this.pos;
-								const dy = direction === "forward" ? 1 : -1;
 								if (this.matchCell(this.map,x,y,0,dy,this.orientation,'X12345',"")) {
 									action.active = false;
 								} else {
@@ -706,6 +732,7 @@ const Game = (() => {
 									action.time = this.now;
 									this.doorOpening = 0;
 									this.doorOpened = 0;
+									this.moving = this.now;
 								}
 							} else {
 								action.active = false;
@@ -769,9 +796,9 @@ const Game = (() => {
 						break;
 					}
 					case "fadeOut": {
-						const { duration, fadeDuration, color } = action;
+						const { duration, fadeDuration, color, max } = action;
 						this.fadeColor = color;
-						this.fade = Math.min(1, (this.now - time) / fadeDuration);
+						this.fade = Math.min(max, (this.now - time) / fadeDuration);
 						if (this.now - time > duration) {
 							if(onDone) {
 								onDone(this, action);
@@ -839,7 +866,7 @@ const Game = (() => {
 				let hovered = null;
 				for (let i = this.sprites.length - 1; i >= 0; i--) {
 					const sprite = this.sprites[i];
-					if ((sprite.onClick || sprite.onHover || this.evaluate(sprite.tip) || this.useItem && sprite.name || this.useItem && sprite.combine) && !this.actionDown) {
+					if ((sprite.onClick || sprite.onHover || sprite.onShot || this.evaluate(sprite.tip) || this.useItem && sprite.name || this.useItem && sprite.combine) && !this.actionDown) {
 						if (this.isMouseHover(sprite, 0, this.mouse)) {
 							if (this.mouseDown && !this.clicking) {
 								this.clicking = true;
@@ -849,7 +876,7 @@ const Game = (() => {
 										this.data.shot[name] = this.now;
 										let handled = false;
 										if (onShot) {
-											handled = onShot(this);
+											handled = onShot(this, sprite);
 										}
 										if (!handled) {
 											this.onSceneShot(this, name);
@@ -868,7 +895,7 @@ const Game = (() => {
 								return;
 							}
 							hovered = sprite;
-							if (!hovered.bag && !hovered.menu) {
+							if (!hovered.bag && !hovered.menu && !this.battle) {
 								this.arrow = 0;
 							}
 							break;
@@ -919,8 +946,15 @@ const Game = (() => {
 			return pixel[3] > 0;
 		}
 
+		canTurn(direction) {
+			return !this.battle && !this.blocked;
+		}
+
 		canMove({x, y}, direction) {
-			if (this.fade > 0 || this.battle) {
+			if (!this.map) {
+				return false;
+			}
+			if (this.fade > 0 || this.battle || this.blocked) {
 				return false;
 			}
 			const closeWallWithDirection = this.matchCell(this.map,x,y,0,direction,this.orientation,"MXO",'');;
@@ -931,6 +965,13 @@ const Game = (() => {
 			if (closeDoorWithDirection && (!this.doorOpened || direction === -1)) {
 				return false;
 			}
+
+			const mapPosition = Game.getPosition(x,y,0,direction,this.orientation);
+			const cell = getCell(this.map, ... mapPosition);
+			if (this.events && this.events[cell] && this.events[cell].blocking) {
+				return false;
+			}
+
 			return true;
 		}
 
@@ -939,15 +980,36 @@ const Game = (() => {
 			return closeDoor && !this.doorOpened;			
 		}
 
+		facingPosition() {
+			const { pos, orientation } = this;
+			const { x, y } = pos;
+			return Game.getPosition(x,y,0,1,orientation);
+		}
+
+		facingEvent() {
+			const { events } = this;
+			if (!events) {
+				return null;
+			}
+			const mapPosition = this.facingPosition();
+			const cell = getCell(this.map, ... mapPosition);
+			return events[cell];
+		}
+
 		checkEvents() {
-			const { events, pos, orientation } = this;
+			const { events } = this;
 			if (events) {
-				const { x, y } = pos;
-				const cell = getCell(this.map, ... Game.getPosition(x,y,0,1,orientation));
+				const mapPosition = this.facingPosition();
+				const cell = getCell(this.map, ... mapPosition);
 				if (events[cell]) {
-					const { onEvent } = events[cell];
-					onEvent(this, events[cell]);
-					return true;
+					const visitTag = mapPosition.join("_");
+					if (!this.sceneData.visited[visitTag]) {
+						const { onEvent } = events[cell];
+						if (onEvent(this, events[cell])) {
+							this.sceneData.visited[visitTag] = true;
+							return true;
+						}
+					}
 				}
 			}
 			return false;
@@ -990,13 +1052,17 @@ const Game = (() => {
 
 			this.doorOpening = 0;
 			this.doorOpened = 0;
+			this.moving = now;
 			this.actions.push({
 				time: now,
 				frame: 0,
 				command: "move",
 				direction,
 				onStart,
-				onDone,
+				onDone: (game, action) => {
+					this.moving = 0;
+					onDone(game, action);
+				},
 				active: true,
 				started: false,
 				repeat: 0,
@@ -1144,8 +1210,7 @@ const Game = (() => {
 			if (arrow) {
 				if (arrow === FORWARD && pos && !this.canMove(pos, 1)) {
 				} else if (arrow === BACKWARD && pos && !this.canMove(pos, -1)) {
-				} else if (arrow === BAG || arrow === DOOR || arrow === MENU) {
-				} else {
+				} else if (ARROWS[arrow]) {
 					const index = this.actionDown ? 1 + Math.floor(this.now / 100) % 3 : 0;
 					const { src, side } = ARROWS[arrow];
 					sprites.push({ src, side, index });
@@ -1207,6 +1272,20 @@ const Game = (() => {
 			}
 		}
 
+		displayInventoryTips() {
+			if (this.hoverSprite && this.mouse && this.hoverSprite.bag && this.bagOpening&& (this.frameIndex === 2 || this.frameIndex === 3) && !this.pickedUp) {
+				for (let i in this.inventory) {
+					if (i !== this.useItem && (!this.pickedUp || i !== this.pickedUp.item)) {
+						const { item, image, count } = this.inventory[i];	
+						if (this.isMouseHover({ src: image, index: this.frameIndex-1 }, 0, this.mouse)) {
+							const msg = item==="gun" ? `gun with ${this.inventory.bullet.count} bullet${this.inventory.bullet.count>1?'s':''}` : (count||1) > 1 ? `${item} x${count}` : `${item}`;
+							this.displayTextLine(ctx, {msg,  x:3, y: this.mouse.y >= 58 ? 40 : 58 });
+						}
+					}
+				}
+			}
+		}
+
 		displayFade({fade, fadeColor}) {
 			if (fade > 0) {
 				ctx.globalAlpha = fade;
@@ -1253,7 +1332,7 @@ const Game = (() => {
 					const canCombine = this.hoverSprite && this.useItem && (this.hoverSprite.name || this.hoverSprite.combine || this.hoverSprite.combineMessage);
 					const canOpen = this.map && this.arrow === DOOR && this.matchCell(this.map,this.pos.x,this.pos.y,0,1,this.orientation,"12345",[]) && !this.doorOpening;
 
-					const highLight = !this.data.gameOver && (!this.arrow || this.arrow === DOOR) && (tipReady || canClick || canCombine || canOpen) && !this.bagOpening;
+					const highLight = !this.data.gameOver && (!this.arrow || this.arrow === DOOR || this.chest) && (tipReady || canClick || canCombine || canOpen) && !this.bagOpening;
 					ctx.strokeStyle = "#00000055";
 					ctx.lineWidth = 1;
 
@@ -1664,15 +1743,30 @@ const Game = (() => {
 			return this.data.battle;
 		}
 
+		set battle(value) {
+			this.data.battle = value;
+		}
+
 		handleSceneEvents() {
 			if (!this.sceneTime) {
 				this.sceneTime = this.data.time;
 				this.onScene(this);
 			}
 			this.onSceneRefresh(this);
-			if(this.battle) {
+			if(this.battle && !this.data.gameOver) {
 				this.onSceneBattle(this, this.battle);
 			}
+		}
+
+		refreshSprites() {			
+			this.sprites.forEach(sprite => {
+				if (sprite.onRefresh) {
+					if (this.evaluate(sprite.hidden, sprite)) {
+						return;
+					}
+					sprite.onRefresh(game, sprite);
+				}
+			});
 		}
 
 		displaySprites() {
@@ -1690,6 +1784,7 @@ const Game = (() => {
 			this.refreshActions();
 			this.checkMouseHover();
 			this.checkUseItem();
+			this.refreshSprites();
 
 			if (this.sceneTime) {
 				this.displaySprites();
@@ -1703,6 +1798,7 @@ const Game = (() => {
 				this.displayArrows();
 				this.displayCursor();
 				this.displayTips();
+				this.displayInventoryTips();
 				this.cleanupData();
 			}
 			if (this.refreshCallback) {
@@ -1813,6 +1909,7 @@ const Game = (() => {
 				src: ASSETS.ALPHABET, col:10, row:9, size:[5,6],
 				offsetX: 20, offsetY: 20,
 				index: game => Math.floor(game.now / 100) % 62,
+				isText: true,
 			};				
 			letterTemplate.offsetY = y;
 			let spaceX = x;
@@ -1824,7 +1921,7 @@ const Game = (() => {
 				letterTemplate.index = index;
 				this.displayImage(ctx, letterTemplate);
 				if (!ALPHA.width) {
-					maskCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+					maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
 					this.displayImage(maskCtx, letterTemplate);
 
 					const { offsetX, offsetY } = letterTemplate;
@@ -1930,7 +2027,7 @@ const Game = (() => {
 		}
 
 		displayImage(ctx, sprite) {
-			const {src, index, side, col, row, size, hidden, offsetX, offsetY, alpha, custom, ending } = sprite;			
+			const {src, index, side, col, row, size, hidden, offsetX, offsetY, alpha, custom, ending, isText } = sprite;			
 			if (this.evaluate(hidden, sprite)) {
 				return;
 			}
@@ -1987,8 +2084,8 @@ const Game = (() => {
 				ctx.globalAlpha = alphaColor;
 			}
 			let shiftX = 0, shiftY = 0;
-			if (this.battle) {
-				const hitTime = Math.max(1, this.now - this.battle.playerHit);
+			if (this.battle && this.battle.playerHit && !isText) {
+				const hitTime = Math.max(10, this.now - this.battle.playerHit);
 				if (hitTime < 500) {
 					const intensity = 2;
 					shiftX = Math.round((Math.random() - .5) * intensity * (200 / hitTime));
@@ -2088,9 +2185,20 @@ const Game = (() => {
 			this.playTheme(null);
 			const saves = JSON.parse(localStorage.getItem(SAVES_LOCATION) || "{}");
 			this.data = saves[name];
+			this.setupStats();
 			this.gotoScene(this.sceneIndex, this.door, true);
 			if (this.data.theme) {
 				this.playTheme(this.data.theme.song, {volume:this.data.theme.volume});
+			}
+		}
+
+		setupStats() {
+			if (!this.data.stats) {
+				this.data.stats = {
+					life: 100,
+					maxLife: 100,
+					damage: 10,
+				};
 			}
 		}
 
@@ -2114,6 +2222,40 @@ const Game = (() => {
 
 		clear() {
 			ctx.clearRect(0, 0, canvas.width, canvas.height);			
+		}
+
+		blocking() {
+			return this.battle && (this.arrow === BLOCK || this.arrow === BAG);
+		}
+
+		damagePlayer(damage) {
+			const { stats } = this.data;
+			stats.life = Math.max(stats.life - damage, 0);
+		}
+
+		damageFoe(damage) {
+			this.battle.foeLife = Math.max(0, this.battle.foeLife - damage);
+			if (!this.battle.foeLife) {
+				this.battle.foeDefeated = this.now;
+				this.useItem = null;
+				this.playSound(SOUNDS.FOE_DEFEAT);
+				this.playTheme(SOUNDS.CHIN_TOK_THEME, {volume: .2});
+				if (this.battle.onWin) {
+					this.battle.onWin(this, this.battle);
+				}
+			}
+		}
+
+		findChest(found, { item, image, cleared }) {
+			this.blocked = this.now;
+			this.chest = {
+				found,
+				opened: 0,
+				checked: 0,
+				item,
+				image,
+				cleared,
+			};			
 		}
 	}
 

@@ -4,7 +4,7 @@ gameConfig.scenes.push(
 		arrowGrid: [
 			[null, null,  MENU, null, null ],
 			[],
-			[ null, null, null, null, null  ],
+			[ null, null, s(0), null, null  ],
 			[ LEFT, null, s(0), null, RIGHT ],
 			[ LEFT, null, BAG , null, RIGHT ],
 		],
@@ -224,13 +224,13 @@ gameConfig.scenes.push(
 			{
 				name: "right guard",
 				src: ASSETS.RIGHT_GUARD, col:3, row:3,
-				index: game => {
-					if (game.data.shot["right guard"]) {
-						const frame = 1 + Math.max(0, Math.min(3, Math.floor((game.now - game.data.shot["right guard"]) / 150)));
+				index: ({data, now, sceneData}) => {
+					if (data.shot["right guard"]) {
+						const frame = 1 + Math.max(0, Math.min(3, Math.floor((now - data.shot["right guard"]) / 150)));
 						return frame;
 					}
 					if (game.sceneData.guardAlert) {
-						const frame = 5 + Math.max(0, Math.min(2, Math.floor((game.now - game.sceneData.guardAlert) / 200)));
+						const frame = 5 + Math.max(0, Math.min(2, Math.floor((now - sceneData.guardAlert) / 200)));
 						return frame;
 					}
 					return 0;
@@ -354,14 +354,14 @@ gameConfig.scenes.push(
 			{
 				src: ASSETS.SHOOTS,
 				index: 2,
-				hidden: game => {
-					if (game.rotation !== 0 || game.data.shot["left guard"]) {
+				hidden: ({rotation, data, sceneData, now}) => {
+					if (rotation !== 0 || data.shot["left guard"]) {
 						return true;
 					}				
-					if (!game.sceneData.guardAlert) {
+					if (!sceneData.guardAlert) {
 						return true;
 					}
-					const frame = 1 + Math.max(0, Math.min(2, Math.floor((game.now - game.sceneData.guardAlert) / 150)));
+					const frame = 1 + Math.max(0, Math.min(2, Math.floor((now - sceneData.guardAlert) / 150)));
 					return frame < 3;
 				}
 			},				

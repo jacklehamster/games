@@ -147,6 +147,8 @@ const ASSETS = {
 	MENU_DISK:'assets/menu-disk.png',
 	MENU_SOUND_ON:'assets/menu-sound-on.png',
 	MENU_SOUND_OFF:'assets/menu-sound-off.png',
+	TREASURE_CHEST: "assets/treasure-chest.png",
+	SLIME: "assets/slime.png",
 };
 
 const SOUNDS = {
@@ -170,6 +172,9 @@ const SOUNDS = {
 	JINGLE: 'sounds/jingle.mp3',
 	DARK_THEME: 'sounds/dark.mp3',
 	BATTLE_THEME: 'sounds/battle-theme.mp3',
+	FOE_DEFEAT: 'sounds/foe-defeat.mp3',
+	LAZER: 'sounds/lazer.mp3',
+	DOOR: 'sounds/door.mp3',
 };
 
 const ALPHAS = (() => {

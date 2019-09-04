@@ -1,11 +1,13 @@
 const shortcut = {
-	0: game => game.situation.explode && game.data.shot["left guard"] && game.data.shot["right guard"] ? FORWARD : null,
+	0: ({situation, data}) => situation.explode && data.shot["left guard"] && data.shot["right guard"] ? FORWARD : null,
 	1: game => game.matchCell(game.map,game.pos.x,game.pos.y,0,1,game.orientation,"12345",[]) && !game.doorOpening ? DOOR : FORWARD,
 	2: game => game.matchCell(game.map,game.pos.x,game.pos.y,0,1,game.orientation,"12345",[]) ? (!game.doorOpening ? DOOR : FORWARD) : null,
 	3: game => game.battle ? BAG : BACKWARD,
 	4: game => game.sceneData.forwardUnlocked ? FORWARD : null,
 	5: game => game.rotation === 0 ? BAG : null,
 	6: ({battle}) => battle ? BLOCK : s(3),
+	7: ({battle}) => battle ? BLOCK : null,
+	8: ({battle}) => battle ? BLOCK : s(1),
 };
 
 function s(index) {
@@ -153,11 +155,6 @@ function getCommonMaze(modifier) {
 			hidden: game => game.rotation % 2 === 1 || !game.mazeHole({direction: RIGHT, distance: CLOSE}) || game.closeWall() && !game.mazeHole({direction:RIGHT, distance:FAR}),
 		},
 		{
-			src: ASSETS[`CLOSE_WALL${modifier}`],
-			index: game => game.doorOpening || game.bagOpening || game.menuOpening ? 0 : game.frameIndex,
-			hidden: game => game.rotation % 2 === 1 || !game.closeWall(),
-		},
-		{
 			src: ASSETS[`CLOSE_SIDE_CORNER${modifier}`],
 			side: LEFT,
 			index: game => game.doorOpening || game.bagOpening || game.menuOpening ? 0 : game.frameIndex,
@@ -168,21 +165,6 @@ function getCommonMaze(modifier) {
 			side: RIGHT,
 			index: game => game.doorOpening || game.bagOpening || game.menuOpening ? 0 : game.frameIndex,
 			hidden: game => game.rotation % 2 === 1 || !game.closeWall() || game.mazeHole({direction: RIGHT, distance: CLOSE}),
-		},
-		{
-			src: ASSETS[`DOOR_OPEN${modifier}`],
-			index: game => game.frameIndex,
-			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || !game.doorOpening,
-		},
-		{
-			src: ASSETS[`CLOSE_DOOR${modifier}`],
-			index: game => game.doorOpening || game.bagOpening || game.menuOpening ? 0 : game.frameIndex,
-			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.doorOpening,					
-		},
-		{
-			src: ASSETS.MAP,
-			index: game => game.doorOpening || game.bagOpening || game.menuOpening ? 0 : game.frameIndex,
-			hidden: game => game.rotation % 2 === 1 || !game.closeMap(),
 		},
 		{
 			src: ASSETS.FAR_MAP,
@@ -226,7 +208,27 @@ function getCommonMaze(modifier) {
 			hidden: game => game.rotation % 2 === 1 || game.closeWall() || game.farWall() || !game.mazeMap({direction: RIGHT, distance: FURTHER}),
 		},
 		{
-			custom: ({map, sceneData,pos}, sprite, ctx) => {
+			src: ASSETS[`CLOSE_WALL${modifier}`],
+			index: game => game.doorOpening || game.bagOpening || game.menuOpening ? 0 : game.frameIndex,
+			hidden: game => game.rotation % 2 === 1 || !game.closeWall(),
+		},
+		{
+			src: ASSETS[`DOOR_OPEN${modifier}`],
+			index: game => game.frameIndex,
+			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || !game.doorOpening,
+		},
+		{
+			src: ASSETS[`CLOSE_DOOR${modifier}`],
+			index: game => game.doorOpening || game.bagOpening || game.menuOpening ? 0 : game.frameIndex,
+			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.doorOpening,					
+		},
+		{
+			src: ASSETS.MAP,
+			index: game => game.doorOpening || game.bagOpening || game.menuOpening ? 0 : game.frameIndex,
+			hidden: game => game.rotation % 2 === 1 || !game.closeMap(),
+		},
+		{
+			custom: ({map, sceneData,pos, events}, sprite, ctx) => {
 				const mapWidth = map[0].length, mapHeight = map.length;
 				const mapXCenter = ctx.canvas.width / 2, mapYCenter = ctx.canvas.height / 2;
 				const key = `${pos.x}_${pos.y}`;
@@ -250,7 +252,7 @@ function getCommonMaze(modifier) {
 							imageData.data[i] = 50;
 							imageData.data[i+1] = 150;
 							imageData.data[i+2] = 255;
-						} else if (cell==='.') {
+						} else if (cell==='.' || events && events[cell]) {
 							imageData.data[i] = 0;
 							imageData.data[i+1] = 0;
 							imageData.data[i+2] = 0;
@@ -529,7 +531,33 @@ function getRoomMaze(modifier) {
 	return maze;
 }
 
-
+function standardBag() {
+	return [
+		{
+			name: "self",
+			src: ASSETS.EATER, col:2, row:2,
+			index: (game, sprite) => game.hoverSprite === sprite ? Math.min(2, Math.floor((game.now - sprite.hoverTime) / 100)) : 0,
+			hidden: game => game.useItem !== 'water bottle',
+			combine: (item, game) => {
+				if (item === 'water bottle') {
+					game.removeFromInventory(item);
+					game.useItem = null;
+					game.playSound(SOUNDS.DRINK);
+					game.addToInventory({item:"empty bottle", image:ASSETS.GRAB_BOTTLE},)
+				}
+				return true;
+			},
+		},
+		{
+			bag: true,
+			src: ASSETS.BAG_OUT,
+			index: game => game.frameIndex,
+			hidden: ({arrow, bagOpening, dialog, data, battle, pickedUp}) => data.gameOver || !bagOpening && (arrow !== BAG || dialog && dialog.conversation[dialog.index].options.length > 2),
+			alpha: game => game.emptyBag() ? .2 : 1,
+			onClick: game => game.clickBag(),
+		},
+	];
+}
 
 function standardMenu() {
 	return [
@@ -581,4 +609,42 @@ function standardMenu() {
 			onHoverOut: (game, sprite, hovered) => { if (game.menuOpening > 0 && (!hovered || !hovered.menu_item && !hovered.menu)) game.openMenu(game.now); },
 		},	
 	];
+}
+
+function makeFoe(foe, src) {
+	return 	{
+		src, col: 4, row: 4,
+		offsetX: ({now, battle}) => {
+			const hitTime = Math.max(1, now - battle.playerAttackLanded);
+			return hitTime < 500 ? Math.round((Math.random() - .5) * Math.min(10, 200 / hitTime)) : 0;
+		},
+		offsetY: ({now, battle}) => {
+			const hitTime = Math.max(1, now - battle.playerAttackLanded);
+			return hitTime < 500 ? Math.round((Math.random() - 1) * Math.min(10, 200 / hitTime)) : 0;
+		},
+		index: ({now, battle, data}) => {
+			if (!battle || data.gameOver) {
+				return 0;
+			}
+			if (battle.foeDefeated) {
+				return Math.min(15, 9 + Math.floor((now - battle.foeDefeated) / 100));
+			}
+			const hitTime = Math.max(1, now - battle.playerAttackLanded);
+			if (hitTime < 400) {
+				return 9;
+			}
+			if (battle.foeBlock && now - battle.foeBlock < 200) {
+				return 8;
+			}
+			if (now > battle.nextAttack) {
+				return 4 + Math.floor((now - battle.nextAttack)/100) % 4;
+			}
+			return Math.floor(now/200) % 4;
+		},
+		hidden: ({battle, now}) => !battle || battle.foe != foe || battle.foeDefeated && now - battle.foeDefeated >= 2000,
+		onShot: (game, sprite) => {
+			const {battle, data} = game;
+			game.damageFoe(100);
+		},
+	};
 }

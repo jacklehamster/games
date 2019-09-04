@@ -7,13 +7,13 @@ gameConfig.scenes.push(
 		arrowGrid: [
 			[null, null,  MENU, null, null  ],
 			[],
-			[ null, null, s(2), null, null  ],
-			[ LEFT, null, s(1), null, RIGHT ],
-			[ LEFT, null, s(6), null, RIGHT ],
+			[ LEFT, null, s(2), null, RIGHT ],
+			[ LEFT, s(7), s(8), s(7), RIGHT ],
+			[ LEFT, s(7), s(3), s(7), RIGHT ],
 		],
 		map: `
 			XXXXXXXXXXXXXXXXX
-			X..........5XXXXX
+			X.........:5XXXXX
 			X.XXXXXXXXXXXXXXX
 			X.XMXXXXXXXXXXXXX
 			X..............2X
@@ -28,47 +28,25 @@ gameConfig.scenes.push(
 				custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
 			},
 			...getCommonMaze("_BLUE_1"),
-			{
-				src: ASSETS.GUARD, col: 4, row: 4,
-				offsetX: ({now, battle}) => {
-					const hitTime = Math.max(1, now - Math.max(battle.playerLeftAttackLanded, battle.playerRightAttack));
-					return hitTime < 500 ? Math.round((Math.random() - .5) * 200 / hitTime) : 0;
-				},
-				offsetY: ({now, battle}) => {
-					const hitTime = Math.max(1, now - Math.max(battle.playerLeftAttackLanded, battle.playerRightAttack));
-					return hitTime < 500 ? Math.round((Math.random() - .5) * 200 / hitTime) : 0;
-				},
-				index: ({now, battle}) => {
-					if (!battle) {
-						return 0;
-					}
-					if (Math.max(battle.playerLeftAttackLanded, battle.playerRightAttack)) {
-						const hitTime = Math.max(1, now - Math.max(battle.playerLeftAttackLanded, battle.playerRightAttack));
-						if (hitTime < 400) {
-							return 8;
-						}
-					}
-					if (now > battle.nextAttack) {
-						return 4 + Math.floor((now - battle.nextAttack)/100) % 4;
-					}
-					return Math.floor(now/200) % 4;
-				},
-				hidden: ({battle}) => !battle || battle.foe != 'guard',
-			},
+			makeFoe('guard', ASSETS.GUARD),
+			makeFoe('monster', ASSETS.MONSTER),
+			makeFoe('slime', ASSETS.SLIME),
 			{
 				src: ASSETS.PUNCH, col: 4, row: 4,
 				side: ({battle}) => !battle.playerRightAttack ? RIGHT : 0,
 				offsetX: ({now, battle}) => Math.cos((now-Math.PI) / 100) + 1,
 				offsetY: ({now, battle}) => Math.sin((now-Math.PI) / 100) + 1 + (battle.playerLeftAttack?10:0),
 				index: ({battle, now}) => {
-					const frame = Math.floor(now - battle.playerRightAttack) / 50;
-					if (frame > 4) {
-						return 10;
+					if (!battle.playerRightAttack) {
+						return 12;
 					}
-					return !battle ? 0 : Math.min(Math.floor((now - battle.playerRightAttack) / 50), 4);
+					const attackPeriod = battle.playerAttackPeriod;
+					const frame = Math.min(3, Math.floor((now - battle.playerRightAttack) / attackPeriod));
+					return !battle ? 0 : frame;
 				},
-				hidden: ({battle, arrow}) => {
-					return !battle || arrow === BLOCK;
+				hidden: game => {
+					const {battle, arrow, useItem, bagOpening} = game;
+					return !battle || game.data.gameOver || battle.foeDefeated || (game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack && !battle.playerHit || useItem || bagOpening);
 				},
 			},
 			{
@@ -77,56 +55,79 @@ gameConfig.scenes.push(
 				offsetX: ({now, battle}) => Math.sin(now / 100) - 1,
 				offsetY: ({now, battle}) => Math.cos(now / 100) + 1 + (battle.playerRightAttack?10:0),
 				index: ({battle, now}) => {
-					const frame = Math.floor(now - battle.playerLeftAttack) / 50;
-					if (frame > 4) {
-						return 10;
+					if (!battle.playerLeftAttack) {
+						return 12;
 					}
-					return !battle ? 0 : 5 + Math.min(Math.floor((now - battle.playerLeftAttack) / 50), 4);
+					const attackPeriod = battle.playerAttackPeriod;
+					const frame = Math.min(3, Math.floor((now - battle.playerLeftAttack) / attackPeriod));
+					return !battle ? 0 : 4 + frame;
 				},
-				hidden: ({battle, arrow}) => {
-					return !battle || arrow === BLOCK;
+				hidden: game => {
+					const {battle, arrow, useItem, bagOpening} = game;
+					return !battle || game.data.gameOver || battle.foeDefeated || game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack && !battle.playerHit || useItem || bagOpening;
 				},
 			},
 			{
 				src: ASSETS.PUNCH, col: 4, row: 4,
-				index: 11,
-				hidden: ({battle, arrow}) => !battle || arrow !== BLOCK,
+				offsetY: ({battle, now}) => battle.playerBlock && now - battle.playerBlock < 50 ? 5 : 0,
+				index: 13,
+				hidden: game => {
+					const {battle, arrow, useItem, bagOpening, hoverSprite} = game;
+					if (!game.blocking() || hoverSprite && hoverSprite.bag || battle.foeDefeated || battle.playerHit || battle.playerLeftAttack || battle.playerRightAttack || useItem || bagOpening) {
+						return true;
+					}
+					return false;
+				},
+			},
+			{
+				src: ASSETS.TREASURE_CHEST,
+				hidden: ({chest, now}) => !chest || now < chest.found,
+				onClick: (game, sprite) => {
+					const {now, chest} = game;
+					if (chest && !chest.opened) {
+						chest.opened = now;
+						game.playSound(SOUNDS.DRINK);
+					}
+				},
+				index: ({now, chest}) => !chest.opened ? 0 : Math.min(3, Math.floor((now - chest.opened) / 100)),
+				onRefresh: (game, sprite) => {
+					const {now, chest} = game;
+					if (chest.opened) {
+						const frame = Math.floor((now - chest.opened) / 100);
+						if (frame > 4 && !chest.checked) {
+							chest.checked = now;
+							const { item, image } = chest;
+							game.pickUp({item, image, message:"", onPicked: game => {
+								game.battle = null;
+								game.chest = null;
+								game.blocked = 0;
+							}});
+						}
+					}
+				},
 			},
 			{
 				custom: (game, sprite, ctx) => {
-					const { battle, now } = game;
-					const { playerCharge, foeCharge } = battle;
-					const foeChargePercent = Math.min(1, (now - foeCharge) / 10000);
-					const playerChargePercent = Math.min(1, (now - playerCharge) / 10000);
+					const { stats, battle } = game.data;
+					ctx.fillStyle = "#333333";
+					ctx.fillRect(4, 60, 56, 3);
+					ctx.fillRect(4, 2, 56, 3);
 
-					ctx.fillStyle = "black";
-					ctx.fillRect(5, 3, 54, 3);
-					ctx.fillRect(5, 59, 54, 3);
+					ctx.fillStyle = "#aa0022";
+					ctx.fillRect(5, 61, 54, 1);
 
-					ctx.fillStyle = foeChargePercent === 1 && Math.random() > .5 ? "#cc44aa" : "#770066";
-					ctx.fillRect(6, 4, 52 * foeChargePercent, 1);
-					if (foeChargePercent > 1/4 && foeChargePercent < 1) {
-						ctx.fillStyle = "#cc44aa";
-						ctx.fillRect(6, 4, Math.round(52 * Math.floor(foeChargePercent * 4)/4), 1);
-					}
+					ctx.fillStyle = "#770022";
+					ctx.fillRect(5, 3, 54, 1);
 
-					ctx.fillStyle = playerChargePercent === 1 && Math.random() > .5 ? "#44ccaa" : "#338877";
-					ctx.fillRect(6, 60, 52 * playerChargePercent, 1);
-					if (playerChargePercent > 1/4 && playerChargePercent < 1) {
-						ctx.fillStyle = "#44ccaa";
-						ctx.fillRect(6, 60, Math.round(52 * Math.floor(playerChargePercent * 4)/4), 1);
-					}
+					ctx.fillStyle = "#bbcc22";
+					ctx.fillRect(5, 61, 54 * stats.life / stats.maxLife, 1);
 
-					ctx.fillStyle = "#999999";
-					ctx.fillRect(6 + (52/4), 3, 1, 3);
-					ctx.fillRect(6 + (52/4), 59, 1, 3);
-					ctx.fillRect(6 + (52/2), 3, 1, 3);
-					ctx.fillRect(6 + (52/2), 59, 1, 3);
-					ctx.fillRect(6 + (52*3/4), 3, 1, 3);
-					ctx.fillRect(6 + (52*3/4), 59, 1, 3);
+					ctx.fillStyle = "#cc22bb";
+					ctx.fillRect(5, 3, 54 * battle.foeLife / battle.foeMaxLife, 1);
 				},
-				hidden: ({battle}) => !battle,
+				hidden: ({battle, data}) => !battle || data.stats.life <= 0 || battle.foeDefeated,
 			},
+			...standardBag(),
 			...standardMenu(),
 		],
 		doors: {
@@ -151,86 +152,117 @@ gameConfig.scenes.push(
 				exit: (game, {scene}) =>  game.fadeToScene(scene, {door:1}, 1000),
 			},
 		},
-		onSceneBattle: ({now, arrow}, battle) => {
+		onSceneBattle: (game, battle) => {
+			const {now, arrow, data} = game;
+			if (battle.foeDefeated) {
+				return;
+			}
 			if (!battle.nextAttack) {
-				battle.nextAttack = Math.random() * 5000 + now;
-			} else {
-				const frame = 4 + Math.floor((now - battle.nextAttack) / 100);
-				if (frame >= 7) {
-					if (arrow === BLOCK) {
+				battle.nextAttack = Math.random() * battle.attackSpeed + now;
+			} else if (now >= battle.nextAttack) {
+				const frame = 4 + Math.floor((now - battle.nextAttack) / battle.attackPeriod);
+				if (frame === 7 && !battle.foeDidAttack) {
+					const foeChargePercent = Math.min(1, (now - battle.foeCharge) / battle.foeChargeTime);
+					battle.foeCharge = now - Math.max(0, (foeChargePercent - 1/4) * battle.foeChargeTime);
+
+					if (game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack) {
 						game.playSound(SOUNDS.DUD);
+						battle.playerBlock = now;
 					} else {
-						battle.playerCharge = now;
 						game.playSound(SOUNDS.HIT);
 						battle.playerHit = now;
+						battle.playerLeftAttack = battle.playerRightAttack = 0;
+						game.damagePlayer(battle.foeDamage);
 					}
+					battle.foeDidAttack = now;
+				} else if (frame > 7) {
+					battle.foeDidAttack = 0;
 					battle.nextAttack = null;
 				}
 			}
-			if (battle.playerLeftAttack) {
-				const frame = Math.floor((now - battle.playerLeftAttack) / 50);
-				if (frame === 1 && !battle.playerLeftAttackLanded) {
-					game.playSound(SOUNDS.HIT);
-					battle.playerLeftAttackLanded = now;
-					battle.foeCharge = now;
-				}
-				if (frame > 4) {
-					battle.playerLeftAttack = 0;
-					battle.playerLeftAttackLanded = 0;						
-					battle.fist = battle.fist === LEFT ? RIGHT: LEFT;
-				}
+			if (battle.playerBlock && now - battle.playerBlock > 200) {
+				battle.playerBlock = 0;
 			}
-			if (battle.playerRightAttack) {
-				const frame = Math.floor((now - battle.playerRightAttack) / 50);
-				if (frame === 1 && !battle.playerRightAttackLanded) {
-					game.playSound(SOUNDS.HIT);
-					battle.playerRightAttackLanded = now;
-					battle.foeCharge = now;
+			if (battle.playerHit && now - battle.playerHit > 400) {
+				battle.playerHit = 0;
+			}
+
+			const attackPeriod = (battle.foeBlock ? 1.5 : 1) * battle.playerAttackPeriod;
+			const playerAttack = battle.playerLeftAttack || battle.playerRightAttack;
+			if (playerAttack) {
+				const frame = Math.floor((now - playerAttack) / attackPeriod);
+				if (frame === 3 && !battle.playerAttackLanded && !battle.foeBlock) {
+					if (now >= battle.nextAttack || Math.random()>=battle.foeDefense) {
+						battle.nextAttack = null;
+						game.playSound(SOUNDS.HIT);
+						battle.playerAttackLanded = now;
+						game.damageFoe(data.stats.damage);
+					} else if (!battle.foeBlock) {
+						game.playSound(SOUNDS.DUD);
+						battle.foeBlock = now;
+						if (Math.random() >= battle.riposteChance) {
+							battle.nextAttack = Math.min(battle.nextAttack, now + 50);
+						}
+					}
 				}
 				if (frame > 4) {
 					battle.playerRightAttack = 0;
-					battle.playerRightAttackLanded = 0;						
+					battle.playerLeftAttack = 0;
+					battle.playerAttackLanded = 0;						
 					battle.fist = battle.fist === LEFT ? RIGHT: LEFT;
 				}
 			}
-		},
-		onScenePunch: (game, battle) => {
-			const { now } = game;
-			const { playerCharge } = battle;
-			const playerChargePercent = Math.min(1, (now - playerCharge) / 10000);
-			if(playerChargePercent >= 1/4) {
-				battle.playerCharge = now - (playerChargePercent - (playerChargePercent >= 1 ? 1/2 : 1/4)) * 10000;
-				return true;
-			} else {
-				game.playSound(SOUNDS.ERROR);
-				game.delayAction(game => game.playSound(SOUNDS.ERROR), 100);
-				return false;
+			if (game.data.stats.life <= 0 && !game.data.gameOver) {
+				game.gameOver();
+				const fadeDuration = 3000;
+				game.fadeOut(game.now, {duration:fadeDuration * 1.5, fadeDuration, color:"#FF0000", max: .7});
 			}
+		},
+		onScenePunch: ({useItem}, battle) => {
+			return !useItem;
 		},
 		events: {
 			':': {
 				foe: "guard",
 				foeLife: 80,
-				onEvent: (game, {foe, foeLife}) => {
+				foeDefense: .5,
+				attackSpeed: 3000,
+				riposteChance: .5,
+				attackPeriod: 100,
+				foeDamage: 10,
+				onEvent: (game, {foe, foeLife, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin}) => {
 					const {data, now} = game;
 					game.canPunch = false;
-					game.playTheme(SOUNDS.BATTLE_THEME, {volume:.7});
+					game.chest = null;
+					game.playTheme(SOUNDS.BATTLE_THEME, {volume:.8});
 					if (!data.battle) {
 						data.battle = {
 							time: now,
 							foe,
 							fist: LEFT,
+							attackSpeed,
 							playerHit: 0,
+							playerBlock: 0,
+							foeBlock: 0,
 							playerLeftAttack: 0,
-							playerLeftAttackLanded: 0,
 							playerRightAttack: 0,
-							playerRightAttackLanded: 0,
-							playerCharge: now,
-							foeCharge: now,
+							playerAttackLanded: 0,
+							playerAttackPeriod: 50,
 							foeLife,
+							foeMaxLife: foeLife,
+							foeDefense,
+							foeDefeated: 0,
+							attackPeriod,
+							riposteChance,
+							foeDamage,
+							onWin,
 						};
 					}
+					return true;
 				},
+				onWin: game => game.findChest(game.now + 2000, {
+					item:"coin", image:ASSETS.GRAB_COIN, 
+				}),
 			},
 		},
 	},	

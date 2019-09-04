@@ -366,7 +366,7 @@ gameConfig.scenes.push(
 						}
 						if (x >= gameScreen.x && x <= gameScreen.x + gameScreen.width && y >= gameScreen.y && y <= gameScreen.y + gameScreen.height) {
 							if (!ship.destroyed) {
-								game.playSound(SOUNDS.ERROR);
+								game.playSound(SOUNDS.LAZER);
 								const px = Math.round(ship.x)+.5;
 								const py = Math.round(ship.y)+.5;
 								missiles.push({x:px, y:py});

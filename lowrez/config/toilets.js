@@ -4,7 +4,7 @@ gameConfig.scenes.push(
 		arrowGrid: [
 			[null, null,  MENU, null, null ],
 			[],
-			[ null, null, s(2), null, null  ],
+			[ LEFT, null, s(2), null, RIGHT ],
 			[ LEFT, null, s(1), null, RIGHT ],
 			[ LEFT, null, s(5), null, RIGHT ],
 		],
