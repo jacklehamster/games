@@ -43,7 +43,10 @@ gameConfig.scenes.push(
 			{
 				src: ASSETS.LOCKER_DOOR,
 				index: ({situation}) => situation.rightLockerOpen ? 1 : 0,
-				onClick: ({situation}) => situation.rightLockerOpen = !situation.rightLockerOpen,
+				onClick: ({situation}) => {
+					game.playSound(SOUNDS.DOOR);
+					situation.rightLockerOpen = !situation.rightLockerOpen;
+				},
 			},
 			{
 				src: ASSETS.LOCKER_DOOR,
@@ -51,6 +54,7 @@ gameConfig.scenes.push(
 				onClick: (game) => {
 					const {situation} = game;
 					if (game.data.lock_unlocked) {
+						game.playSound(SOUNDS.DOOR);
 						situation.midLockerOpen = !situation.midLockerOpen;
 					} else {
 						game.gotoScene("lock-zoom");

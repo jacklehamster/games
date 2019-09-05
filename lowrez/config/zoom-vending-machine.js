@@ -34,12 +34,19 @@ gameConfig.scenes.push(
 						game.situation.grabbedBottle = game.now;
 					}
 				}
+				if (game.situation.gotApple && !game.situation.grabbedApple) {
+					const frame = Math.floor((game.now - game.situation.gotApple)) / 100;
+					if (frame > 4) {
+						game.pickUp({item:"fruit?", image:ASSETS.GRAB_APPLE, message:"That looks eatable."});
+						game.situation.grabbedApple = game.now;
+					}					
+				}
 
 			},
 			sprites: [
 				{ src: ASSETS.VENDING_MACHINE_CLOSEUP },
 				{
-					src: ASSETS.VENDING_MACHINE_BOTTLE,
+					src: ASSETS.VENDING_MACHINE_BOTTLE, col: 2, row: 3,
 					index: game => !game.situation.gotBottle ? 0 : Math.min(4, Math.floor((game.now - game.situation.gotBottle) / 100)),
 					onClick: game => {
 						if (!game.situation.coin || game.situation.gotBottle) {
@@ -50,7 +57,11 @@ gameConfig.scenes.push(
 							if (!game.situation.coin) {
 								delete game.situation.coin;
 							}
-							delete game.data.pickedUp["coin 1"];
+							if (game.data.pickedUp["coin 1"]) {
+								delete game.data.pickedUp["coin 1"];
+							} else {
+								delete game.data.pickedUp["coin 2"];								
+							}
 							game.situation.gotBottle = game.now;
 							game.playSound(SOUNDS.DUD);
 						}
@@ -58,12 +69,26 @@ gameConfig.scenes.push(
 					tip: "Looks like a bottle. Is that water?",
 				},
 				{
-					src: ASSETS.VENDING_MACHINE_APPLE,
+					src: ASSETS.VENDING_MACHINE_APPLE, col: 2, row: 3,
+					index: game => !game.situation.gotApple ? 0 : Math.min(4, Math.floor((game.now - game.situation.gotApple) / 100)),
 					onClick: game => {
-						game.playSound(SOUNDS.ERROR);
-						game.delayAction(game => game.playSound(SOUNDS.ERROR), 100);
+						if ((game.situation.coin||0) < 2 || game.situation.gotApple) {
+							game.playSound(SOUNDS.ERROR);
+							game.delayAction(game => game.playSound(SOUNDS.ERROR), 100);
+						} else {
+							game.situation.coin--;
+							if (!game.situation.coin) {
+								delete game.situation.coin;
+							}
+							delete game.data.pickedUp["coin 1"];
+							delete game.data.pickedUp["coin 2"];
+							game.situation.gotApple = game.now;
+							game.playSound(SOUNDS.DUD);
+						}
 					},
+					tip: "I hope that's food. I'm getting hungry.",
 				},
+				{ src: ASSETS.VENDING_MACHINE_GLASS },
 				{
 					name: "coin-slot",
 					src: ASSETS.VENDING_MACHINE_COIN_SLOT,
@@ -85,30 +110,7 @@ gameConfig.scenes.push(
 					hidden: game => game.bagOpening || game.useItem || game.pendingTip,
 					index: game => Math.min(3, Math.floor((game.now - game.sceneTime) / 80)),
 				},
-				{
-					name: "self",
-					src: ASSETS.EATER, col:2, row:2,
-					index: (game, sprite) => game.hoverSprite === sprite ? Math.min(2, Math.floor((game.now - sprite.hoverTime) / 100)) : 0,
-					hidden: game => game.useItem !== 'water bottle',
-					combine: (item, game) => {
-						if (item === 'water bottle') {
-							delete game.inventory[item];
-							game.useItem = null;
-							game.playSound(SOUNDS.DRINK);
-							game.addToInventory({item:"empty bottle", image:ASSETS.GRAB_BOTTLE},)
-							game.showTip("Refreshing!");
-						}
-						return true;
-					},
-				},
-				{
-					bag: true,
-					src: ASSETS.BAG_OUT,
-					index: game => game.frameIndex,
-					hidden: ({arrow, bagOpening, dialog}) => !bagOpening && (arrow !== BAG || dialog && dialog.conversation[dialog.index].options.length > 2),
-					alpha: game => game.emptyBag() ? .2 : 1,
-					onClick: game => game.clickBag(),
-				}
+				...standardBag(),
 			],
 		},
 );

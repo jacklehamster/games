@@ -68,30 +68,7 @@ gameConfig.scenes.push(
 				},
 				hidden: game => game.rotation !== 0,
 			},
-			{
-				name: "self",
-				src: ASSETS.EATER, col:2, row:2,
-				index: (game, sprite) => game.hoverSprite === sprite ? Math.min(2, Math.floor((game.now - sprite.hoverTime) / 100)) : 0,
-				hidden: game => game.useItem !== 'water bottle',
-				combine: (item, game) => {
-					if (item === 'water bottle') {
-						game.removeFromInventory(item);
-						game.useItem = null;
-						game.playSound(SOUNDS.DRINK);
-						game.addToInventory({item:"empty bottle", image:ASSETS.GRAB_BOTTLE},)
-						game.showTip("Refreshing!");
-					}
-					return true;
-				},
-			},
-			{
-				bag: true,
-				src: ASSETS.BAG_OUT,
-				index: game => game.frameIndex,
-				hidden: ({arrow, bagOpening, dialog}) => !bagOpening && (arrow !== BAG || dialog && dialog.conversation[dialog.index].options.length > 2),
-				alpha: game => game.emptyBag() ? .2 : 1,
-				onClick: game => game.clickBag(),
-			},
+			...standardBag(),
 			...standardMenu(),
 		],
 	},

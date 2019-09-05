@@ -27,6 +27,9 @@ gameConfig.scenes.push(
 					if (code === "2505") {
 						game.data.lock_unlocked = game.now;
 						game.playSound(SOUNDS.DUD);
+						game.delayAction(game=> {
+							game.playSound(SOUNDS.DUD);
+						}, 100);
 						game.showTip("Looks like the right combination!", game => {
 							game.gotoScene("locker-room");
 						});
@@ -44,6 +47,7 @@ gameConfig.scenes.push(
 						if (game.data.lock_unlocked) {
 							return;
 						}
+						game.playSound(SOUNDS.DUD);
 						game.situation.digit1 = ((game.situation.digit1||0) + 1) % 8;
 					},
 				},
@@ -55,6 +59,7 @@ gameConfig.scenes.push(
 						if (game.data.lock_unlocked) {
 							return;
 						}
+						game.playSound(SOUNDS.DUD);
 						game.situation.digit2 = ((game.situation.digit2||0) + 1) % 8;
 					},
 				},
@@ -66,6 +71,7 @@ gameConfig.scenes.push(
 						if (game.data.lock_unlocked) {
 							return;
 						}
+						game.playSound(SOUNDS.DUD);
 						game.situation.digit3 = ((game.situation.digit3||0) + 1) % 8;
 					},
 				},
@@ -77,6 +83,7 @@ gameConfig.scenes.push(
 						if (game.data.lock_unlocked) {
 							return;
 						}
+						game.playSound(SOUNDS.DUD);
 						game.situation.digit4 = ((game.situation.digit4||0) + 1) % 8;
 					},
 				},

@@ -44,6 +44,7 @@ const ASSETS = {
 	TILE:'assets/tile.png',
 	BOTTLE:'assets/bottle.png',
 	GRAB_WATER_BOTTLE:'assets/grab-water-bottle.png',
+	GRAB_APPLE:'assets/grab-apple.png',
 	BOTTLE_SHARDS:'assets/bottle-shards.png',
 	BAG_OUT:'assets/bag-out.png',
 	LAMP:'assets/light.png',
@@ -147,6 +148,7 @@ const ASSETS = {
 	MENU_DISK:'assets/menu-disk.png',
 	MENU_SOUND_ON:'assets/menu-sound-on.png',
 	MENU_SOUND_OFF:'assets/menu-sound-off.png',
+	MENU_PROFILE:'assets/menu-profile.png',
 	TREASURE_CHEST: "assets/treasure-chest.png",
 	SLIME: "assets/slime.png",
 };

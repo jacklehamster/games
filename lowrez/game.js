@@ -33,6 +33,9 @@ const Game = (() => {
 	}
 
 	function getCell(map, x, y) {
+		if (!map) {
+			console.error("You need a map!");
+		}
 		if (y < 0 || y >= map.length || !map[y] || x < 0 || x >= map[y].length) {
 			return 'X';
 		}
@@ -2195,7 +2198,7 @@ const Game = (() => {
 		setupStats() {
 			if (!this.data.stats) {
 				this.data.stats = {
-					life: 100,
+					life: 70,
 					maxLife: 100,
 					damage: 10,
 				};
