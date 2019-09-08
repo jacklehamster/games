@@ -28,6 +28,7 @@ const MAZE_ASSETS = {
 	MAZE_ROTATION_WALLS_SOLID: "assets/maze-rotation-walls-solid.png",
 	MAZE_ROTATION_CORNER_SOLID: "assets/maze-rotation-corner-solid.png",
 	CLOSE_SIDE_SOLID:'assets/close-side-solid.png',
+	DUNGEON_LOCK:'assets/dungeon-lock.png',
 };
 
 const MAZE_ASSETS_BLUE = Object.assign(...Object.entries(MAZE_ASSETS).map(([k,v])=>({[`${k}_BLUE`]:`${v}|rotate-colors`})));
@@ -115,6 +116,7 @@ const ASSETS = {
 	VENDING_MACHINE_APPLE: "assets/vending-machine-apple.png",
 	VENDING_MACHINE_BOTTLE: "assets/vending-machine-bottle.png",
 	VENDING_MACHINE_COIN_SLOT: "assets/vending-machine-coin-slot.png",
+	VENDING_MACHINE_COIN_RETURN: "assets/vending-machine-coin-return.png",
 	ARCADE: "assets/arcade.png",
 	ZOOM_ARCADE: "assets/zoom-arcade.png",
 	ARCADE_ROOM: "assets/arcade-room.png",
@@ -149,8 +151,13 @@ const ASSETS = {
 	MENU_SOUND_ON:'assets/menu-sound-on.png',
 	MENU_SOUND_OFF:'assets/menu-sound-off.png',
 	MENU_PROFILE:'assets/menu-profile.png',
+	MENU_PROFILE_NOTIFICATION: "assets/profile-notification.png",
 	TREASURE_CHEST: "assets/treasure-chest.png",
 	SLIME: "assets/slime.png",
+	STATS: "assets/stats.png",
+	LEVEL_UP: "assets/level-up.png",
+	DOORWAY:'assets/doorway.png',
+	KEY_COUNT: "assets/key-count.png",
 };
 
 const SOUNDS = {
@@ -177,10 +184,11 @@ const SOUNDS = {
 	FOE_DEFEAT: 'sounds/foe-defeat.mp3',
 	LAZER: 'sounds/lazer.mp3',
 	DOOR: 'sounds/door.mp3',
+	UNLOCK: 'sounds/unlock.mp3',
 };
 
 const ALPHAS = (() => {
-	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz.,?'#@!♪()[]/ "
+	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz.,?'#@!♪()[]/-+ "
    	   + new Array(10).fill(null).map((a, index) => String.fromCharCode(1000 + index)).join("");
 	const array = [];
 	for(let c = 0; c < letters.length; c++) {
@@ -203,3 +211,5 @@ const Cursor = {
 	WAIT: "wait",
 	NONE: "none",
 };
+
+const HIGHSCORE = 1305;

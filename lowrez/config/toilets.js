@@ -15,7 +15,7 @@ gameConfig.scenes.push(
 			1: {
 				exit: game => game.fadeToScene("maze-2", {door:2}),
 			},
-		},		
+		},
 		map: `
 			XXX
 			XOX
@@ -68,8 +68,8 @@ gameConfig.scenes.push(
 				},
 				hidden: game => game.rotation !== 0,
 			},
-			...standardBag(),
 			...standardMenu(),
+			...standardBag(),
 		],
 	},
 );

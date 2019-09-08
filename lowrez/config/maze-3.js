@@ -12,17 +12,17 @@ gameConfig.scenes.push(
 			[ LEFT, s(7), s(3), s(7), RIGHT ],
 		],
 		map: `
-			XXXXXXXXXXXXX
-			X.........XXX
-			X.XXXXXXX.XXX
-			X.XX3.....XXX
-			X.XXXXXXX.XMX
-			XsX.........X
-			X.X.XX.XX.XXX
-			X.X1XX.XX.XXX
-			X.XXXX.XX.XXX
-			X......XX2XXX
-			XXXXXXXXXXXXX
+			XXXXXXXXXXXXXXX
+			XXX.........XXX
+			XXX.XXXXXXX.XXX
+			XMX.XX3.....XXX
+			X.X.XXXXXXX.XMX
+			X..sX.........X
+			X.X.X.XX.XX.XXX
+			X!X.X1XX.XX.XXX
+			XXX.XXXX.XX.XXX
+			XXX......XX2XXX
+			XXXXXXXXXXXXXXX
 		`,
 		sprites: [
 			{
@@ -31,14 +31,17 @@ gameConfig.scenes.push(
 			...getCommonMaze("_1"),
 			makeFoe('slime', ASSETS.SLIME),
 			...standardBattle(),
-			...standardBag(),
 			...standardMenu(),
+			...standardBag(),
 		],
-		... makeOnSceneBattle(),
 		doors: {
 			1: {
 				scene: "maze-2",
-				exit: (game, {scene}) =>  game.fadeToScene(scene, {door:5}, 1000),
+				wayDown: true,
+				exit: (game, {scene}) => {
+					game.fadeToScene(scene, {door:5}, 1000);
+					game.playSteps();
+				},
 			},
 			2: {
 				scene: "maze-4",
@@ -49,16 +52,31 @@ gameConfig.scenes.push(
 				exit: (game, {scene}) =>  game.fadeToScene(scene, null, 1000),
 			},
 		},
+		... makeOnSceneBattle(),
 		events: {
+			'!': {
+				chest: true,
+				blocking: true,
+				onEvent: (game, event) => {
+					const {data, now} = game;
+					game.findChest(now, {
+						item:"key", image:ASSETS.GRAB_COIN,
+						cleared: game.situation.chestCleared,
+					});
+				},
+			},
 			's': {
 				foe: "slime",
 				foeLife: 60,
-				foeDefense: .7,
+				foeBlockChance: .6,
 				attackSpeed: 2500,
 				riposteChance: .7,
 				attackPeriod: 100,
-				foeDamage: 5,
-				onEvent: (game, {foe, foeLife, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin}) => {
+				foeDamage: 10,
+				foeDefense: 15,
+				xp: 7,
+				belowTheBelt: true,				
+				onEvent: (game, {foe, foeLife, foeBlockChance, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin, xp, belowTheBelt}) => {
 					const {data, now} = game;
 					game.canPunch = false;
 					game.chest = null;
@@ -71,19 +89,22 @@ gameConfig.scenes.push(
 							attackSpeed,
 							playerHit: 0,
 							playerBlock: 0,
-							foeBlock: 0,
+							foeBlockChance,
 							playerLeftAttack: 0,
 							playerRightAttack: 0,
 							playerAttackLanded: 0,
 							playerAttackPeriod: 50,
 							foeLife,
 							foeMaxLife: foeLife,
+							foeBlock: 0,
 							foeDefense,
 							foeDefeated: 0,
 							attackPeriod,
 							riposteChance,
 							foeDamage,
 							onWin,
+							xp,
+							belowTheBelt,
 						};
 					}
 					return true;

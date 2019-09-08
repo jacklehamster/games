@@ -26,7 +26,7 @@ gameConfig.scenes.push(
 						const {sceneData} = game;
 						game.load(sceneData.loadSave[index].name);
 					},
-					hidden: ({sceneData}, sprite) => !sceneData.loadSave || !sceneData.loadSave[sprite.index],
+					hidden: ({sceneData, dialog}, sprite) => !dialog || dialog.index !== 2 || !sceneData.loadSave || !sceneData.loadSave[sprite.index],
 				};
 			})),
 			{

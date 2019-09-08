@@ -16,11 +16,11 @@ gameConfig.scenes.push(
 			};
 			if (!situation.highscores) {
 				situation.highscores = [
-					{ score: 9845, 	player: 0 },
-					{ score: 4035, 	player: 1 },
-					{ score: 575, 	player: 2 },
-					{ score: 235, 	player: 3 },
-					{ score: 105, 	player: 4 },
+					{ score: HIGHSCORE, player: 0 },
+					{ score: 1075, 	player: 1 },
+					{ score: 210, 	player: 2 },
+					{ score: 135, 	player: 3 },
+					{ score: 95, 	player: 4 },
 				];
 			}
 
@@ -451,6 +451,7 @@ gameConfig.scenes.push(
 					if (situation.coin > 0 && !sceneData.gameStarted) {
 						const splashTime = 2500;
 						sceneData.gameStarted = now + splashTime;
+						sceneData.score = 0;
 						situation.coin --;
 						ship.destroyed = 0;
 						ship.lastShot = now;
@@ -644,30 +645,7 @@ gameConfig.scenes.push(
 					}
 				},
 			},
-			{
-				name: "self",
-				src: ASSETS.EATER, col:2, row:2,
-				index: (game, sprite) => game.hoverSprite === sprite ? Math.min(2, Math.floor((game.now - sprite.hoverTime) / 100)) : 0,
-				hidden: game => game.useItem !== 'water bottle',
-				combine: (item, game) => {
-					if (item === 'water bottle') {
-						delete game.inventory[item];
-						game.useItem = null;
-						game.playSound(SOUNDS.DRINK);
-						game.addToInventory({item:"empty bottle", image:ASSETS.GRAB_BOTTLE},)
-						game.showTip("Refreshing!");
-					}
-					return true;
-				},
-			},
-			{
-				bag: true,
-				src: ASSETS.BAG_OUT,
-				index: game => game.frameIndex,
-				hidden: ({arrow, bagOpening, dialog}) => !bagOpening && (arrow !== BAG || dialog && dialog.conversation[dialog.index].options.length > 2),
-				alpha: game => game.emptyBag() ? .2 : 1,
-				onClick: game => game.clickBag(),
-			}
+			...standardBag(),
 		],
 	},
 );

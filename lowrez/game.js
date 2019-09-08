@@ -98,7 +98,7 @@ const Game = (() => {
 		addToInventory(obj) {
 			if (this.inventory[obj.item]) {
 				const { count } = obj;
-				this.inventory[obj.item].count = (this.inventory[obj.item].count||1) + (count||1);
+				this.inventory[obj.item].count = this.countItem(obj.item) + (count||1);
 			} else {
 				this.inventory[obj.item] = obj;
 			}
@@ -115,6 +115,10 @@ const Game = (() => {
 			}
 		}
 
+		countItem(item) {
+			return this.inventory[item] ? this.inventory[item].count || 1 : 0;
+		}
+
 		set sceneIndex(index) {
 			if (index !== this.sceneIndex) {
 				this.data.scene = {
@@ -126,6 +130,17 @@ const Game = (() => {
 
 		get sceneIndex() {
 			return this.data.scene ? this.data.scene.index || 0 : 0;
+		}
+
+		unlock(cell) {
+			if (!this.situation.unlocked) {
+				this.situation.unlocked = {};
+			}
+			if (!this.situation.unlocked[cell]) {
+				this.situation.unlocked[cell] = this.now;
+				return true;
+			}
+			return false;
 		}
 
 		constructor() {
@@ -151,9 +166,6 @@ const Game = (() => {
 					return;
 				}
 				if (this.pickedUp && this.pickedUp.tip && this.pickedUp.tip.progress < 1) {
-					return;
-				}
-				if (this.blocked) {
 					return;
 				}
 
@@ -187,9 +199,9 @@ const Game = (() => {
 					return;
 				}
 				if (this.useItem === "gun" && (!this.hoverSprite || !this.hoverSprite.bag && !this.hoverSprite.menu)) {
-					const { bullet, gun } = this.inventory;
-					if (bullet && bullet.count) {
-						bullet.count--;
+					if (this.countItem('bullet') > 0) {
+						const { bullet } = this.inventory;
+						this.removeFromInventory('bullet');
 						this.gunFired = this.now;
 						game.playSound(SOUNDS.GUN_SHOT);
 					} else {
@@ -237,7 +249,7 @@ const Game = (() => {
 
 				if (!this.hoverSprite || this.hoverSprite.bag || this.hoverSprite.menu) {
 					const { offsetWidth, offsetHeight } = currentTarget;
-					if (this.arrowGrid && !this.useItem && !this.bagOpening) {
+					if (this.arrowGrid && !this.useItem && !this.bagOpening && !game.sceneData.showStats) {
 						this.arrow = this.getArrow(offsetX, offsetY, offsetWidth, offsetHeight);
 						switch(this.arrow) {
 							case LEFT: {
@@ -253,17 +265,28 @@ const Game = (() => {
 							case DOOR: {
 								const { x, y } = this.pos;
 								if (this.matchCell(this.map,x,y,0,1,this.orientation,"12345",[])) {
-									if (!this.doorOpening) {
-										this.performAction(this.now);
-									} else if (this.doors) {
-										const cell = getCell(this.map, ... Game.getPosition(x,y,0,1,this.orientation));
-										if (this.doors[cell].exit) {
+									const cell = this.frontCell();
+									const door = this.frontDoor();
+									if (!door) {
+										console.error("You need doors!");
+									} else if (door.lock && (!this.situation.unlocked || !this.situation.unlocked[cell])) {
+										if (this.countItem("key") > 0) {
+											if (this.unlock(cell)) {
+												this.removeFromInventory("key");
+												this.playSound(SOUNDS.UNLOCK);
+											}
+										} else {
+											this.showTip("It's locked.", null, null, {removeLock:true});
+											this.playErrorSound();
+										}
+									} else {
+										if (!this.doorOpening) {
+											this.performAction(this.now);
+										} else if (this.doors[cell].exit) {
 											this.doors[cell].exit(this, this.doors[cell]);
 										} else {
 											this.actionDown = this.arrow;
 										}
-									} else {
-										console.error("You need doors!");
 									}
 								} else {
 									this.actionDown = this.arrow;
@@ -518,7 +541,6 @@ const Game = (() => {
 			this.onScenePunch = null;
 			this.customCursor = null;
 			this.chest = null;
-			this.blocked = 0;
 			this.moving = 0;
 		}
 
@@ -950,14 +972,14 @@ const Game = (() => {
 		}
 
 		canTurn(direction) {
-			return !this.battle && !this.blocked;
+			return !this.battle;
 		}
 
 		canMove({x, y}, direction) {
 			if (!this.map) {
 				return false;
 			}
-			if (this.fade > 0 || this.battle || this.blocked) {
+			if (this.fade > 0 || this.battle) {
 				return false;
 			}
 			const closeWallWithDirection = this.matchCell(this.map,x,y,0,direction,this.orientation,"MXO",'');;
@@ -1167,6 +1189,18 @@ const Game = (() => {
 					&& this.matchCell(this.map,x,y,0,+1,this.orientation,[],'XM12345');			
 		}
 
+		frontDoor() {
+			if (!this.doors) {
+				return null;
+			}
+			return this.doors[this.frontCell()];
+		}
+
+		frontCell() {
+			const { x, y } = this.pos;
+			return getCell(this.map, ... Game.getPosition(x,y,0,1,this.orientation));			
+		}
+
 		closeMap() {
 			const { x, y } = this.pos;
 			return this.matchCell(this.map,x,y,0,+1,this.orientation,'M',[]);			
@@ -1204,7 +1238,7 @@ const Game = (() => {
 			if (useItem || bagOpening || hideArrows || pickedUp || hideCursor) {
 				return;
 			}
-			if (this.data.gameOver || this.battle && this.arrow !== BAG) {
+			if (this.data.gameOver || this.battle && this.arrow !== BAG || game.sceneData.showStats) {
 				return;
 			}
 
@@ -1277,14 +1311,19 @@ const Game = (() => {
 
 		displayInventoryTips() {
 			if (this.hoverSprite && this.mouse && this.hoverSprite.bag && this.bagOpening&& (this.frameIndex === 2 || this.frameIndex === 3) && !this.pickedUp) {
+				let tipItem = null;
 				for (let i in this.inventory) {
 					if (i !== this.useItem && (!this.pickedUp || i !== this.pickedUp.item)) {
 						const { item, image, count } = this.inventory[i];	
 						if (this.isMouseHover({ src: image, index: this.frameIndex-1 }, 0, this.mouse)) {
-							const msg = item==="gun" ? `gun with ${this.inventory.bullet.count} bullet${this.inventory.bullet.count>1?'s':''}` : (count||1) > 1 ? `${item} x${count}` : `${item}`;
-							this.displayTextLine(ctx, {msg,  x:3, y: this.mouse.y >= 58 ? 40 : 58 });
+							tipItem = i;
 						}
 					}
+				}
+				if (tipItem) {
+					const { item, count } = this.inventory[tipItem];	
+					const msg = item==="gun" ? `gun with ${this.countItem('bullet')} bullet${this.countItem('bullet')>1?'s':''}` : (count||1) > 1 ? `${item} x${count}` : `${item}`;
+					this.displayTextLine(ctx, {msg,  x:3, y: this.mouse.y >= 58 ? 40 : 58 });
 				}
 			}
 		}
@@ -1754,6 +1793,21 @@ const Game = (() => {
 			if (!this.sceneTime) {
 				this.sceneTime = this.data.time;
 				this.onScene(this);
+
+				this.sprites.forEach((sprite, index) => {
+					if (sprite.onScene) {
+						sprite.onScene(this, sprite);
+					}
+					if (sprite.init) {
+						if (!this.situation.inited) {
+							this.situation.inited = {};
+						}
+						if (!this.situation.inited[index]) {
+							this.situation.inited[index] = this.now;
+							sprite.init(this, sprite);
+						}
+					}
+				});
 			}
 			this.onSceneRefresh(this);
 			if(this.battle && !this.data.gameOver) {
@@ -1767,7 +1821,7 @@ const Game = (() => {
 					if (this.evaluate(sprite.hidden, sprite)) {
 						return;
 					}
-					sprite.onRefresh(game, sprite);
+					sprite.onRefresh(this, sprite);
 				}
 			});
 		}
@@ -2125,6 +2179,7 @@ const Game = (() => {
 		}
 
 		clickMenu() {
+			this.sceneData.showStats = 0;
 			this.openMenu(this.now);
 		}
 
@@ -2198,9 +2253,18 @@ const Game = (() => {
 		setupStats() {
 			if (!this.data.stats) {
 				this.data.stats = {
-					life: 70,
-					maxLife: 100,
+					life: 80,
+					maxLife: 120,
 					damage: 10,
+					defense: 10,
+					xp: 0,
+					bonus: 0,
+				};
+			}
+			if (!this.data.stats.state) {
+				this.data.stats.state = {
+					drank: 0,
+					ate: 0,
 				};
 			}
 		}
@@ -2219,6 +2283,7 @@ const Game = (() => {
 				this.data.gameOver = this.now;
 				this.hideCursor = false;
 				this.waitCursor = false;
+				this.useItem = null;
 				this.playTheme(null);
 			}
 		}
@@ -2231,26 +2296,55 @@ const Game = (() => {
 			return this.battle && (this.arrow === BLOCK || this.arrow === BAG);
 		}
 
-		damagePlayer(damage) {
+		damagePlayer(damage, options) {
+			const {shot, blocked} = options ? options : {};
 			const { stats } = this.data;
-			stats.life = Math.max(stats.life - damage, 0);
+			const calcDamage = damage * damage / Math.max(1, this.data.stats.defense);
+			stats.life = Math.max(stats.life - calcDamage, blocked ? 1 : 0);
 		}
 
-		damageFoe(damage) {
-			this.battle.foeLife = Math.max(0, this.battle.foeLife - damage);
+		damageFoe(damage, options) {
+			const {shot, blocked} = options ? options : {};
+			const calcDamage = damage * damage / Math.max(1, this.battle.foeDefense);
+			this.battle.foeLife = Math.max(blocked ? 1 : 0, this.battle.foeLife - calcDamage);
 			if (!this.battle.foeLife) {
 				this.battle.foeDefeated = this.now;
 				this.useItem = null;
 				this.playSound(SOUNDS.FOE_DEFEAT);
 				this.playTheme(SOUNDS.CHIN_TOK_THEME, {volume: .2});
 				if (this.battle.onWin) {
+					this.data.stats.state = {
+						ate: 0,
+						drank: 0,
+					};
+					if (!shot) {
+						this.battle.gainedXP = this.battle.xp;
+						const currentLevel = this.getLevel(this.data.stats.xp);
+						this.gainXP(this.battle.xp);
+						if (currentLevel < this.getLevel(this.data.stats.xp)) {
+							this.battle.gainedLevel = this.now;
+							this.delayAction(game => {
+								game.openMenu(game.now);
+								game.data.stats.bonus = (game.data.stats.bonus||0) + 3;
+								game.playSound(SOUNDS.JINGLE);
+							}, 2000);
+						}
+					}
 					this.battle.onWin(this, this.battle);
 				}
 			}
 		}
 
+		gainXP(xp) {
+			this.data.stats.xp = (this.data.stats.xp || 0) + (xp || 0);
+			console.log("LEVEL: ", this.getLevel(this.data.stats.xp));
+		}
+
+		getLevel(xp) {
+			return Math.max(2, Math.ceil(Math.log(xp))) - 1;
+		}
+
 		findChest(found, { item, image, cleared }) {
-			this.blocked = this.now;
 			this.chest = {
 				found,
 				opened: 0,
@@ -2260,6 +2354,24 @@ const Game = (() => {
 				cleared,
 			};			
 		}
+
+		playSteps() {
+			this.playSound(SOUNDS.HIT, {volume: .5});
+			this.delayAction(game => {
+				game.playSound(SOUNDS.HIT, {volume:.3});
+			}, 300);
+			this.delayAction(game => {
+				game.playSound(SOUNDS.HIT, {volume:.2});
+			}, 600);
+			this.delayAction(game => {
+				game.playSound(SOUNDS.HIT, {volume:.12});
+			}, 900);
+		}
+
+		playErrorSound() {
+			game.playSound(SOUNDS.ERROR);
+			game.delayAction(game => game.playSound(SOUNDS.ERROR), 100);
+		}		
 	}
 
 	return Game;

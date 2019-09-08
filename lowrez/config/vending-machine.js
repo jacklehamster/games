@@ -22,25 +22,6 @@ gameConfig.scenes.push(
 		},
 		onScene: game => {
 			game.save();
-			// game.startDialog({
-			// 	time: game.now,
-			// 	index: 0,
-			// 	conversation: [
-			// 		{
-			// 			message: "",
-			// 			options: [
-			// 				{ },
-			// 				{ },
-			// 				{ msg: "LEAVE", onSelect: game => {
-			// 					const fadeDuration = 1000;
-			// 					game.fadeOut(game.now, {duration:fadeDuration * 1.5, fadeDuration, color:"#000000", onDone: game => {
-			// 						game.gotoScene("maze-2", {door:3})
-			// 					}});
-			// 				}},
-			// 			],
-			// 		},
-			// 	],
-			// });
 		},
 		sprites: [
 			...getRoomMaze(""),
@@ -49,15 +30,23 @@ gameConfig.scenes.push(
 				hidden: game => game.rotation !== 0,
 			},
 			{
-				// offsetX: -5,
-				src: ASSETS.MACHINE, col: 1, row: 2,
-				index: game => game.getSituation("zoom-vending-machine").grabbedBottle ? 1 : 0,
+				src: ASSETS.MACHINE, col: 2, row: 2,
+				index: game => {
+					return (game.getSituation("zoom-vending-machine").grabbedBottle ? 1 : 0)
+					 | (game.getSituation("zoom-vending-machine").grabbedApple ? 2 : 0);
+				},
 				tip: "Looks like a vending machine. There's a big hole in it.",
 				onClick: game => game.gotoScene("zoom-vending-machine"),
+				combine: (item, game) => {
+					if (item === "coin") {
+						game.gotoScene("zoom-vending-machine");
+						game.useItem = item;
+						return true;
+					}
+				},
 				hidden: game => game.rotation !== 0,
 			},
 			{
-				// offsetX: -5,
 				name: "coin 1",
 				src: ASSETS.COIN_1,
 				hidden: (game,{name}) => game.data.pickedUp[name] || game.rotation !== 0,
@@ -74,15 +63,26 @@ gameConfig.scenes.push(
 					game.data.pickedUp[name] = game.now;
 					game.pickUp({item:"coin", image:ASSETS.GRAB_COIN, message:""});
 				},
+				init: ({now, data}, {name}) => {
+					data.pickedUp[name] = now;
+				},
 			},
-			// {
-			// 	src: ASSETS.SPEECH_OUT,
-			// 	offsetY: 15,
-			// 	hidden: game => game.bagOpening || game.useItem || game.pendingTip,
-			// 	index: game => Math.min(3, Math.floor((game.now - game.sceneTime) / 80)),
-			// },
-			...standardBag(),
+			{
+				name: "coin 3",
+				src: ASSETS.COIN_2,
+				offsetX: -5,
+				offsetY: 1,
+				hidden: (game,{name}) => game.data.pickedUp[name] || game.rotation !== 0,
+				onClick: (game, {name}) => {
+					game.data.pickedUp[name] = game.now;
+					game.pickUp({item:"coin", image:ASSETS.GRAB_COIN, message:""});
+				},
+				init: ({now, data}, {name}) => {
+					data.pickedUp[name] = now;
+				},
+			},
 			...standardMenu(),
+			...standardBag(),
 		],
 	},
 );

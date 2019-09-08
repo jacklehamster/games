@@ -57,38 +57,58 @@ gameConfig.scenes.push(
 							if (!game.situation.coin) {
 								delete game.situation.coin;
 							}
-							if (game.data.pickedUp["coin 1"]) {
-								delete game.data.pickedUp["coin 1"];
-							} else {
-								delete game.data.pickedUp["coin 2"];								
-							}
 							game.situation.gotBottle = game.now;
 							game.playSound(SOUNDS.DUD);
 						}
 					},
-					tip: "Looks like a bottle. Is that water?",
+					tip: game => game.situation.pickedUpBottle ? "Nothing left." : "Looks like a bottle. Is that water?",
+					combineMessage: (item, game) => item === "coin" ? "That goes in the coin slot." : null,
 				},
 				{
 					src: ASSETS.VENDING_MACHINE_APPLE, col: 2, row: 3,
 					index: game => !game.situation.gotApple ? 0 : Math.min(4, Math.floor((game.now - game.situation.gotApple) / 100)),
 					onClick: game => {
-						if ((game.situation.coin||0) < 2 || game.situation.gotApple) {
+						if ((game.situation.coin||0) < 3 || game.situation.gotApple) {
 							game.playSound(SOUNDS.ERROR);
 							game.delayAction(game => game.playSound(SOUNDS.ERROR), 100);
 						} else {
-							game.situation.coin--;
+							game.situation.coin-=3;
 							if (!game.situation.coin) {
 								delete game.situation.coin;
 							}
-							delete game.data.pickedUp["coin 1"];
-							delete game.data.pickedUp["coin 2"];
 							game.situation.gotApple = game.now;
 							game.playSound(SOUNDS.DUD);
 						}
 					},
-					tip: "I hope that's food. I'm getting hungry.",
+					tip: game => game.situation.pickedUpBottle ? "Nothing left." : "I hope that's food. I'm getting hungry.",
+					combineMessage: (item, game) => item === "coin" ? "That goes in the coin slot." : null,
 				},
 				{ src: ASSETS.VENDING_MACHINE_GLASS },
+				{
+					custom: ({now, situation}, sprite, ctx) => {
+						ctx.fillStyle = "#aa6666";
+						ctx.fillRect(13, 33, 6, 2);
+						ctx.fillRect(38, 33, 2, 2);
+						ctx.fillRect(34, 33, 2, 2);
+						ctx.fillRect(30, 33, 2, 2);
+
+						if (now % 1000 < 500) {
+							ctx.fillStyle = "#66cc66";
+							if (situation.coin > 0) {
+								ctx.fillRect(13, 33, 6, 2);
+							}								
+							if (situation.coin > 0) {
+								ctx.fillRect(30, 33, 2, 2);
+							}
+							if (situation.coin > 1) {
+								ctx.fillRect(34, 33, 2, 2);
+							}
+							if (situation.coin > 2) {
+								ctx.fillRect(38, 33, 2, 2);
+							}
+						}
+					},
+				},
 				{
 					name: "coin-slot",
 					src: ASSETS.VENDING_MACHINE_COIN_SLOT,
@@ -103,6 +123,33 @@ gameConfig.scenes.push(
 							return true;
 						}
 					}
+				},
+				{
+					src: ASSETS.VENDING_MACHINE_COIN_RETURN,
+					index: ({now, sceneData}) => sceneData.returnCoin && now - sceneData.returnCoin < 100 ? 1 : 0,
+					onClick: game => {
+						const { now, situation, sceneData } = game;
+						const coins = [
+							"coin 1", "coin 2", "coin 3",
+						];
+						if (situation.coin) {
+							sceneData.returnCoin = now;
+							game.playSound(SOUNDS.DUD);							
+						} else {
+							game.playErrorSound();
+						}
+						while(situation.coin) {
+							situation.coin--;
+							for (let i = 0; i < coins.length; i++) {
+								if (game.data.pickedUp[coins[i]]) {
+									delete game.data.pickedUp[coins[i]];
+									break;
+								}
+							}
+
+						}
+						delete situation.coin;
+					},
 				},
 				{
 					src: ASSETS.SPEECH_OUT,

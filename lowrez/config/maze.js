@@ -51,10 +51,6 @@ gameConfig.scenes.push(
 				index: ({now, chest, situation}) => situation.chestCleared ? 3 : !chest.opened ? 0 : Math.min(3, Math.floor((now - chest.opened) / 100)),
 				onRefresh: (game, sprite) => {
 					const {now, chest, situation} = game;
-					if (situation.chestCleared) {
-						game.blocked = false;
-						return;
-					}
 					if (chest.opened) {
 						const frame = Math.floor((now - chest.opened) / 100);
 						if (frame > 4 && !chest.checked) {
@@ -68,8 +64,8 @@ gameConfig.scenes.push(
 					}
 				},
 			},
-			...standardBag(),
 			...standardMenu(),
+			...standardBag(),
 		],
 		doors: {
 			1: {

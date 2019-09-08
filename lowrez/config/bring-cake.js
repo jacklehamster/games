@@ -11,7 +11,7 @@ gameConfig.scenes.push(
 				if (frame >= 10) {
 					game.showTip([
 						"...",
-						"Wait... did he just leave?",
+						"Wait... why did he just leave?",
 						"That's odd.",
 						"Maybe he went to get me a birthday cake.",
 						"Wouldn't that be funny?!?",

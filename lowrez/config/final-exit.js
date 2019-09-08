@@ -75,8 +75,8 @@ gameConfig.scenes.push(
 				hidden: game => game.situation.openGate || game.bagOpening || game.useItem || game.pendingTip,
 				index: game => Math.min(3, Math.floor((game.now - game.sceneTime) / 80)),
 			},
-			...standardBag(),
 			...standardMenu(),
+			...standardBag(),
 		],
 	},
 );

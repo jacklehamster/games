@@ -24,12 +24,12 @@ gameConfig.scenes.push(
 				const { situation } = game;
 				if (!game.data.lock_unlocked) {
 					const code = [situation.digit1||0, situation.digit2||0, situation.digit3||0, situation.digit4||0].join("");
-					if (code === "2505") {
+					if (code === HIGHSCORE + "") {
 						game.data.lock_unlocked = game.now;
 						game.playSound(SOUNDS.DUD);
 						game.delayAction(game=> {
 							game.playSound(SOUNDS.DUD);
-						}, 100);
+						}, 150);
 						game.showTip("Looks like the right combination!", game => {
 							game.gotoScene("locker-room");
 						});
@@ -41,50 +41,104 @@ gameConfig.scenes.push(
 					src: ASSETS.LOCK_BACK,
 				},
 				{
-					src: ASSETS.LOCK_DIGIT, col: 3, row: 3,
-					index: game => game.situation.digit1 || 0,
-					onClick: game => {
+					name: "digit1",
+					custom: (game, {name}, ctx) => {
+						const ALIEN_DIGIT_0 = 1000;
+
+						const num = game.situation[name] || 0;
+						let msg = ALPHAS[ALIEN_DIGIT_0 + num].char;
+						ctx.fillStyle = "#224455";
+						ctx.fillRect(16,33,5,8);
+						game.displayTextLine(ctx, {
+							msg,
+							x:17 + (num===1 || num===3 ? 1 : 0), y:35,
+						});
+					},
+					onClick: (game, {name}) => {
 						if (game.data.lock_unlocked) {
 							return;
 						}
 						game.playSound(SOUNDS.DUD);
-						game.situation.digit1 = ((game.situation.digit1||0) + 1) % 8;
+						game.situation[name] = ((game.situation[name]||0) + 1) % 10;
+						const { situation } = game;
+						const code = [situation.digit1||0, situation.digit2||0, situation.digit3||0, situation.digit4||0].join("");
+						console.log(code);
 					},
 				},
 				{
-					src: ASSETS.LOCK_DIGIT, col: 3, row: 3,
-					offsetX: 11,
-					index: game => game.situation.digit2 || 0,
-					onClick: game => {
+					name: "digit2",
+					custom: (game, {name}, ctx) => {
+						const ALIEN_DIGIT_0 = 1000;
+
+						const num = game.situation[name] || 0;
+						let msg = ALPHAS[ALIEN_DIGIT_0 + num].char;
+						ctx.fillStyle = "#224455";
+						ctx.fillRect(26,33,5,8);
+						game.displayTextLine(ctx, {
+							msg,
+							x:27 + (num===1 || num===3 ? 1 : 0), y:35,
+						});
+					},
+					onClick: (game, {name}) => {
 						if (game.data.lock_unlocked) {
 							return;
 						}
 						game.playSound(SOUNDS.DUD);
-						game.situation.digit2 = ((game.situation.digit2||0) + 1) % 8;
+						game.situation[name] = ((game.situation[name]||0) + 1) % 10;
+						const { situation } = game;
+						const code = [situation.digit1||0, situation.digit2||0, situation.digit3||0, situation.digit4||0].join("");
+						console.log(code);
 					},
 				},
 				{
-					src: ASSETS.LOCK_DIGIT, col: 3, row: 3,
-					offsetX: 22,
-					index: game => game.situation.digit3 || 0,
-					onClick: game => {
+					name: "digit3",
+					custom: (game, {name}, ctx) => {
+						const ALIEN_DIGIT_0 = 1000;
+
+						const num = game.situation[name] || 0;
+						let msg = ALPHAS[ALIEN_DIGIT_0 + num].char;
+						ctx.fillStyle = "#224455";
+						ctx.fillRect(35,33,5,8);
+						game.displayTextLine(ctx, {
+							msg,
+							x:36 + (num===1 || num===3 ? 1 : 0), y:35,
+						});
+					},
+					onClick: (game, {name}) => {
 						if (game.data.lock_unlocked) {
 							return;
 						}
 						game.playSound(SOUNDS.DUD);
-						game.situation.digit3 = ((game.situation.digit3||0) + 1) % 8;
+						game.situation[name] = ((game.situation[name]||0) + 1) % 10;
+						const { situation } = game;
+						const code = [situation.digit1||0, situation.digit2||0, situation.digit3||0, situation.digit4||0].join("");
+						console.log(code);
 					},
 				},
 				{
-					src: ASSETS.LOCK_DIGIT, col: 3, row: 3,
-					offsetX: 33,
-					index: game => game.situation.digit4 || 0,
-					onClick: game => {
+					name: "digit4",
+					custom: (game, {name}, ctx) => {
+						const ALIEN_DIGIT_0 = 1000;
+
+						const num = game.situation[name] || 0;
+						let msg = ALPHAS[ALIEN_DIGIT_0 + num].char;
+						ctx.fillStyle = "#224455";
+						ctx.fillRect(45,33,5,8);
+						game.displayTextLine(ctx, {
+							msg,
+							x:46 + (num===1 || num===3 ? 1 : 0), y:35,
+						});
+					},
+					onClick: (game, {name}) => {
 						if (game.data.lock_unlocked) {
 							return;
 						}
 						game.playSound(SOUNDS.DUD);
-						game.situation.digit4 = ((game.situation.digit4||0) + 1) % 8;
+						game.situation[name] = ((game.situation[name]||0) + 1) % 10;
+
+						const { situation } = game;
+						const code = [situation.digit1||0, situation.digit2||0, situation.digit3||0, situation.digit4||0].join("");
+						console.log(code);
 					},
 				},
 				{

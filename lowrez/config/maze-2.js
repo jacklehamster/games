@@ -29,11 +29,9 @@ gameConfig.scenes.push(
 			},
 			...getCommonMaze("_BLUE_1"),
 			makeFoe('guard', ASSETS.GUARD),
-			makeFoe('monster', ASSETS.MONSTER),
-			makeFoe('slime', ASSETS.SLIME),
 			...standardBattle(),
-			...standardBag(),
 			...standardMenu(),
+			...standardBag(),
 		],
 		doors: {
 			1: {
@@ -54,7 +52,12 @@ gameConfig.scenes.push(
 			},
 			5: {
 				scene: "maze-3",
-				exit: (game, {scene}) =>  game.fadeToScene(scene, {door:1}, 1000),
+				wayUp: true,
+				// lock: true,
+				exit: (game, {scene}) => {
+					game.fadeToScene(scene, {door:1}, 1000);
+					game.playSteps();
+				},
 			},
 		},
 		... makeOnSceneBattle(),
@@ -62,12 +65,15 @@ gameConfig.scenes.push(
 			':': {
 				foe: "guard",
 				foeLife: 80,
-				foeDefense: .5,
+				foeBlockChance: .5,
 				attackSpeed: 3000,
 				riposteChance: .5,
 				attackPeriod: 100,
-				foeDamage: 10,
-				onEvent: (game, {foe, foeLife, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin}) => {
+				foeDamage: 9,
+				foeDefense: 10,
+				xp: 5,
+				belowTheBelt: false,
+				onEvent: (game, {foe, foeLife, foeBlockChance, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin, xp, belowTheBelt}) => {
 					const {data, now} = game;
 					game.canPunch = false;
 					game.chest = null;
@@ -80,19 +86,22 @@ gameConfig.scenes.push(
 							attackSpeed,
 							playerHit: 0,
 							playerBlock: 0,
-							foeBlock: 0,
+							foeBlockChance,
 							playerLeftAttack: 0,
 							playerRightAttack: 0,
 							playerAttackLanded: 0,
 							playerAttackPeriod: 50,
 							foeLife,
 							foeMaxLife: foeLife,
+							foeBlock: 0,
 							foeDefense,
 							foeDefeated: 0,
 							attackPeriod,
 							riposteChance,
 							foeDamage,
 							onWin,
+							xp,
+							belowTheBelt,
 						};
 					}
 					return true;

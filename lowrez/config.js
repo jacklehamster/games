@@ -213,6 +213,18 @@ function getCommonMaze(modifier) {
 			hidden: game => game.rotation % 2 === 1 || !game.closeWall(),
 		},
 		{
+			src: ASSETS.DOORWAY, col: 2, row: 3,
+			index: game => {
+				const frontDoor = game.frontDoor();
+				if (!frontDoor) return 0;
+				if (frontDoor.wayUp) return 1;
+				if (frontDoor.wayDown) return 2;
+				if (frontDoor.eye) return 3 + (game.now % 4000 < 1000 ? 1 : 0);
+				return 0;
+			},
+			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.moving,
+		},
+		{
 			src: ASSETS[`DOOR_OPEN${modifier}`],
 			index: game => game.frameIndex,
 			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || !game.doorOpening,
@@ -221,6 +233,67 @@ function getCommonMaze(modifier) {
 			src: ASSETS[`CLOSE_DOOR${modifier}`],
 			index: game => game.doorOpening || game.bagOpening || game.menuOpening ? 0 : game.frameIndex,
 			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.doorOpening,					
+		},
+		{
+			src: ASSETS[`DUNGEON_LOCK${modifier}`], col: 2, row: 2,
+			index: game => game.moving ? game.frameIndex : 0,
+			hidden: game => {
+				if(game.rotation % 2 === 1 || !game.closeDoor()) {
+					return true;
+				}
+				const frontDoor = game.frontDoor();
+				if (!frontDoor || !frontDoor.lock) {
+					return true;
+				}
+				if (game.situation.unlocked && game.situation.unlocked[game.frontCell()]) {
+					return true;
+				}
+				return false;
+			},
+		},
+		{
+			src: ASSETS.KEY_COUNT,
+			hidden: game => {
+				if(game.rotation % 2 === 1 || !game.closeDoor() || game.moving) {
+					return true;
+				}
+				const frontDoor = game.frontDoor();
+				if (!frontDoor || !frontDoor.lock) {
+					return true;
+				}
+				if (game.situation.unlocked && game.situation.unlocked[game.frontCell()]) {
+					return true;
+				}
+				if (!game.countItem("key")) {
+					return true;
+				}
+				return false;
+			},
+		},		
+		{
+			custom: (game, sprite, ctx) => {
+				game.displayTextLine(ctx, {
+					msg: `x${game.countItem("key")}`,
+					x:13, y:57,
+				});
+
+			},
+			hidden: game => {
+				if(game.rotation % 2 === 1 || !game.closeDoor() || game.moving) {
+					return true;
+				}
+				const frontDoor = game.frontDoor();
+				if (!frontDoor || !frontDoor.lock) {
+					return true;
+				}
+				if (game.situation.unlocked && game.situation.unlocked[game.frontCell()]) {
+					return true;
+				}
+				if (game.countItem("key")<=1) {
+					return true;
+				}
+				return false;
+			},
 		},
 		{
 			src: ASSETS.MAP,
@@ -429,6 +502,10 @@ function getRoomMaze(modifier) {
 			hidden: game => game.rotation % 2 === 1 || !game.closeWall() || game.mazeHole({direction: RIGHT, distance: CLOSE}),
 		},
 		{
+			src: ASSETS.DOORWAY, col: 2, row: 3,
+			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.moving,
+		},
+		{
 			src: ASSETS[`DOOR_OPEN_BLUE_1`],
 			index: game => game.frameIndex,
 			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || !game.doorOpening,
@@ -537,36 +614,22 @@ function standardBag() {
 			name: "self",
 			src: ASSETS.EATER, col:2, row:2,
 			index: (game, sprite) => game.hoverSprite === sprite ? Math.min(2, Math.floor((game.now - sprite.hoverTime) / 100)) : 0,
-			hidden: game => game.useItem !== 'water bottle' && game.useItem !== 'fruit?',
+			hidden: game => !consumable[game.useItem],
 			combine: (item, game) => {
-				const { stats } = game.data;
-				if (item === 'water bottle') {
-					game.removeFromInventory(item);
-					game.useItem = null;
-					game.playSound(SOUNDS.DRINK);
-					game.addToInventory({item:"empty bottle", image:ASSETS.GRAB_BOTTLE},)
-					stats.life = Math.min(stats.life + 30, stats.maxLife);
-					if (!game.battle) {
-						game.showTip("Refreshing!");						
-					}				
+				if (consumable[game.useItem]) {
+					if (consumable[game.useItem](game)) {
+						game.removeFromInventory(item);
+						game.useItem = null;
+					}
+					return true;
 				}
-				if (item === 'fruit?') {
-					game.removeFromInventory(item);
-					game.useItem = null;
-					game.playSound(SOUNDS.EAT);
-					stats.life = Math.min(stats.life + 100, stats.maxLife);
-					if (!game.battle) {
-						game.showTip("Delicious!");						
-					}				
-				}
-				return true;
 			},
 		},
 		{
 			bag: true,
 			src: ASSETS.BAG_OUT,
 			index: game => game.frameIndex,
-			hidden: ({arrow, bagOpening, dialog, data, battle, pickedUp}) => data.gameOver || !bagOpening && (arrow !== BAG || dialog && dialog.conversation[dialog.index].options.length > 2),
+			hidden: ({arrow, bagOpening, dialog, data, battle, pickedUp, sceneData, now}) => data.gameOver || !bagOpening && (arrow !== BAG && (!sceneData.showStats || now - sceneData.showStats < 400) || dialog && dialog.conversation[dialog.index].options.length > 2),
 			alpha: game => game.emptyBag() ? .2 : 1,
 			onClick: game => game.clickBag(),
 		},
@@ -576,10 +639,148 @@ function standardBag() {
 function standardMenu() {
 	return [
 		{
+			custom: (game, sprite, ctx) => {
+				ctx.fillStyle = "#00000088";
+				ctx.fillRect(0, 0, 64, 64);
+			},
+			hidden: game => !game.sceneData.showStats,
+			onClick: game => game.sceneData.showStats = 0,
+		},
+		{
+			src: ASSETS.STATS,
+			index: ({now, sceneData}) => Math.min(3, Math.floor((now - sceneData.showStats)/100)),
+			hidden: game => !game.sceneData.showStats,
+			onClick: game => {
+			},
+		},
+		{
+			custom: (game, sprite, ctx) => {
+				//	stats
+				const { data } = game;
+				const { stats }  = data;
+				const labelX = 5;
+				const statX = 27;
+				let y = 9;
+
+				game.displayTextLine(ctx, {
+					msg: `LVL ${game.getLevel(stats.xp)}`,
+					x:34, y,
+				});
+				y+=13;
+				game.displayTextLine(ctx, {
+					msg: `ATK`,
+					x:labelX, y,
+				});
+				game.displayTextLine(ctx, {
+					msg: `${stats.damage}`,
+					x:statX, y,
+				});
+				y+=7;
+				game.displayTextLine(ctx, {
+					msg: `DEF`,
+					x:labelX, y,
+				});
+				game.displayTextLine(ctx, {
+					msg: `${stats.defense}`,
+					x:statX, y,
+				});
+				y+=7;
+				game.displayTextLine(ctx, {
+					msg: `STA`,
+					x:labelX, y,
+				});
+				game.displayTextLine(ctx, {
+					msg: `${Math.ceil(stats.life)}/${stats.maxLife}`,
+					x:statX, y,
+				});
+				y+=7;
+				game.displayTextLine(ctx, {
+					msg: `XP`,
+					x:labelX, y,
+				});
+				game.displayTextLine(ctx, {
+					msg: `${stats.xp}/${Math.ceil(Math.exp(Math.max(2, Math.ceil(Math.log(stats.xp)))))}`,
+					x:statX, y,
+				});
+
+				if (stats.bonus) {
+					ctx.fillStyle = "#aa9933";
+					for (let i = 0; i < Math.min(9, stats.bonus); i++) {
+						ctx.fillRect(34 + i * 3, 16, 2, 2);
+					}
+				}
+			},
+			hidden: ({now, sceneData}) => !sceneData.showStats || now - sceneData.showStats < 400,
+		},
+		{
+			custom: (game, sprite, ctx) => {
+				ctx.fillStyle = "#ccaa33";
+				ctx.strokeStyle = "#cccc00";
+				const x = 23.5, y = 23.5;
+				ctx.beginPath();
+				ctx.moveTo(x, y);
+				ctx.lineTo(x-2, y+2);
+				ctx.lineTo(x+2, y+2);
+				ctx.closePath();
+				ctx.fill();
+				ctx.stroke();
+			},
+			hidden: ({data, sceneData, now}) => !sceneData.showStats || now - sceneData.showStats < 400 || !data.stats.bonus,
+			onClick: game => {
+				const {data} = game;
+				data.stats.bonus --;
+				data.stats.damage ++;
+				game.playSound(SOUNDS.DRINK);
+			},
+		},
+		{
+			custom: (game, sprite, ctx) => {
+				ctx.fillStyle = "#ccaa33";
+				ctx.strokeStyle = "#cccc00";
+				const x = 23.5, y = 30.5;
+				ctx.beginPath();
+				ctx.moveTo(x, y);
+				ctx.lineTo(x-2, y+2);
+				ctx.lineTo(x+2, y+2);
+				ctx.closePath();
+				ctx.fill();
+				ctx.stroke();
+			},	
+			hidden: ({data, sceneData, now}) => !sceneData.showStats || now - sceneData.showStats < 400 || !data.stats.bonus,
+			onClick: game => {
+				const {data} = game;
+				data.stats.bonus --;
+				data.stats.defense ++;
+				game.playSound(SOUNDS.DRINK);
+			},
+		},
+		{
+			custom: (game, sprite, ctx) => {
+				ctx.fillStyle = "#ccaa33";
+				ctx.strokeStyle = "#cccc00";
+				const x = 23.5, y = 37.5;
+				ctx.beginPath();
+				ctx.moveTo(x, y);
+				ctx.lineTo(x-2, y+2);
+				ctx.lineTo(x+2, y+2);
+				ctx.closePath();
+				ctx.fill();
+				ctx.stroke();
+			},	
+			hidden: ({data, sceneData, now}) => !sceneData.showStats || now - sceneData.showStats < 400 || !data.stats.bonus,
+			onClick: game => {
+				const {data} = game;
+				data.stats.bonus --;
+				data.stats.life += 10;
+				data.stats.maxLife += 10;
+				game.playSound(SOUNDS.DRINK);
+			},
+		},
+		{
 			menu: true,
 			src: ASSETS.MENU_OUT,
 			index: game => game.frameIndex,
-			hidden: game => !game.menuOpening && (game.arrow !== MENU || game.sceneData.firstShot) || game.hideCursor && game.frameIndex === 0 || game.battle,
+			hidden: game => !game.menuOpening && (game.arrow !== MENU || game.sceneData.firstShot) || game.hideCursor && game.frameIndex === 0 || game.battle && !game.battle.foeDefeated,
 			onClick: game => game.clickMenu(),
 			onHoverOut: (game, sprite, hovered) => { if (game.menuOpening > 0 && game.frameIndex === 3 && (!hovered || !hovered.menu_item && !hovered.menu)) game.openMenu(game.now); },
 		},
@@ -630,10 +831,17 @@ function standardMenu() {
 			hidden: game => !game.menuOpening && (game.arrow !== MENU || game.sceneData.firstShot),
 			alpha: ({hoverSprite}, sprite) => hoverSprite === sprite ? 1 : .5,
 			onClick: game => {
-				game.openMenu(game.now, game => {
-				});
+				game.sceneData.showStats = game.sceneData.showStats ? 0 : game.now;
+				game.openMenu(game.now);
 			},
 			onHoverOut: (game, sprite, hovered) => { if (game.menuOpening > 0 && (!hovered || !hovered.menu_item && !hovered.menu)) game.openMenu(game.now); },
+		},
+		{
+			menu_item: true,
+			name: "profile-notification",
+			src: ASSETS.MENU_PROFILE_NOTIFICATION,
+			index: game => game.frameIndex,
+			hidden: game => !game.data.stats.bonus || !game.menuOpening && (game.arrow !== MENU || game.sceneData.firstShot),
 		},
 		{
 			hidden: game => !game.menuOpening && (game.arrow !== MENU || game.sceneData.firstShot) || game.hideCursor && game.frameIndex === 0 || game.battle,
@@ -687,7 +895,16 @@ function makeFoe(foe, src) {
 		hidden: ({battle, now}) => !battle || battle.foe != foe || battle.foeDefeated && now - battle.foeDefeated >= 2000,
 		onShot: (game, sprite) => {
 			const {battle, data} = game;
-			game.damageFoe(100);
+			game.damageFoe(50, {shot:true});
+		},
+		combine: (item, game) => {
+			game.battle.nextAttack =  Math.min(game.now + 3000, game.battle.nextAttack);
+			if (item === "photo") {
+				game.showTip("Have you seen this baby?");
+			} else {
+				game.showTip(`Would you like this ${item}?`);
+			}
+			return true;
 		},
 	};
 }
@@ -704,18 +921,17 @@ function makeOnSceneBattle() {
 			} else if (now >= battle.nextAttack) {
 				const frame = 4 + Math.floor((now - battle.nextAttack) / battle.attackPeriod);
 				if (frame === 7 && !battle.foeDidAttack) {
-					const foeChargePercent = Math.min(1, (now - battle.foeCharge) / battle.foeChargeTime);
-					battle.foeCharge = now - Math.max(0, (foeChargePercent - 1/4) * battle.foeChargeTime);
-
 					if (game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack) {
 						game.playSound(SOUNDS.DUD);
 						battle.playerBlock = now;
+						game.damagePlayer(battle.foeDamage / 5, {blocked:true});
 					} else {
 						game.playSound(SOUNDS.HIT);
 						battle.playerHit = now;
 						battle.playerLeftAttack = battle.playerRightAttack = 0;
 						game.damagePlayer(battle.foeDamage);
 					}
+					game.pendingTip = null;
 					battle.foeDidAttack = now;
 				} else if (frame > 7) {
 					battle.foeDidAttack = 0;
@@ -734,7 +950,7 @@ function makeOnSceneBattle() {
 			if (playerAttack) {
 				const frame = Math.floor((now - playerAttack) / attackPeriod);
 				if (frame === 3 && !battle.playerAttackLanded && !battle.foeBlock) {
-					if (now >= battle.nextAttack || Math.random()>=battle.foeDefense) {
+					if (now >= battle.nextAttack || Math.random()>=battle.foeBlockChance) {
 						battle.nextAttack = null;
 						game.playSound(SOUNDS.HIT);
 						battle.playerAttackLanded = now;
@@ -742,6 +958,7 @@ function makeOnSceneBattle() {
 					} else if (!battle.foeBlock) {
 						game.playSound(SOUNDS.DUD);
 						battle.foeBlock = now;
+						game.damageFoe(data.stats.damage / 5, {blocked:true});
 						if (Math.random() >= battle.riposteChance) {
 							battle.nextAttack = Math.min(battle.nextAttack, now + 50);
 						}
@@ -774,16 +991,16 @@ function standardBattle() {
 			offsetX: ({now, battle}) => Math.cos((now-Math.PI) / 100) + 1 + 3,
 			offsetY: ({now, battle}) => Math.sin((now-Math.PI) / 100) + 1 + (battle.playerLeftAttack?10:0),
 			index: ({battle, now}) => {
-				if (!battle.playerRightAttack) {
+				if (!battle.playerRightAttack || battle.belowTheBelt) {
 					return 12;
 				}
 				const attackPeriod = battle.playerAttackPeriod;
 				const frame = Math.min(3, Math.floor((now - battle.playerRightAttack) / attackPeriod));
-				return !battle ? 0 : frame;
+				return frame;
 			},
 			hidden: game => {
 				const {battle, arrow, useItem, bagOpening} = game;
-				return !battle || game.data.gameOver || battle.foeDefeated || (game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack && !battle.playerHit || useItem || bagOpening);
+				return !battle || battle.belowTheBelt && (battle.playerLeftAttack || battle.playerRightAttack) || game.data.gameOver || battle.foeDefeated || (game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack && !battle.playerHit || useItem || bagOpening);
 			},
 		},
 		{
@@ -792,17 +1009,32 @@ function standardBattle() {
 			offsetX: ({now, battle}) => Math.sin(now / 100) - 1 - 3,
 			offsetY: ({now, battle}) => Math.cos(now / 100) + 1 + (battle.playerRightAttack?10:0),
 			index: ({battle, now}) => {
-				if (!battle.playerLeftAttack) {
+				if (!battle.playerLeftAttack || battle.belowTheBelt) {
 					return 12;
 				}
 				const attackPeriod = battle.playerAttackPeriod;
 				const frame = Math.min(3, Math.floor((now - battle.playerLeftAttack) / attackPeriod));
-				return !battle ? 0 : 4 + frame;
+				return 4 + frame;
 			},
 			hidden: game => {
 				const {battle, arrow, useItem, bagOpening} = game;
-				return !battle || game.data.gameOver || battle.foeDefeated || game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack && !battle.playerHit || useItem || bagOpening;
+				return !battle || battle.belowTheBelt && (battle.playerLeftAttack || battle.playerRightAttack) || game.data.gameOver || battle.foeDefeated || game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack && !battle.playerHit || useItem || bagOpening;
 			},
+		},
+		{
+			src: ASSETS.PUNCH, col: 4, row: 4,	// KICK
+			index: ({battle, now}) => {
+				const { playerAttackPeriod, playerLeftAttack, playerRightAttack } = battle;
+				if (!playerLeftAttack && !playerRightAttack) {
+					return 12;
+				}
+				const frame = Math.min(3, Math.floor((now - Math.max(playerLeftAttack, playerRightAttack)) / playerAttackPeriod));
+				return 8 + frame;
+			},
+			hidden: game => {
+				const {battle, arrow, useItem, bagOpening} = game;
+				return !battle || !battle.playerLeftAttack && !battle.playerRightAttack || !battle.belowTheBelt || game.data.gameOver || battle.foeDefeated || game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack && !battle.playerHit || useItem || bagOpening;
+			},			
 		},
 		{
 			src: ASSETS.PUNCH, col: 4, row: 4,
@@ -837,7 +1069,6 @@ function standardBattle() {
 						game.pickUp({item, image, message:"", onPicked: game => {
 							game.battle = null;
 							game.chest = null;
-							game.blocked = 0;
 						}});
 					}
 				}
@@ -863,6 +1094,58 @@ function standardBattle() {
 				ctx.fillRect(5, 3, 54 * battle.foeLife / battle.foeMaxLife, 1);
 			},
 			hidden: ({battle, data}) => !battle || data.stats.life <= 0 || battle.foeDefeated,
-		},	
+		},
+		{
+			custom: (game, sprite, ctx) => {
+				const { battle, now } = game;
+				const l = now - battle.foeDefeated;
+				game.displayTextLine(ctx, {
+					msg: `+${battle.gainedXP}xp`,
+					x:25, y:30 - Math.round(l/400),
+				});				
+			},
+			hidden: ({battle, data, now}) => !battle || !battle.foeDefeated || !battle.gainedXP || now - battle.foeDefeated > 2000,
+		},
+		{
+			src: ASSETS.LEVEL_UP,
+			index: ({now, battle}) => Math.min(3, Math.floor((now - (battle.foeDefeated+2000))/100)),
+			hidden: ({battle, data, now}) => !battle || !battle.foeDefeated || !battle.gainedLevel || now - battle.foeDefeated <= 2000 || now - battle.foeDefeated > 4500,
+			alpha: ({now, battle}) => Math.max(0, Math.min(1, (battle.foeDefeated+4500 - now) / 500)),
+		},
 	];
 }
+
+const consumable = {
+	"fruit?": game => {
+		const { stats } = game.data;
+		if (game.data.stats.state.ate && !game.battle) {
+			game.showTip("I'm not hungry.");
+			return false;
+		} else {
+			game.playSound(SOUNDS.EAT);
+			stats.life = Math.min(stats.life + 100, stats.maxLife);
+			game.data.stats.state.ate = game.now;
+			if (!game.battle) {
+				game.showTip("Delicious!");						
+			}
+			return true;
+		}
+	},
+	"water bottle": game => {
+		const { stats } = game.data;
+		if (game.data.stats.state.drank && !game.battle) {
+			game.showTip("I'm not thirsty.");
+			return false;
+		} else {
+			game.playSound(SOUNDS.DRINK);
+			game.addToInventory({item:"empty bottle", image:ASSETS.GRAB_BOTTLE});
+			stats.life = Math.min(stats.life + 30, stats.maxLife);
+			game.data.stats.state.drank = game.now;
+			if (!game.battle) {
+				game.showTip("Refreshing!");
+			}
+			return true;
+		}
+	},
+};
+
