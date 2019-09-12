@@ -58,7 +58,7 @@ gameConfig.scenes.push(
 			},
 			{
 				name: "scanner",
-				src: ASSETS.SCAN_CARD,
+				src: ASSETS.SCAN_CARD, col: 1, row: 2,
 				combine: (item, game) => {
 					if (item === "access card") {
 						game.useItem = null;

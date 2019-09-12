@@ -56,7 +56,6 @@ gameConfig.scenes.push(
 				// lock: true,
 				exit: (game, {scene}) => {
 					game.fadeToScene(scene, {door:1}, 1000);
-					game.playSteps();
 				},
 			},
 		},

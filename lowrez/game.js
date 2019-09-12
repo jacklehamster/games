@@ -46,6 +46,8 @@ const Game = (() => {
 	const soundStock = {};
 	let gameInstance;
 
+	const gameSettings = {};
+
 	class Game {
 		static start(gameConfig) {
 			gameInstance = new Game();
@@ -104,10 +106,10 @@ const Game = (() => {
 			}
 		}
 
-		removeFromInventory(item) {
+		removeFromInventory(item, count) {
 			if (this.inventory[item]) {
 				if (this.inventory[item].count) {
-					this.inventory[item].count--;
+					this.inventory[item].count-= (count||1);
 				}
 				if (!this.inventory[item].count) {
 					delete this.inventory[item];
@@ -271,10 +273,10 @@ const Game = (() => {
 										console.error("You need doors!");
 									} else if (door.lock && (!this.situation.unlocked || !this.situation.unlocked[cell])) {
 										if (this.countItem("key") > 0) {
-											if (this.unlock(cell)) {
-												this.removeFromInventory("key");
-												this.playSound(SOUNDS.UNLOCK);
-											}
+											// if (this.unlock(cell)) {
+											// 	this.removeFromInventory("key");
+											// 	this.playSound(SOUNDS.UNLOCK);
+											// }
 										} else {
 											this.showTip("It's locked.", null, null, {removeLock:true});
 											this.playErrorSound();
@@ -283,6 +285,9 @@ const Game = (() => {
 										if (!this.doorOpening) {
 											this.performAction(this.now);
 										} else if (this.doors[cell].exit) {
+											if (this.doors[cell].wayUp || this.doors[cell].wayDown) {
+												this.playSteps();
+											}
 											this.doors[cell].exit(this, this.doors[cell]);
 										} else {
 											this.actionDown = this.arrow;
@@ -308,6 +313,9 @@ const Game = (() => {
 									} else if (this.doors) {
 										const cell = getCell(this.map, ... Game.getPosition(x,y,0,1,this.orientation));
 										if (this.doors[cell].exit) {
+											if (this.doors[cell].wayUp || this.doors[cell].wayDown) {
+												this.playSteps();
+											}
 											this.doors[cell].exit(this, this.doors[cell]);
 										} else {
 											this.actionDown = this.arrow;
@@ -408,12 +416,12 @@ const Game = (() => {
 		}
 
 		get mute() {
-			return this.data.mute || false;
+			return gameSettings.mute || false;
 		}
 
 		set mute(value) {
 			if (this.mute !== value) {
-				this.data.mute = value;
+				gameSettings.mute = value;
 				const { theme } = this.data;
 				if (theme) {
 					if (this.mute) {
@@ -569,7 +577,7 @@ const Game = (() => {
 				time,
 				onPicked,
 				tip: {
-					text: message,
+					text: message||"",
 					time,
 					speed: 100,
 					fade: 0,
@@ -847,7 +855,7 @@ const Game = (() => {
 		}
 
 		showTip(message, onDone, speed, options) {
-			const { removeLock } = options || {};
+			const { removeLock, x, y, talker } = options || {};
 			if (Array.isArray(message)) {
 				let index = 0;
 
@@ -858,6 +866,8 @@ const Game = (() => {
 					time: this.now + 200,
 					speed: speed || 100 * TEXTSPEEDER,
 					end: 0,
+					x, y,
+					talker,
 					onDone: message.length === 1 ? onDone : game => {
 						index++;
 						tip.index = index;
@@ -876,6 +886,8 @@ const Game = (() => {
 					time: this.now + 200,
 					speed: speed || 110 * TEXTSPEEDER,
 					end: 0,
+					x, y,
+					talker,
 					onDone,
 					removeLock,
 				};
@@ -897,7 +909,8 @@ const Game = (() => {
 								this.clicking = true;
 								if (this.useItem && !sprite.bag && !sprite.menu) {
 									const { combine, combineMessage, name, onShot } = sprite;
-									if (this.useItem == "gun" && this.gunFired) {
+									console.log(this.useItem, this.gunFired);
+									if (this.useItem === "gun" && this.gunFired) {
 										this.data.shot[name] = this.now;
 										let handled = false;
 										if (onShot) {
@@ -1030,7 +1043,7 @@ const Game = (() => {
 					const visitTag = mapPosition.join("_");
 					if (!this.sceneData.visited[visitTag]) {
 						const { onEvent } = events[cell];
-						if (onEvent(this, events[cell])) {
+						if (onEvent && onEvent(this, events[cell])) {
 							this.sceneData.visited[visitTag] = true;
 							return true;
 						}
@@ -1051,8 +1064,8 @@ const Game = (() => {
 					game.applyMove(direction, game.orientation);
 					const { x, y } = game.pos;
 					const closeDoor = game.matchCell(game.map,x,y,0,direction,game.orientation,'12345','');;
-					game.doorOpening = 1;
-					game.doorOpened = 1;
+					game.doorOpening = 0;
+					game.doorOpened = 0;
 					game.frameIndex = 0;
 					if (this.checkEvents()) {
 						action.active = false;
@@ -1141,13 +1154,21 @@ const Game = (() => {
 			const { x, y } = this.pos;
 			switch(this.granular_orientation) {
 				case 'NW':
-					return this.matchCell(this.map,x,y,-1,0,'N','XM12345',"");
+					return this.onDoor() 
+						? this.matchCell(this.map,x,y,-1,0,'N','.',"")
+						: this.matchCell(this.map,x,y,-1,0,'N','XM12345',"");
 				case 'SW':
-					return this.matchCell(this.map,x,y,0,-1,'N','XM12345',"");
+					return this.onDoor() 
+						? this.matchCell(this.map,x,y,0,-1,'N','.',"")
+						: this.matchCell(this.map,x,y,0,-1,'N','XM12345',"");
 				case 'SE':
-					return this.matchCell(this.map,x,y,1,0,'N','XM12345',"");
+					return this.onDoor() 
+						? this.matchCell(this.map,x,y,1,0,'N','.',"")
+						: this.matchCell(this.map,x,y,1,0,'N','XM12345',"");
 				case 'NE':
-					return this.matchCell(this.map,x,y,0,1,'N','XM12345',"");
+					return this.onDoor() 
+						? this.matchCell(this.map,x,y,0,1,'N','.',"")
+						: this.matchCell(this.map,x,y,0,1,'N','XM12345',"");
 			}
 		}
 
@@ -1155,13 +1176,21 @@ const Game = (() => {
 			const { x, y } = this.pos;
 			switch(this.granular_orientation) {
 				case 'NW':
-					return this.matchCell(this.map,x,y,0,1,'N','XM12345',"");
+					return this.onDoor() 
+						? this.matchCell(this.map,x,y,0,1,'N','.',"")
+						: this.matchCell(this.map,x,y,0,1,'N','XM12345',"");
 				case 'SW':
-					return this.matchCell(this.map,x,y,-1,0,'N','XM12345',"");
+					return this.onDoor() 
+						? this.matchCell(this.map,x,y,-1,0,'N','.',"")
+						: this.matchCell(this.map,x,y,-1,0,'N','XM12345',"");
 				case 'SE':
-					return this.matchCell(this.map,x,y,0,-1,'N','XM12345',"");
+					return this.onDoor() 
+						? this.matchCell(this.map,x,y,0,-1,'N','.',"")
+						: this.matchCell(this.map,x,y,0,-1,'N','XM12345',"");
 				case 'NE':
-					return this.matchCell(this.map,x,y,1,0,'N','XM12345',"");
+					return this.onDoor() 
+						? this.matchCell(this.map,x,y,1,0,'N','.',"")
+						: this.matchCell(this.map,x,y,1,0,'N','XM12345',"");
 			}
 		}
 
@@ -1174,19 +1203,27 @@ const Game = (() => {
 			const { x, y } = this.pos;
 			const dx = direction === LEFT ? -1 : direction === RIGHT ? 1 : 0;
 			const dy = distance === FURTHER ? 2 : distance === FAR ? 1 : distance === CLOSE ? 0 : 0;
+			if (this.onDoor() && this.matchCell(this.map, x, y, dx, dy, this.orientation,".", "")) {
+				return false;
+			}
+
 			return this.matchCell(this.map,x,y,dx,dy,this.orientation,[], 'XM12345');			
 		}
 
 		closeWall() {
 			const { x, y } = this.pos;
-			return this.matchCell(this.map,x,y,0,+1,this.orientation,'XM12345',[]) || this.matchCell(this.map,x,y,0,0,this.orientation,'12345',[])			
+			return this.matchCell(this.map,x,y,0,+1,this.orientation,'XM12345',[]) || this.matchCell(this.map,x,y,0,0,this.orientation,'12345',[]) && this.frontCell()==='.';
 		}
 
 		closeDoor() {
 			const { x, y } = this.pos;
 			return this.matchCell(this.map,x,y,0,+1,this.orientation,'12345',[])
-				|| this.matchCell(this.map,x,y,0,0,this.orientation,'12345',[])
-					&& this.matchCell(this.map,x,y,0,+1,this.orientation,[],'XM12345');			
+				|| this.matchCell(this.map,x,y,0,0,this.orientation,'12345',[]) && this.frontCell() === '.';			
+		}
+
+		onDoor() {
+			const { x, y } = this.pos;
+			return this.matchCell(this.map,x,y,0,0,this.orientation,'12345',[]);			
 		}
 
 		frontDoor() {
@@ -1253,7 +1290,6 @@ const Game = (() => {
 					sprites.push({ src, side, index });
 				}
 			}			
-			this.sprites.forEach(({src}) => { if(src)this.prepareImage(src); });
 			sprites.forEach(sprite => this.displayImage(ctx, sprite));
 		}
 
@@ -1263,7 +1299,8 @@ const Game = (() => {
 			}
 			if (this.pendingTip) {
 				const tip = this.pendingTip;
-				tip.fade = Math.min(1, (this.now - (tip.time + (tip.text.length + 10) * tip.speed)) / 350);
+				tip.fade = Math.min(1, (this.now - (tip.end || tip.time + (tip.text.length + 10) * tip.speed)) / 350);
+				
 				this.displayText(tip);
 				if (tip.fade >= 1) {
 					this.pendingTip = null;
@@ -1323,6 +1360,8 @@ const Game = (() => {
 				if (tipItem) {
 					const { item, count } = this.inventory[tipItem];	
 					const msg = item==="gun" ? `gun with ${this.countItem('bullet')} bullet${this.countItem('bullet')>1?'s':''}` : (count||1) > 1 ? `${item} x${count}` : `${item}`;
+					ctx.fillStyle = "#000000aa";
+					ctx.fillRect(1, this.mouse.y >= 58 ? 40 : 57, 62, 7);
 					this.displayTextLine(ctx, {msg,  x:3, y: this.mouse.y >= 58 ? 40 : 58 });
 				}
 			}
@@ -1393,7 +1432,7 @@ const Game = (() => {
 					const x0 = px - x / 16, y0 = py + 8 - (x / 32);
 					const x1 = px + 4 - x / 16, y1 = py + 6 - (x / 32);
 
-					ctx.fillStyle = highLight ? (this.arrow ? "#aaFFaa" : "#FFFFaa") : "#FFFFFF";
+					ctx.fillStyle = highLight ? (this.arrow && !this.battle ? "#aaFFaa" : "#FFFFaa") : "#FFFFFF";
 					ctx.beginPath();
 					ctx.moveTo(px, py + ydown * 2);
 					ctx.lineTo(px - (x / 16), py + 8 - (x / 32));
@@ -1468,15 +1507,10 @@ const Game = (() => {
 			const fullWrappedText = this.wordwrap(text, 12);
 			tip.progress = Math.min(1, frame / fullWrappedText.length);
 			const lines = fullWrappedText.substr(0, Math.min(text.length, frame)).split("\n").slice(-3);
-			const letterTemplate = {
-				src: ASSETS.ALPHABET, col:10, row:9, size:[5,6],
-				offsetX: 20, offsetY: 20,
-				index: game => Math.floor(game.now / 100) % 62,
-			};
 
 			tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 			lines.forEach((msg, row) => {
-				this.displayTextLine(tempCtx, {msg, x: 2, y: (row - lines.length) * 7 + 60});
+				this.displayTextLine(tempCtx, {msg, x: (tip.x || 2), y: (row - lines.length) * 7 + (tip.y || 60)});
 			});
 			if (fade > 0) {
 				ctx.globalAlpha = 1 - fade;
@@ -1827,8 +1861,18 @@ const Game = (() => {
 		}
 
 		displaySprites() {
-			this.sprites.forEach(({src}) => { if(src)this.prepareImage(src); });
-			this.sprites.forEach(sprite => this.displayImage(ctx, sprite));
+			this.sprites.forEach(sprite => {
+				const { src, hidden } = sprite;			
+				if (this.evaluate(hidden, sprite)) {
+					return;
+				}
+				const processedSrc = this.evaluate(src, sprite);
+
+				if (processedSrc) {
+					this.prepareImage(processedSrc);
+				}
+				this.displayImage(ctx, sprite);
+			});
 		}
 
 		refresh(dt) {
@@ -2001,6 +2045,7 @@ const Game = (() => {
 				}
 				spaceX += ALPHA.width + (spacing || 1);
 			}
+			return spaceX - x;
 		}
 
 		displayDialog() {
@@ -2017,7 +2062,7 @@ const Game = (() => {
 			const {options} = conversation[index];
 			const filteredOptions = options.filter(({hidden}) => !hidden || !this.evaluate(hidden));
 			const y = this.mouse ? Math.floor((this.mouse.y - 43) / 7) : -1;
-			ctx.fillStyle = this.dialog.highlightColor || "#009988";
+			ctx.fillStyle = this.dialog.highlightColor || "#009988aa";
 			if (y >= 0 && y < filteredOptions.length) {
 				const { msg, cantSelect } = filteredOptions[y];
 				if (this.evaluate(msg) && !this.evaluate(cantSelect)) {
@@ -2096,7 +2141,9 @@ const Game = (() => {
 				custom(game, sprite, ctx);
 				return;
 			}
-			if (!src) {
+			const processedSrc = this.evaluate(src, sprite);
+
+			if (!processedSrc) {
 				const fade = this.evaluate(sprite.fade);
 				const fadeColor = this.evaluate(sprite.fadeColor);
 				if (fade > 0 && fadeColor) {
@@ -2107,11 +2154,11 @@ const Game = (() => {
 				}
 				return;
 			}
-			if (!imageStock[src]) {
+			const spriteData = imageStock[processedSrc];
+			if (!spriteData) {
 				return;
 			}
 
-			const spriteData = imageStock[src];
 			const [ imgWidth, imgHeight ] = size || [64,64];
 			let frameIndex = this.evaluate(index, sprite) || 0;
 			let dstX = this.evaluate(offsetX, sprite)||0;
@@ -2149,7 +2196,7 @@ const Game = (() => {
 					shiftY = Math.round((Math.random() - .5) * intensity * (200 / hitTime));
 				}
 			}
-			ctx.drawImage(imageStock[src].img, srcX, srcY, srcW, srcH, dstX + shiftX, dstY + shiftY, dstW, dstH);
+			ctx.drawImage(spriteData.img, srcX, srcY, srcW, srcH, dstX + shiftX, dstY + shiftY, dstW, dstH);
 			if (alphaColor) {
 				ctx.globalAlpha = 1.0;
 			}
@@ -2255,8 +2302,8 @@ const Game = (() => {
 				this.data.stats = {
 					life: 80,
 					maxLife: 120,
-					damage: 10,
-					defense: 10,
+					damage: 9,
+					defense: 9,
 					xp: 0,
 					bonus: 0,
 				};
@@ -2305,7 +2352,7 @@ const Game = (() => {
 
 		damageFoe(damage, options) {
 			const {shot, blocked} = options ? options : {};
-			const calcDamage = damage * damage / Math.max(1, this.battle.foeDefense);
+			const calcDamage = shot ? damage : damage * damage / Math.max(1, this.battle.foeDefense);
 			this.battle.foeLife = Math.max(blocked ? 1 : 0, this.battle.foeLife - calcDamage);
 			if (!this.battle.foeLife) {
 				this.battle.foeDefeated = this.now;
@@ -2371,7 +2418,19 @@ const Game = (() => {
 		playErrorSound() {
 			game.playSound(SOUNDS.ERROR);
 			game.delayAction(game => game.playSound(SOUNDS.ERROR), 100);
-		}		
+		}
+
+		toAlienDigits(s, size) {
+			const ALIEN_DIGIT_0 = 1000;
+
+			let str = "";
+			while (s > 0 || str.length < size) {
+				const num = s % 10;
+				str = ALPHAS[ALIEN_DIGIT_0 + s % 10].char + str;
+				s = Math.floor(s / 10);
+			}
+			return str;			
+		}
 	}
 
 	return Game;

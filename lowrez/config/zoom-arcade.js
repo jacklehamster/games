@@ -102,15 +102,6 @@ gameConfig.scenes.push(
 					} else if(!situation.showHighScore) {
 						sceneData.gameStarted = 0;
 						if (!ship.lives && ship.destroyed && sceneData.score <= situation.highscores[situation.highscores.length-1].score) {
-							const ALIEN_DIGIT_0 = 1000;
-
-							let s = sceneData.score;
-							let str = "";
-							while (s > 0 || str.length < 4) {
-								const num = s % 10;
-								str = ALPHAS[ALIEN_DIGIT_0 + s % 10].char + str;
-								s = Math.floor(s / 10);
-							}
 							game.showTip(`Darn it! I can do better. I wanna play again`);
 							game.playTheme(null);
 						}
@@ -387,13 +378,7 @@ gameConfig.scenes.push(
 					}
 					const ALIEN_DIGIT_0 = 1000;
 
-					let s = score;
-					let str = "";
-					while (s > 0 || str.length < 4) {
-						const num = s % 10;
-						str = ALPHAS[ALIEN_DIGIT_0 + s % 10].char + str;
-						s = Math.floor(s / 10);
-					}
+					const str = game.toAlienDigits(score, 4);
 
 					game.displayTextLine(ctx, {
 						msg: str,

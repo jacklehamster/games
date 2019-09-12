@@ -50,6 +50,7 @@ gameConfig.scenes.push(
 			},
 		],
 		onScene: game => {
+			game.playTheme(SOUNDS.FUTURE_SONG_THEME, {volume: .5});
 			const list = game.getSaveList();
 			game.sceneData.loadSave = {};
 			for (let name in list) {
@@ -99,7 +100,10 @@ gameConfig.scenes.push(
 					},
 					{
 						options: [
-							{},
+							{
+								msg: game => `Sound ${!game.mute?"ON":"OFF"}`,
+								onSelect: (game, dialog) => game.mute = !game.mute,
+							},
 							{
 								msg: () => `Retro mode ${scanlines.checked?"ON":"OFF"}`,
 								onSelect: (game, dialog) => scanlines.click(),

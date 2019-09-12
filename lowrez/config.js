@@ -8,6 +8,23 @@ const shortcut = {
 	6: ({battle}) => battle ? BLOCK : s(3),
 	7: ({battle}) => battle ? BLOCK : null,
 	8: ({battle}) => battle ? BLOCK : s(1),
+	9: game => {
+		if (game.battle) {
+			return BAG;
+		}
+		const door = game.frontDoor();
+		if (door && door.lock && game.frameIndex === 0 && game.rotation % 2 === 0) {
+			const cell = game.frontCell();
+			if (!game.situation.unlocked || !game.situation.unlocked[cell]) {
+				return BAG;
+			}
+		}
+		if (game.facingEvent() && game.facingEvent().showBag) {
+			return BAG;
+		}
+
+		return BACKWARD;
+	},
 };
 
 function s(index) {
@@ -226,13 +243,13 @@ function getCommonMaze(modifier) {
 		},
 		{
 			src: ASSETS[`DOOR_OPEN${modifier}`],
-			index: game => game.frameIndex,
-			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || !game.doorOpening,
+			index: game => game.onDoor() ? 3 : game.frameIndex,
+			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || !game.doorOpening && (!game.onDoor() || game.moving),
 		},
 		{
 			src: ASSETS[`CLOSE_DOOR${modifier}`],
 			index: game => game.doorOpening || game.bagOpening || game.menuOpening ? 0 : game.frameIndex,
-			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.doorOpening,					
+			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.doorOpening || game.onDoor(),
 		},
 		{
 			src: ASSETS[`DUNGEON_LOCK${modifier}`], col: 2, row: 2,
@@ -250,49 +267,21 @@ function getCommonMaze(modifier) {
 				}
 				return false;
 			},
-		},
-		{
-			src: ASSETS.KEY_COUNT,
-			hidden: game => {
-				if(game.rotation % 2 === 1 || !game.closeDoor() || game.moving) {
-					return true;
-				}
-				const frontDoor = game.frontDoor();
-				if (!frontDoor || !frontDoor.lock) {
-					return true;
-				}
-				if (game.situation.unlocked && game.situation.unlocked[game.frontCell()]) {
-					return true;
-				}
-				if (!game.countItem("key")) {
-					return true;
-				}
-				return false;
+			onClick: game => {
+				game.showTip("It's locked.", null, null, { removeLock:true });
 			},
-		},		
-		{
-			custom: (game, sprite, ctx) => {
-				game.displayTextLine(ctx, {
-					msg: `x${game.countItem("key")}`,
-					x:13, y:57,
-				});
-
-			},
-			hidden: game => {
-				if(game.rotation % 2 === 1 || !game.closeDoor() || game.moving) {
-					return true;
+			combine: (item, game) => {
+				if (item === "key") {
+					const cell = game.frontCell();
+					if (game.unlock(cell)) {
+						game.removeFromInventory("key");
+						game.playSound(SOUNDS.DUD);
+					}
+				} else {
+					game.playErrorSound();
 				}
-				const frontDoor = game.frontDoor();
-				if (!frontDoor || !frontDoor.lock) {
-					return true;
-				}
-				if (game.situation.unlocked && game.situation.unlocked[game.frontCell()]) {
-					return true;
-				}
-				if (game.countItem("key")<=1) {
-					return true;
-				}
-				return false;
+				game.useItem = null;
+				return true;
 			},
 		},
 		{
@@ -325,7 +314,7 @@ function getCommonMaze(modifier) {
 							imageData.data[i] = 50;
 							imageData.data[i+1] = 150;
 							imageData.data[i+2] = 255;
-						} else if (cell==='.' || events && events[cell]) {
+						} else if (cell==='.' || events && events[cell] && !events[cell].blockMap) {
 							imageData.data[i] = 0;
 							imageData.data[i+1] = 0;
 							imageData.data[i+2] = 0;
@@ -503,15 +492,23 @@ function getRoomMaze(modifier) {
 		},
 		{
 			src: ASSETS.DOORWAY, col: 2, row: 3,
+			index: game => {
+				const frontDoor = game.frontDoor();
+				if (!frontDoor) return 0;
+				if (frontDoor.wayUp) return 1;
+				if (frontDoor.wayDown) return 2;
+				if (frontDoor.eye) return 3 + (game.now % 4000 < 1000 ? 1 : 0);
+				return 0;
+			},
 			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.moving,
 		},
 		{
-			src: ASSETS[`DOOR_OPEN_BLUE_1`],
+			src: ASSETS[`DOOR_OPEN${modifier}`],
 			index: game => game.frameIndex,
 			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || !game.doorOpening,
 		},
 		{
-			src: ASSETS[`CLOSE_DOOR_BLUE_1`],
+			src: ASSETS[`CLOSE_DOOR${modifier}`],
 			index: game => game.doorOpening || game.bagOpening || game.menuOpening ? 0 : game.frameIndex,
 			hidden: game => game.rotation % 2 === 1 || !game.closeDoor() || game.doorOpening,					
 		},
@@ -629,7 +626,31 @@ function standardBag() {
 			bag: true,
 			src: ASSETS.BAG_OUT,
 			index: game => game.frameIndex,
-			hidden: ({arrow, bagOpening, dialog, data, battle, pickedUp, sceneData, now}) => data.gameOver || !bagOpening && (arrow !== BAG && (!sceneData.showStats || now - sceneData.showStats < 400) || dialog && dialog.conversation[dialog.index].options.length > 2),
+			hidden: game => {
+				const {arrow, bagOpening, dialog, data, battle, pickedUp, sceneData, now} = game;
+				if (data.gameOver) {
+					return true;
+				}
+				if (bagOpening) {
+					return false;
+				}
+				if (dialog && dialog.conversation[dialog.index].options.length > 2) {
+					return true;
+				}
+				if (arrow === "BAG") {
+					const door = game.frontDoor();
+					if (door && door.lock && game.frameIndex === 0 && game.rotation % 2 === 0) {
+						const cell = game.frontCell();
+						if (!game.situation.unlocked || !game.situation.unlocked[cell]) {
+							return false;
+						}
+					}
+					if (game.facingEvent() && game.facingEvent().showBag) {
+						return false;
+					}
+				}
+				return arrow !== BAG && (!sceneData.showStats || now - sceneData.showStats < 400);
+			},
 			alpha: game => game.emptyBag() ? .2 : 1,
 			onClick: game => game.clickBag(),
 		},
@@ -802,6 +823,10 @@ function standardMenu() {
 				});
 			},
 			onHoverOut: (game, sprite, hovered) => { if (game.menuOpening > 0 && (!hovered || !hovered.menu_item && !hovered.menu)) game.openMenu(game.now); },
+			combine: (item, game) => {
+				game.useItem = null;
+				return true;
+			},
 		},
 		{
 			menu_item: true,
@@ -812,6 +837,10 @@ function standardMenu() {
 			alpha: ({hoverSprite}, sprite) => hoverSprite === sprite ? 1 : .5,
 			onClick: game => game.mute = true,
 			onHoverOut: (game, sprite, hovered) => { if (game.menuOpening > 0 && (!hovered || !hovered.menu_item && !hovered.menu)) game.openMenu(game.now); },
+			combine: (item, game) => {
+				game.useItem = null;
+				return true;
+			},
 		},
 		{
 			menu_item: true,
@@ -822,6 +851,10 @@ function standardMenu() {
 			alpha: ({hoverSprite}, sprite) => hoverSprite === sprite ? 1 : .5,
 			onClick: game => game.mute = false,
 			onHoverOut: (game, sprite, hovered) => { if (game.menuOpening > 0 && (!hovered || !hovered.menu_item && !hovered.menu)) game.openMenu(game.now); },
+			combine: (item, game) => {
+				game.useItem = null;
+				return true;
+			},
 		},
 		{
 			menu_item: true,
@@ -835,6 +868,10 @@ function standardMenu() {
 				game.openMenu(game.now);
 			},
 			onHoverOut: (game, sprite, hovered) => { if (game.menuOpening > 0 && (!hovered || !hovered.menu_item && !hovered.menu)) game.openMenu(game.now); },
+			combine: (item, game) => {
+				game.useItem = null;
+				return true;
+			},
 		},
 		{
 			menu_item: true,
@@ -842,6 +879,10 @@ function standardMenu() {
 			src: ASSETS.MENU_PROFILE_NOTIFICATION,
 			index: game => game.frameIndex,
 			hidden: game => !game.data.stats.bonus || !game.menuOpening && (game.arrow !== MENU || game.sceneData.firstShot),
+			combine: (item, game) => {
+				game.useItem = null;
+				return true;
+			},
 		},
 		{
 			hidden: game => !game.menuOpening && (game.arrow !== MENU || game.sceneData.firstShot) || game.hideCursor && game.frameIndex === 0 || game.battle,
@@ -895,14 +936,16 @@ function makeFoe(foe, src) {
 		hidden: ({battle, now}) => !battle || battle.foe != foe || battle.foeDefeated && now - battle.foeDefeated >= 2000,
 		onShot: (game, sprite) => {
 			const {battle, data} = game;
-			game.damageFoe(50, {shot:true});
+			game.damageFoe(100, {shot:true});
 		},
 		combine: (item, game) => {
 			game.battle.nextAttack =  Math.min(game.now + 3000, game.battle.nextAttack);
-			if (item === "photo") {
-				game.showTip("Have you seen this baby?");
+			if (item === "gun") {
+				game.showTip("I'm out of ammo.", null, 50)
+			} else if (item === "photo") {
+				game.showTip("Have you seen this baby?", null, 50);
 			} else {
-				game.showTip(`Would you like this ${item}?`);
+				game.showTip(`Would you like this ${item}?`, null, 50);
 			}
 			return true;
 		},
@@ -1050,25 +1093,51 @@ function standardBattle() {
 		},
 		{
 			src: ASSETS.TREASURE_CHEST,
-			hidden: ({chest, now}) => !chest || now < chest.found,
+			hidden: game => {
+				const {chest, now, rotation, moving, frameIndex} = game;
+				if (!chest || now < chest.found || rotation % 2 == 1 || moving) {
+					return true;
+				}
+				if (!game.battle) {
+					const event = game.facingEvent();
+					if (!event || !event.chest) {
+						return true;
+					}
+				}
+				return false;
+			},
 			onClick: (game, sprite) => {
-				const {now, chest} = game;
+				const {now, chest, situation} = game;
+				if (!game.battle) {
+					if (situation.chestCleared && situation.chestCleared[game.frontCell()]) {
+						return;
+					}
+				}
 				if (chest && !chest.opened) {
 					chest.opened = now;
 					game.playSound(SOUNDS.DRINK);
 				}
 			},
-			index: ({now, chest}) => !chest.opened ? 0 : Math.min(3, Math.floor((now - chest.opened) / 100)),
+			index: game => {
+				const {now, chest, situation} = game;
+				return !this.battle && situation.chestCleared && situation.chestCleared[game.frontCell()] ? 3 : !chest.opened ? 0 : Math.min(3, Math.floor((now - chest.opened) / 100));
+			},
 			onRefresh: (game, sprite) => {
-				const {now, chest} = game;
+				const {now, chest, situation} = game;
 				if (chest.opened) {
 					const frame = Math.floor((now - chest.opened) / 100);
 					if (frame > 4 && !chest.checked) {
 						chest.checked = now;
 						const { item, image } = chest;
 						game.pickUp({item, image, message:"", onPicked: game => {
-							game.battle = null;
-							game.chest = null;
+							if (game.battle) {
+								game.battle = null;
+							} else {
+								if (!situation.chestCleared) {
+									situation.chestCleared = {};
+								}
+								situation.chestCleared[game.frontCell()] = now;
+							}
 						}});
 					}
 				}

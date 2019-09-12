@@ -13,12 +13,12 @@ gameConfig.scenes.push(
 			[ LEFT, null, BACKWARD, null, RIGHT ],
 		],
 		map: `
-			XXXXXXXX
-			XT....XX
-			XX.XX.XX
-			XX1XX.XX
-			XXXXX2XX
-			XXXXXXXX
+			XXXXXXXXX
+			XT.....XX
+			XXX.XX.XX
+			XXX1XX.XX
+			XXXXXX2XX
+			XXXXXXXXX
 		`,
 		sprites: [
 			{

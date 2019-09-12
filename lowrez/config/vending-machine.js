@@ -24,7 +24,7 @@ gameConfig.scenes.push(
 			game.save();
 		},
 		sprites: [
-			...getRoomMaze(""),
+			...getRoomMaze("_BLUE"),
 			{
 				src: ASSETS.VENDING_MACHINE,
 				hidden: game => game.rotation !== 0,

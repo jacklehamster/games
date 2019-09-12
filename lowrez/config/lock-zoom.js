@@ -30,7 +30,7 @@ gameConfig.scenes.push(
 						game.delayAction(game=> {
 							game.playSound(SOUNDS.DUD);
 						}, 150);
-						game.showTip("Looks like the right combination!", game => {
+						game.showTip("It's the right combination!", game => {
 							game.gotoScene("locker-room");
 						});
 					}

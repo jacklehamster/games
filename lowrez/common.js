@@ -21,13 +21,14 @@ const MAZE_ASSETS = {
 	FURTHER_SIDE:'assets/further-side.png',
 	CLOSE_FURTHER_SIDE:'assets/close-further-side.png',
 
-	DUNGEON_MOVE_SOLID:'assets/dungeon-move-solid.png',
-	FAR_WALL_SOLID:'assets/far-wall-solid.png',
-	CLOSE_WALL_SOLID:'assets/close-wall-solid.png',
-	MAZE_ROTATION_BACKGROUND_SOLID: "assets/maze-rotation-background-solid.png",
-	MAZE_ROTATION_WALLS_SOLID: "assets/maze-rotation-walls-solid.png",
-	MAZE_ROTATION_CORNER_SOLID: "assets/maze-rotation-corner-solid.png",
-	CLOSE_SIDE_SOLID:'assets/close-side-solid.png',
+	DUNGEON_MOVE_SOLID:'assets/dungeon-move-solid.png|rotate-colors|rotate-colors',
+	FAR_WALL_SOLID:'assets/far-wall-solid.png|rotate-colors|rotate-colors',
+	CLOSE_WALL_SOLID:'assets/close-wall-solid.png|rotate-colors|rotate-colors',
+	MAZE_ROTATION_BACKGROUND_SOLID: "assets/maze-rotation-background-solid.png|rotate-colors|rotate-colors",
+	MAZE_ROTATION_WALLS_SOLID: "assets/maze-rotation-walls-solid.png|rotate-colors|rotate-colors",
+	MAZE_ROTATION_CORNER_SOLID: "assets/maze-rotation-corner-solid.png|rotate-colors|rotate-colors",
+	CLOSE_SIDE_SOLID:'assets/close-side-solid.png|rotate-colors|rotate-colors',
+
 	DUNGEON_LOCK:'assets/dungeon-lock.png',
 };
 
@@ -101,6 +102,7 @@ const ASSETS = {
 	...Object.assign(...Object.entries(MAZE_ASSETS_RED).map(([k,v])=>({[`${k}_2`]:`${v}|darken|darken`}))),
 
 	GUARD: "assets/guard.png",
+	GUARD_2: "assets/guard.png|rotate-colors|rotate-colors",
 	MONSTER: "assets/monster.png",
 	PUNCH: "assets/punch.png",
 	TOILETS: "assets/toilets.png",
@@ -139,7 +141,7 @@ const ASSETS = {
 	MOON_BASE: "assets/moon-base.png",
 	MOON_BASE_GUARD: "assets/moon-base-guard.png",
 	TOILET_ZOOM: "assets/toilet-zoom.png",
-	TOILET_ZOOM_BACKGROUND: "assets/toilet-zoom-background.png",
+	TOILET_ZOOM_BACKGROUND: "assets/toilet-zoom-background.png|rotate-colors|rotate-colors",
 	MAP: "assets/map.png",
 	FAR_MAP: "assets/far-map.png",
 	SIDE_MAP:'assets/side-map.png',
@@ -158,6 +160,10 @@ const ASSETS = {
 	LEVEL_UP: "assets/level-up.png",
 	DOORWAY:'assets/doorway.png',
 	KEY_COUNT: "assets/key-count.png",
+	GRAB_KEY:'assets/grab-key.png',
+	SHOP_MONSTER:'assets/shop-monster.png',
+	CAGE_OPENED: "assets/cage-opened.png",
+	ZOOM_SHOP_MONSTER: "assets/zoom-shop-monster.png",
 };
 
 const SOUNDS = {
@@ -185,6 +191,8 @@ const SOUNDS = {
 	LAZER: 'sounds/lazer.mp3',
 	DOOR: 'sounds/door.mp3',
 	UNLOCK: 'sounds/unlock.mp3',
+	BEEP: 'sounds/beep.mp3',
+	BOP: 'sounds/bop.mp3',
 };
 
 const ALPHAS = (() => {

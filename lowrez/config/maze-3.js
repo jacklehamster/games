@@ -28,7 +28,7 @@ gameConfig.scenes.push(
 			{
 				custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
 			},
-			...getCommonMaze("_1"),
+			...getCommonMaze("_BLUE_1"),
 			makeFoe('slime', ASSETS.SLIME),
 			...standardBattle(),
 			...standardMenu(),
@@ -40,7 +40,6 @@ gameConfig.scenes.push(
 				wayDown: true,
 				exit: (game, {scene}) => {
 					game.fadeToScene(scene, {door:5}, 1000);
-					game.playSteps();
 				},
 			},
 			2: {
@@ -60,7 +59,7 @@ gameConfig.scenes.push(
 				onEvent: (game, event) => {
 					const {data, now} = game;
 					game.findChest(now, {
-						item:"key", image:ASSETS.GRAB_COIN,
+						item:"key", image:ASSETS.GRAB_KEY,
 						cleared: game.situation.chestCleared,
 					});
 				},
@@ -73,7 +72,7 @@ gameConfig.scenes.push(
 				riposteChance: .7,
 				attackPeriod: 100,
 				foeDamage: 10,
-				foeDefense: 15,
+				foeDefense: 12,
 				xp: 7,
 				belowTheBelt: true,				
 				onEvent: (game, {foe, foeLife, foeBlockChance, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin, xp, belowTheBelt}) => {
