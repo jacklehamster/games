@@ -164,6 +164,11 @@ const ASSETS = {
 	SHOP_MONSTER:'assets/shop-monster.png',
 	CAGE_OPENED: "assets/cage-opened.png",
 	ZOOM_SHOP_MONSTER: "assets/zoom-shop-monster.png",
+	SKELETON: "assets/skeleton.png",
+	YUPA_DRY: "assets/yupa-dry.png",
+	YUPA_DRY_CLOSE: "assets/yupa-dry-close.png",
+	YUPA_SHAKE: "assets/yupa-shake.png",
+	YUPA_ZOOM: "assets/yupa-zoom.png",
 };
 
 const SOUNDS = {
@@ -193,6 +198,7 @@ const SOUNDS = {
 	UNLOCK: 'sounds/unlock.mp3',
 	BEEP: 'sounds/beep.mp3',
 	BOP: 'sounds/bop.mp3',
+	YUPA: 'sounds/yupa.mp3',
 };
 
 const ALPHAS = (() => {

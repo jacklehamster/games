@@ -157,6 +157,7 @@ const Game = (() => {
 			});
 
 			canvas.addEventListener("mousemove", ({currentTarget, offsetX, offsetY}) => {
+				this.lastMouseCheck = 0;
 				const { offsetWidth, offsetHeight } = currentTarget;
 				if (!this.mouse) {
 					this.mouse = {};
@@ -180,6 +181,7 @@ const Game = (() => {
 			});
 
 			canvas.addEventListener("mousedown", e => {
+				this.lastMouseCheck = 0;
 				e.preventDefault();
 				const {currentTarget, offsetX, offsetY} = e;
 				if (this.battle) {
@@ -489,6 +491,7 @@ const Game = (() => {
 			this.loadTotal = 0;
 			this.pos = null;
 			this.rotation = 0;
+			this.lastMouseCheck = 0;
 
 			this.prepareAssets();
 			this.prepareSounds();
@@ -899,6 +902,11 @@ const Game = (() => {
 		}
 
 		checkMouseHover() {
+			if (this.now - this.lastMouseCheck < 100) {
+				return;
+			}
+			this.lastMouseCheck = this.now;
+
 			if (this.mouse) {
 				let hovered = null;
 				for (let i = this.sprites.length - 1; i >= 0; i--) {
@@ -919,7 +927,7 @@ const Game = (() => {
 										if (!handled) {
 											this.onSceneShot(this, name);
 										}
-									} else if (!combine || !combine(this.useItem, this)) {
+									} else if (!combine || !combine(this.useItem, this, sprite)) {
 										if (this.useItem !== "gun") {
 											this.showTip(combineMessage && combineMessage(this.useItem, this) ||
 												(name ? `You can't use the ${this.useItem} on the ${name}.` : `You can't use ${this.useItem} like that.`),

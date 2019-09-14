@@ -76,7 +76,7 @@ gameConfig.scenes.push(
 					{ item: "access card", 	name: "access card", 	cost: 20,	src: ASSETS.GRAB_ACCESS_CARD,	available:false,
 						msg: "I warned you, you should have kept this. 20 coins to get it back.",
 					},
-					{ item: "key", 			name: "key", 			cost: 15,	src: ASSETS.GRAB_KEY,			available:false,
+					{ item: "key", 			name: "key", 			cost: 7,	src: ASSETS.GRAB_KEY,			available:true,
 						msg: "You can have your key back for 15 coins.",
 					},
 				];
