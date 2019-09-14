@@ -240,7 +240,8 @@ gameConfig.scenes.push(
 			5: {
 				lock: true,
 				wayUp: true,
-				scene: "cell-maze-2", door: 5,
+//				scene: "cell-maze-2", door: 5,
+				scene: "in-progress", door: 1,
 				exit: (game, {scene, door}) =>  game.fadeToScene(scene, {door}, 1000),
 			},
 		},
