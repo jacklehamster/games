@@ -21,7 +21,7 @@ gameConfig.scenes.push(
 			XXXXXXXXXXX
 			XXXXXXXX5XX
 			XYXXMXXX.XX
-			X3.......XX
+			X4.......XX
 			XQXX.XXXXXX
 			XXXX.XXXXXX
 			X^1....1öXX
@@ -33,6 +33,162 @@ gameConfig.scenes.push(
 			X2...XXXXXX
 			XXXXXXXXXXX
 		`,
+		onDialog: game => {
+			game.sceneData.zoomYupa = game.now;						
+			game.startDialog({
+				time: game.now,
+				index: 0,
+				conversation: [
+					{
+						options: [
+							{
+								msg: "Say Hello",
+								onSelect: (game, dialog) => {
+									game.playSound(SOUNDS.YUPA);
+									game.waitCursor = true;
+									game.showTip("Who ar yoouu?", () => {
+										game.waitCursor = false;
+									}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
+									dialog.index = 1;
+								},
+							},
+							{
+								msg: "LEAVE", onSelect: game => {
+									game.sceneData.zoomYupa = 0;
+									game.dialog = null;
+								},
+							},
+						],
+					},
+					{
+						options: [
+							{
+								msg: game => game.data.name ? `It's me ${game.data.name}` : "It's me...",
+								onSelect: (game, dialog) => {
+									if (game.data.name) {
+										game.showTip(`It's me, your friend ${game.data.name}!`, game => {
+											game.playSound(SOUNDS.YUPA);
+											game.showTip("A still don know youu", () => {
+												game.waitCursor = false;
+											}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
+										});
+									} else {
+										game.dialog = null;
+										const currentSceneIndex = game.sceneIndex;
+										game.gotoScene("name-screen");
+										game.sceneData.returnScene = currentSceneIndex;
+									}
+								},
+							},
+							{
+								msg: "You're alive!",
+								onSelect: (game, dialog) => {
+									game.playSound(SOUNDS.YUPA);
+									game.waitCursor = true;
+									game.showTip([
+											"Yes, Aa waz travel round, til you soak me!",
+										], () => {
+										game.waitCursor = false;
+									}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
+									dialog.index ++;
+								},
+							},
+							{
+								msg: "LEAVE", onSelect: game => {
+									game.sceneData.zoomYupa = 0;
+									game.dialog = null;
+								},
+							},
+						],
+					},
+					{
+						options: [
+							{
+								msg: "Travel? Where?",
+								onSelect: (game, dialog) => {
+									game.playSound(SOUNDS.YUPA);
+									game.waitCursor = true;
+									game.showTip([
+										"Aa was travellin in parrlel uverse.",
+										"Life here so boring in cage. Just had to get out.",
+										"Oh that's right, yo can't do that coz you a human.",
+									], () => {
+										game.waitCursor = false;
+									}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
+									dialog.index ++;
+								},
+							},
+							{
+								msg: "Travel? How?",
+								onSelect: (game, dialog) => {
+									game.showTip("How can you travel? You were locked up?", () => {
+										game.playSound(SOUNDS.YUPA);
+										game.waitCursor = true;
+										game.showTip([
+											"Oh yah, yo a human. You cant do that...",
+											"Us Yupa, we can travel to parallel uverses.",
+											"Haha, only one life. Must be so boring!",
+										], () => {
+											game.waitCursor = false;
+										}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
+									});
+									dialog.index ++;
+								},
+							},
+							{
+								msg: "LEAVE", onSelect: game => {
+									game.sceneData.zoomYupa = 0;
+									game.dialog = null;
+								},
+							},
+						],
+					},
+					{
+						options: [
+							{
+								msg: "How long...",
+								onSelect: (game, dialog) => {
+									game.showTip("How long have you been in here?", () => {
+										game.playSound(SOUNDS.YUPA);
+										game.waitCursor = true;
+										game.showTip("Maybe around fifteen years. Dont know.", () => {
+											game.showTip("fifteen years?!!!", () => {
+												game.waitCursor = false;
+											});
+										}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
+									});
+									dialog.index = 1;
+								},
+							},
+							{
+								msg: "LEAVE", onSelect: game => {
+									game.sceneData.zoomYupa = 0;
+									game.dialog = null;
+								},
+							},
+						],
+					},
+					{
+						options: [
+							{},
+							{},
+							{
+								msg: "LEAVE", onSelect: game => {
+									game.sceneData.zoomYupa = 0;
+									game.dialog = null;
+								},
+							},
+						],
+					},
+				],
+			});
+		},
+		onSceneHoldItem: (game, item) => {
+			if (item === "gun" && game.facingEvent() && game.facingEvent().yupa) {
+				game.showTip("I don't want to use my gun now!");
+				game.useItem = null;
+			}
+		},
 		sprites: [
 			{
 				custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
@@ -46,8 +202,20 @@ gameConfig.scenes.push(
 				hidden: game => !game.facingEvent() || !game.facingEvent().skeleton || game.rotation % 2 !== 0 || game.moving,
 			},
 			{
+				src: ASSETS.SKELETON_ROPE, col: 1, row: 2,
+				hidden: game => !game.facingEvent() || !game.facingEvent().skeletonRope || game.rotation % 2 !== 0 || game.moving,
+				index: game => game.situation.skeletonRopeFound ? 1 : 0,
+				onClick: game => {
+					if (!game.situation.gateOpened[game.frontCell()]) {
+						return;
+					}
+					game.situation.skeletonRopeFound = game.now;
+					game.pickUp({item:"robe", image:ASSETS.GRAB_ROPE, message:"This rope might be handy."});					
+				},
+			},
+			{
 				src: ASSETS.YUPA_SHAKE, col: 3, row: 4,
-				hidden: game => !game.situation.wokeYupa || !game.facingEvent() || !game.facingEvent().yupa || game.rotation % 2 !== 0 || game.moving,
+				hidden: game => game.data.yupa || !game.situation.wokeYupa || !game.facingEvent() || !game.facingEvent().yupa || game.rotation % 2 !== 0 || game.moving,
 				index: game => {
 					const time = game.now - game.situation.wokeYupa;
 					if (time < 5000) {
@@ -60,54 +228,15 @@ gameConfig.scenes.push(
 				},
 				combine: (item, game, sprite) => {
 					game.useItem = item;
-					sprite.onDialog(game, sprite);
+					game.currentScene.onDialog(game);
 					return true;
 				},				
 				onClick: (game, sprite) => {
-					sprite.onDialog(game, sprite);
-				},
-				onDialog: (game, sprite) => {
-					game.sceneData.zoomYupa = game.now;						
-					game.startDialog({
-						time: game.now,
-						index: 0,
-						conversation: [
-							{
-								options: [
-									{
-										msg: "Say Hello",
-										onSelect: (game, dialog) => {
-											game.playSound(SOUNDS.YUPA);
-											dialog.speaking = true;
-											game.waitCursor = true;
-											game.showTip("Who art yoouu?", () => {
-												dialog.speaking = false;
-												game.waitCursor = false;
-											}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
-											dialog.index = 1;
-										},
-									},
-									{
-										msg: "LEAVE", onSelect: game => {
-											game.sceneData.zoomYupa = 0;
-											game.dialog = null;
-										},
-									},
-								],
-							},
-							{
-								options: [
-									{},
-									{
-										msg: "LEAVE", onSelect: game => {
-											game.sceneData.zoomYupa = 0;
-											game.dialog = null;
-										},
-									},
-								],
-							},
-						],
-					});
+					if (game.now - game.situation.wokeYupa < 7000) {
+						game.showTip("He looks a bit shaken.", null, null, {removeLock:true});
+					} else {
+						game.currentScene.onDialog(game);
+					}
 				},
 			},
 			{
@@ -117,10 +246,13 @@ gameConfig.scenes.push(
 			{
 				src: ASSETS.YUPA_DRY,
 				hidden: game => game.situation.wokeYupa || !game.facingEvent() || !game.facingEvent().yupa || game.rotation % 2 !== 0 || game.moving,
-				tip: game => game.situation.gateOpened[game.frontCell()] ? "Oh no! It's.. it's my friend Yupa!" : "What's behind the bars? It looks like an alien corpse.",
+				tip: game => game.situation.waterYupa ? "I must water Yupa! Quick!" : game.situation.gateOpened[game.frontCell()] ? "Oh no! It's.. it's my friend Yupa!" : "What's behind the bars? It looks like an alien corpse.",
 				onClick: game => {
+					if (!game.situation.gateOpened[game.frontCell()]) {
+						return;
+					}
 					if (game.situation.waterYupa) {
-						game.showTip("I must water Yupa! Quick!");
+						game.showTip("I must water Yupa! Quick!", null, null, {removeLock:true});
 						return;
 					}
 					game.sceneData.zoomYupa = game.now;
@@ -210,31 +342,118 @@ gameConfig.scenes.push(
 			{
 				src: ASSETS.YUPA_DRY_CLOSE,
 				hidden: game => !game.sceneData.zoomYupa || game.situation.wokeYupa,
+				onClick: () => {
+				},
 			},
 			{
 				src: ASSETS.YUPA_ZOOM, col: 3, row: 3,
 				hidden: game => !game.sceneData.zoomYupa || !game.situation.wokeYupa,
 				index: game => {
-					if (game.dialog.speaking) {
-						return Math.floor(Math.random() * 4) + 3;
+					const { pendingTip, now, sceneData } = game;
+					if (pendingTip && pendingTip.talker === "yupa") {
+						return 4 + Math.floor(now / 50) % 4;
 					}
-					return Math.min(3, Math.floor((game.now - game.sceneData.zoomYupa)/50));
+					return game.useItem ? 4 : Math.min(3, Math.floor((now - sceneData.zoomYupa)/50));
+				},
+				combine: (item, game) => {
+					game.useItem = null;
+					if (!game.data.name) {
+						game.showTip("I should introduce myself before giving him anything.");
+						game.currentScene.onDialog(game);
+					} else {
+						switch (item) {
+							case "water bottle":
+								game.playSound(SOUNDS.YUPA);
+								game.showTip("I'm good now. Thanks.", null, null, { x: 1, y: 15, speed: 60, talker:"yupa"});
+								break;
+							case "photo":
+								game.sceneData.yupa_photo = game.now;
+								game.waitCursor = true;
+								game.dialog = null;						
+								break;
+							default:
+								game.playSound(SOUNDS.YUPA);
+								game.showTip("I don't need that.", null, null, { x: 1, y: 15, speed: 60, talker:"yupa"});
+								break;
+						}
+					}
+					return true;
+				},
+				onClick: () => {
 				},
 			},
+			{
+				src: ASSETS.YUPA_GRAB_PHOTO, col: 2, row: 3,
+				hidden: game => !game.sceneData.yupa_photo,
+				index: game => {
+					const frame = Math.floor((game.now - game.sceneData.yupa_photo) / 80);
+					if (frame < 30) {
+						return Math.min(frame, 3);
+					} else if (frame < 60) {
+						return frame % 2 + 4;
+					} else if (frame < 85) {
+						return 3;
+					} else {
+						return Math.max(0, 3 + 85 - frame);
+					}
+				},
+				onRefresh: game => {
+					const frame = Math.floor((game.now - game.sceneData.yupa_photo) / 80);
+					if (frame > 30 && !game.sceneData.yupalaugh) {
+						game.sceneData.yupalaugh = game.now;
+						game.playSound(SOUNDS.YUPA_HAHA);
+					} 
+					if (frame > 100) {
+						game.useItem = null;
+						game.sceneData.yupa_photo = 0;
+						game.currentScene.onDialog(game);
+						game.playSound(SOUNDS.YUPA);
+						game.showTip([
+							"Hey yeeh! I rememba you now!",
+							"You da time travlar from da future!",
+							"You diden know wat to do, so I save yo ass by taking you on my saucer.",
+							"And we kidnap baby hitler. Hahaha! So funney!",
+						], game => {
+							game.showTip([
+								"So you rememba me! That's wonderful",
+								"Will you come with me? Let's escape from this prison together",
+							], game => {
+								game.playSound(SOUNDS.YUPA);
+								game.showTip([
+									`Sure ma man ${game.data.name}!`,
+									`I be rite behind ya.`,
+								], game => {
+									game.dialog = null;
+									game.waitCursor = false;
+									game.sceneData.zoomYupa = 0;
+									game.data.yupa = {
+										rotation: game.rotation,
+										joined: game.now,
+										position: -12,
+									};
+									game.showTip("Yupa has joined me! Now I don't feel lonely anymore.", null, null, {removeLock:true});
+								}, null, { x: 1, y: 15, speed: 60, talker:"yupa"});
+							});
+						}, null, { x: 1, y: 15, speed: 60, talker: "yupa"});
+					}					
+				},
+			},
+			makeYupa(),
 			...standardBattle(),
 			...standardMenu(),
 			...standardBag(),
 		],
 		... makeOnSceneBattle(),
 		doors: {
-			1: {
-			},
+			1: {},
 			2: {
-				wayDown: true,
 				scene: "maze-4", door: 2,
 				exit: (game, {scene, door}) =>  game.fadeToScene(scene, {door}, 1000),
 			},
 			3: {
+				lock: true,
+			},
+			4: {
 				lock: true,
 			},
 			5: {
@@ -263,6 +482,7 @@ gameConfig.scenes.push(
 				cage: true,
 				showBag: true,
 				blockMap: true,
+				skeletonRope: true,
 				onEvent: (game, event) => {
 
 				},
@@ -335,7 +555,7 @@ gameConfig.scenes.push(
 					return true;
 				},
 				onWin: game => game.findChest(game.now + 2000, {
-					item:"key", image:ASSETS.GRAB_KEY, 
+					item:"water bottle", image:ASSETS.GRAB_WATER_BOTTLE, 
 				}),
 			},		
 			'ö': {
@@ -386,7 +606,7 @@ gameConfig.scenes.push(
 					return true;
 				},
 				onWin: game => game.findChest(game.now + 2000, {
-					item:"key", image:ASSETS.GRAB_KEY, 
+					item:"fruit?", image:ASSETS.GRAB_APPLE, 
 				}),
 			},			
 		},

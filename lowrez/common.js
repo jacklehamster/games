@@ -104,6 +104,7 @@ const ASSETS = {
 	GUARD: "assets/guard.png",
 	GUARD_2: "assets/guard.png|rotate-colors|rotate-colors",
 	MONSTER: "assets/monster.png",
+	DUMMY: "assets/dummy.png",
 	PUNCH: "assets/punch.png",
 	TOILETS: "assets/toilets.png",
 	BATHROOM: "assets/bathroom-background.png",
@@ -133,7 +134,7 @@ const ASSETS = {
 	FINAL_EXIT: "assets/final-exit.png",
 	GATE: "assets/gate.png",
 	OUTDOOR: "assets/outdoor.png",
-	CONGRATS: "assets/congrats.png|darken",
+//	CONGRATS: "assets/congrats.png|darken",
 	COINSTART: "assets/coinstart.png",
 	FLASH_SCREEN: "assets/flash-screen.png",
 	ARCADE_HANDS: "assets/arcade-hands.png",
@@ -155,7 +156,8 @@ const ASSETS = {
 	MENU_PROFILE:'assets/menu-profile.png',
 	MENU_PROFILE_NOTIFICATION: "assets/profile-notification.png",
 	TREASURE_CHEST: "assets/treasure-chest.png",
-	SLIME: "assets/slime.png",
+	SLIMO: "assets/slime.png",
+	SLIMAR: "assets/slime.png|rotate-colors|rotate-colors",
 	STATS: "assets/stats.png",
 	LEVEL_UP: "assets/level-up.png",
 	DOORWAY:'assets/doorway.png',
@@ -169,6 +171,15 @@ const ASSETS = {
 	YUPA_DRY_CLOSE: "assets/yupa-dry-close.png",
 	YUPA_SHAKE: "assets/yupa-shake.png",
 	YUPA_ZOOM: "assets/yupa-zoom.png",
+	WOOD: "assets/wood.png",
+	SKELETON_ROPE: "assets/skeleton-rope.png",
+	GRAB_ROPE: "assets/grab-rope.png",
+	HITMAN_WALK: "assets/hitman-walk.png",
+	HITMAN_BEARD_WALK: "assets/hitman-beard-walk.png",
+	YUPA_GRAB_PHOTO: "assets/yupa-grab-photo.png",
+	YUPA_DANCE: "assets/yupa-dance.png",
+	GRAB_YUPA_BOTTLE: "assets/grab-yupa-bottle.png",
+	DRINK_YUPA: "assets/drink-yupa.png",
 };
 
 const SOUNDS = {
@@ -199,10 +210,11 @@ const SOUNDS = {
 	BEEP: 'sounds/beep.mp3',
 	BOP: 'sounds/bop.mp3',
 	YUPA: 'sounds/yupa.mp3',
+	YUPA_HAHA: 'sounds/yupa-haha.mp3',
 };
 
 const ALPHAS = (() => {
-	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz.,?'#@!♪()[]/-+ "
+	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz.,?'#@!♪()[]/-+_ "
    	   + new Array(10).fill(null).map((a, index) => String.fromCharCode(1000 + index)).join("");
 	const array = [];
 	for(let c = 0; c < letters.length; c++) {

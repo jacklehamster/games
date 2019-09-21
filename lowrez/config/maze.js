@@ -14,7 +14,7 @@ gameConfig.scenes.push(
 		],
 		map: `
 			XXXXXXXXX
-			XT.....XX
+			XT......3
 			XXX.XX.XX
 			XXX1XX.XX
 			XXXXXX2XX
@@ -76,6 +76,10 @@ gameConfig.scenes.push(
 			},
 			2: {
 				scene: "maze-2",
+				exit: (game, {scene}) => game.fadeToScene(scene, {door:1}, 1000),
+			},
+			3: {
+				scene: "training-room",
 				exit: (game, {scene}) => game.fadeToScene(scene, {door:1}, 1000),
 			},
 		},

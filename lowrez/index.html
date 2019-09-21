@@ -111,6 +111,9 @@
 				<input checked id="scanlines" type="checkbox"
 					onChange="setScanline(event.currentTarget.checked)">
 				<label for="scanlines">scanline</label>
+				<input checked id="pauseexit" type="checkbox">
+				<label for="pauseexit">pause on exit</label>
+				<input id="speeduptext" type="checkbox" onChange="Game.setTextSpeeder(event.currentTarget.checked?.1:1)"><label for="speeduptext">speed up text</label>
 			</div>
 			<div id="saves">
 				<button onClick="clearSaves()">CLEAR</button>
@@ -120,49 +123,13 @@
 			</div>
 		</div>
 </body>
-
 	<script src="common.js"></script>
 	<script src="config.js"></script>
 
-	<script src="config/alien.js"></script>
-	<script src="config/arcade-room.js"></script>
-	<script src="config/birthday.js"></script>
-	<script src="config/bring-cake.js"></script>
-	<script src="config/cake-face.js"></script>
-	<script src="config/cell-maze.js"></script>
-	<script src="config/cell-maze-2.js"></script>
-	<script src="config/congrats.js"></script>
-	<script src="config/disk-screen.js"></script>
-	<script src="config/final-exit.js"></script>
-	<script src="config/final-title.js"></script>
-	<script src="config/first-prison-cell.js"></script>
-	<script src="config/guards-attack.js"></script>
-	<script src="config/guards-laughing.js"></script>
-	<script src="config/guards-laughing-2.js"></script>
-	<script src="config/in-progress.js"></script>
-	<script src="config/jail-cell.js"></script>
+	<script src="asset-size.js"></script>
 	<script src="config/load-screen.js"></script>
-	<script src="config/lock-zoom.js"></script>
-	<script src="config/locker-room.js"></script>
-	<script src="config/maze-2.js"></script>
-	<script src="config/maze-3.js"></script>
-	<script src="config/maze-4.js"></script>
-	<script src="config/maze.js"></script>
-	<script src="config/poor-hitman.js"></script>
-	<script src="config/start-screen.js"></script>
-	<script src="config/temp-end.js"></script>
-	<script src="config/tile-hole.js"></script>
-	<script src="config/toilet-monster.js"></script>
-	<script src="config/toilet-zoom.js"></script>
-	<script src="config/toilets.js"></script>
-	<script src="config/vending-machine.js"></script>
-	<script src="config/what-so-funny.js"></script>
-	<script src="config/zoom-arcade.js"></script>
-	<script src="config/zoom-guards.js"></script>
-	<script src="config/zoom-shop-monster.js"></script>
-	<script src="config/zoom-vending-machine.js"></script>
-
 	<script src="game.js"></script>
+
 	<script>
 		function setScanline(checked) {
 			const noise 	= document.getElementById("noise");
@@ -235,8 +202,23 @@
 			});
 		}
 
-		addEventListener("focus", () => {if (game) game.resume()});
-		addEventListener("blur", () => {if (game) game.pause()});
+		addEventListener("focus", () => {
+			if (game && document.getElementById("pauseexit").checked) game.resume();
+		});
+		addEventListener("blur", () => {
+			if (game && document.getElementById("pauseexit").checked) game.pause()
+		});
+
+		document.addEventListener("visibilitychange", () => {
+			if (game && document.getElementById("pauseexit").checked) {
+				if (document.visibilityState === "hidden") {
+					game.pause();
+				} else {
+					game.resume();
+				}
+			}
+			console.log(document.visibilityState);
+		});
 
 		const noiseCanvases = [];
 		for (let i = 0; i < 10; i++) {
@@ -272,4 +254,44 @@
 		}
 		requestAnimationFrame(noise);
 	</script>
+
+	<script src="config/alien.js" async></script>
+	<script src="config/arcade-room.js" async></script>
+	<script src="config/birthday.js" async></script>
+	<script src="config/bring-cake.js" async></script>
+	<script src="config/cake-face.js" async></script>
+	<script src="config/cell-maze.js" async></script>
+	<script src="config/cell-maze-2.js" async></script>
+	<script src="config/congrats.js" async></script>
+	<script src="config/disk-screen.js" async></script>
+	<script src="config/final-exit.js" async></script>
+	<script src="config/final-title.js" async></script>
+	<script src="config/first-prison-cell.js" async></script>
+	<script src="config/guards-attack.js" async></script>
+	<script src="config/guards-laughing.js" async></script>
+	<script src="config/guards-laughing-2.js" async></script>
+	<script src="config/in-progress.js" async></script>
+	<script src="config/jail-cell.js" async></script>
+	<script src="config/lock-zoom.js" async></script>
+	<script src="config/locker-room.js" async></script>
+	<script src="config/maze-2.js" async></script>
+	<script src="config/maze-3.js" async></script>
+	<script src="config/maze-4.js" async></script>
+	<script src="config/maze.js" async></script>
+	<script src="config/name-screen.js" async></script>
+	<script src="config/poor-hitman.js" async></script>
+	<script src="config/start-screen.js" async></script>
+	<script src="config/temp-end.js" async></script>
+	<script src="config/tile-hole.js" async></script>
+	<script src="config/toilet-monster.js" async></script>
+	<script src="config/toilet-zoom.js" async></script>
+	<script src="config/toilets.js" async></script>
+	<script src="config/training-room.js" async></script>
+	<script src="config/vending-machine.js" async></script>
+	<script src="config/what-so-funny.js" async></script>
+	<script src="config/zoom-arcade.js" async></script>
+	<script src="config/zoom-guards.js" async></script>
+	<script src="config/zoom-shop-monster.js" async></script>
+	<script src="config/zoom-vending-machine.js" async></script>
+	<script src="config/drink-yupa.js" async></script>
 </html>

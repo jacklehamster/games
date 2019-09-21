@@ -20,7 +20,7 @@ gameConfig.scenes.push(
 			},
 			sprites: [
 				{
-					src: ASSETS.CONGRATS, col: 3, row: 3,
+					src: "assets/congrats.png|darken", col: 3, row: 3,
 					index: ({now}) => Math.floor(now / 100) % 9,
 				},
 			],

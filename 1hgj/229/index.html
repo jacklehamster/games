@@ -1,0 +1,264 @@
+<body style="background: silver">
+
+
+
+
+
+
+
+	<canvas id="canvas" width=256 height=256 style="width: 512px; height: 512px;"></canvas>
+
+
+<script>
+
+
+	const displayConfig = {
+		scenes: [
+			{
+				sprites: [
+					{
+						label: {
+							text: "press here to continue",
+							x: 20, y: 40,
+						},
+					},
+				],
+				onClick: () => {
+					gotoScene(sceneIndex + 1);
+				},
+			},
+			{
+				sprites: [
+					{
+						image: {
+							src: "helloween.png",
+						},
+					},
+				],
+				sound: "dadada.mp3",
+				onClick: () => {
+					gotoScene(sceneIndex + 1);
+				},
+			},
+			{
+				sprites: [
+					{
+						image: {
+							src: "house.png",
+						},
+					},
+					{
+						onRefresh: ctx => {
+							const row = getRow();
+							ctx.fillStyle = "#ffffff33";
+							ctx.fillRect(0, 190, 256, 100);
+
+							if (row > 19 && row < 23) {
+								ctx.fillStyle = "#888833";
+								ctx.fillRect(0, row * 10, 256, 10);
+							}
+						},
+					},
+					{
+						label: {
+							text: "move forward",
+							x: 20, y: 210,
+						},
+					},
+					{
+						label: {
+							text: "run away",
+							x: 20, y: 220,
+						},
+					},
+				],
+				onClick: () => {
+					if (getRow()===21) {
+						gotoScene("ending-run-away");
+					} else if (getRow()===20) {
+						gotoScene("ghost");
+					}
+				},
+			},
+			{
+				name: "ending-run-away",
+				sound: "ouinouin.mp3",
+				sprites: [
+					{
+						image: {
+							src: "scared.png",
+						},
+					},
+					{
+						label: {
+							x: 30, y: 100,
+							text: "You're scared of ghost?\nHAHAHA"
+						},
+					},
+				],
+				onClick: () => {
+					gotoScene(0);
+				},
+			},
+			{
+				name: "ghost",
+				sprites: [
+					{
+						image: {
+							src: "ghost.png",
+						},
+					},
+					{
+						onRefresh: ctx => {
+							const row = getRow();
+							ctx.fillStyle = "#ffffff33";
+							ctx.fillRect(0, 190, 256, 100);
+
+							if (row > 19 && row < 23) {
+								ctx.fillStyle = "#888833";
+								ctx.fillRect(0, row * 10, 256, 10);
+							}
+						},
+					},
+					{
+						label: {
+							text: "Hello!",
+							x: 20, y: 210,
+						},
+					},
+					{
+						label: {
+							text: "Move out of the way",
+							x: 20, y: 220,
+						},
+					},
+				],
+				onClick: () => {
+					gotoScene("dead");
+				},				
+			},
+			{
+				name: "dead",
+				sprites: [
+					{
+						image: {
+							src: "hell.png",
+						},
+					},
+					{
+						label: {
+							text: "The ghost killed you.",
+							x: 30, y: 60,
+						},
+					},
+					{
+						label: {
+							text: "You died",
+							x: 30, y: 80,
+						},
+					},
+					{
+						label: {
+							text: "Welcome to hell.",
+							x: 30, y: 100,
+						},
+					},
+				],
+				onClick: () => {
+					gotoScene(sceneIndex + 1);
+				},				
+			},
+			{
+				sprites: [
+					{
+						label: {
+							text: "Yo are reincarnated.",
+							x: 30, y: 60,
+						},
+					},
+				],
+				onClick: () => {
+					gotoScene(2);
+				},				
+			},			
+		],
+	};
+
+	function getRow() {
+		const row = Math.floor((mouse.y/2) / 10);
+		return row;		
+	}
+
+	const ctx = document.getElementById("canvas").getContext("2d", {alpha: false});
+	let sceneIndex = 0;
+	let sceneTime = 0;
+
+	function gotoScene(index) {
+		if (typeof(index)==="string") {
+			for (let i = 0; i < displayConfig.scenes.length; i++) {
+				if (displayConfig.scenes[i].name === index) {
+					index = i;
+					break;
+				}
+			}
+		}
+		sceneIndex = index;
+		sceneTime = 0;
+	}
+
+	const mouse = {x:0, y:0};
+	document.getElementById("canvas").addEventListener("mousemove", e => {
+			mouse.x = e.clientX;
+			mouse.y = e.clientY;
+	});
+
+	document.getElementById("canvas").addEventListener("click", e => {
+		const scene = displayConfig.scenes[sceneIndex];
+		if (scene.onClick) {
+			scene.onClick();
+		}		
+		console.log(getRow());
+	});
+
+	const imageCache = {};
+
+	function loop(t) {
+		const scene = displayConfig.scenes[sceneIndex];
+		if (!sceneTime) {
+			sceneTime = t;
+			if (scene.sound) {
+				new Audio(scene.sound).play();
+			}
+		}
+		ctx.clearRect(0, 0, 256, 256);
+		if (scene.sprites) {
+			scene.sprites.forEach(sprite => {
+				if (sprite.onRefresh) {
+					sprite.onRefresh(ctx);
+				}
+				if (sprite.label) {
+					const { x, y, text } = sprite.label;
+					ctx.fillStyle = "#000000";
+					ctx.fillText(text, x, y);
+				}
+				if (sprite.image) {
+					const { x, y, src } = sprite.image;
+					if (!imageCache[src]) {
+						imageCache[src] = new Image();
+						imageCache[src].src = src;
+					}
+					ctx.drawImage(imageCache[src], x||0, y||0);
+				}
+
+			});
+		}
+
+		requestAnimationFrame(loop);
+	}
+
+	requestAnimationFrame(loop);
+
+</script>
+
+
+</body>

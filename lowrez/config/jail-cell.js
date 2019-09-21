@@ -364,11 +364,23 @@ gameConfig.scenes.push(
 					const frame = 1 + Math.max(0, Math.min(2, Math.floor((now - sceneData.guardAlert) / 150)));
 					return frame < 3;
 				}
-			},				
+			},
 			{
 				src: ASSETS.JAIL360, col:3, row:3,
 				index: game => (game.rotation + 8) % 8,
 				hidden: game => game.rotation === 0,
+			},
+			{
+				src: ASSETS.WOOD, col:3, row:3,
+				index: game => (game.rotation + 8) % 8,
+				hidden: game => game.rotation === 0,
+				combine: (item, game) => {
+					if (item === "empty bottle") {
+						delete game.data.pickedUp["empty bottle"];
+						game.removeFromInventory("empty bottle");
+					}
+					return true;
+				},
 			},
 			{
 				src: ASSETS.WRITING, col:3, row:3,
@@ -491,27 +503,8 @@ gameConfig.scenes.push(
 				index: 2,
 				hidden: game => !game.data.shot.lamp || game.now - game.data.shot.lamp >= 100 || game.rotation !== 0,
 			},
-			{
-				name: "self",
-				src: ASSETS.EATER, col:2, row:2,
-				index: (game, sprite) => game.hoverSprite === sprite ? Math.min(2, Math.floor((game.now - sprite.hoverTime) / 100)) : 0,
-				hidden: game => game.useItem !== 'cake',
-				combine: (item, game) => {
-					if (item === 'cake') {
-						game.gotoScene("alien");
-					}
-					return true;
-				},
-			},
-			{
-				bag: true,
-				src: ASSETS.BAG_OUT,
-				index: game => game.frameIndex,
-				hidden: game => !game.bagOpening && (game.arrow !== BAG || game.sceneData.firstShot),
-				alpha: game => game.emptyBag() && game.frameIndex === 0 ? .2 : 1,
-				onClick: game => game.clickBag(),
-			},
 			...standardMenu(),
+			...standardBag(),
 		],
 	},
 );

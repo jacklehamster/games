@@ -60,7 +60,7 @@ gameConfig.scenes.push(
 				tip: () => "I wonder if the water is drinkable.",
 				combine: (item, game) => {
 					if (item === "empty bottle") {
-						delete game.inventory[item];
+						game.removeFromInventory("empty bottle");
 						game.useItem = null;
 						game.pickUp({item:"water bottle", image:ASSETS.GRAB_WATER_BOTTLE, message:"It does look like water... so far."});
 						return true;

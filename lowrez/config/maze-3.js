@@ -29,7 +29,7 @@ gameConfig.scenes.push(
 				custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
 			},
 			...getCommonMaze("_BLUE_1"),
-			makeFoe('slime', ASSETS.SLIME),
+			makeFoe('slimar', ASSETS.SLIMAR),
 			...standardBattle(),
 			...standardMenu(),
 			...standardBag(),
@@ -44,6 +44,7 @@ gameConfig.scenes.push(
 			},
 			2: {
 				scene: "maze-4",
+				wayUp: true,
 				exit: (game, {scene}) =>  game.fadeToScene(scene, {door:1}, 1000),
 			},
 			3: {
@@ -65,10 +66,10 @@ gameConfig.scenes.push(
 				},
 			},
 			's': {
-				foe: "slime",
-				foeLife: 60,
+				foe: "slimar",
+				foeLife: 90,
 				foeBlockChance: .6,
-				attackSpeed: 2500,
+				attackSpeed: 2200,
 				riposteChance: .7,
 				attackPeriod: 100,
 				foeDamage: 10,

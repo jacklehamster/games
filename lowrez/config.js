@@ -9,7 +9,7 @@ const shortcut = {
 	7: ({battle}) => battle ? BLOCK : null,
 	8: ({battle}) => battle ? BLOCK : s(1),
 	9: game => {
-		if (game.battle) {
+		if (game.battle || game.dialog) {
 			return BAG;
 		}
 		const door = game.frontDoor();
@@ -274,7 +274,7 @@ function getCommonMaze(modifier) {
 				if (item === "key") {
 					const cell = game.frontCell();
 					if (game.unlock(cell)) {
-						game.removeFromInventory("key");
+//						game.removeFromInventory("key");
 						game.playSound(SOUNDS.DUD);
 					}
 				} else {
@@ -634,8 +634,8 @@ function standardBag() {
 				if (bagOpening) {
 					return false;
 				}
-				if (dialog && dialog.conversation[dialog.index].options.length > 2) {
-					return true;
+				if (dialog) {
+					return dialog.conversation[dialog.index].options.filter(({hidden})=>!hidden || !game.evaluate(hidden)).length > 2;
 				}
 				if (arrow === "BAG") {
 					const door = game.frontDoor();
@@ -649,7 +649,7 @@ function standardBag() {
 						return false;
 					}
 				}
-				return arrow !== BAG && (!sceneData.showStats || now - sceneData.showStats < 400);
+				return arrow !== BAG && (!sceneData.showStats || now - sceneData.showStats < 400) && game.useItem !== "gun";
 			},
 			alpha: game => game.emptyBag() ? .2 : 1,
 			onClick: game => game.clickBag(),
@@ -903,6 +903,247 @@ function standardMenu() {
 	];
 }
 
+function makeYupa() {
+	return {
+		src: ASSETS.YUPA_DANCE, col: 4, row: 4,
+		offsetX: game => game.data.yupa.position,
+		offsetY: game => game.moving ? -1 : 1,
+		index: ({dialog, now, pendingTip, moving}) => moving ? Math.floor(now / 120) % 4 + 12 : !dialog ? Math.floor(now / 300) % 8 : pendingTip && pendingTip.talker==="yupa" ? 8 + Math.floor(now / 100) % 3 : 8,
+		hidden: game =>  game.battle || !game.data.yupa || game.data.yupa.inBottle || game.data.yupa.rotation !== game.rotation,
+		combine: (item, game) => {
+			switch(item) {
+				case "empty bottle":
+					if (game.data.yupa.canTurnIntoGoo) {
+						game.startDialog({
+							time: game.now,
+							index: 0,
+							conversation:[
+								{
+									options: [
+										{
+											msg: "Come on, try it!",
+											onSelect: game => {
+												game.waitCursor = true;
+												game.showTip(["Come on! Just give it a try.", "Please, I wanna see you do it!"], game => {
+													game.playSound(SOUNDS.YUPA);
+													game.showTip("Hum... ooright. But only for a few seconds then...", game => {
+														game.waitCursor = false;
+														game.data.yupa.inBottle = game.now;
+														game.pickUp({item:"yupa bottle", index: ({pendingTip, now})=>pendingTip&&pendingTip.talker==="yupa"?4 + Math.floor(now/100)%4 : 0, image:ASSETS.GRAB_YUPA_BOTTLE, col: 3, row: 3, message:"Lol, I can't believe he did it! He does look pretty comfortable.", onPicked: game => {
+															game.dialog = null;
+														}, onTipDone: game => {
+															console.log("HERE");
+														}});
+													}, null, { x: 1, y: 20, speed: 60, talker:"yupa" });
+												});
+											},
+										},
+										{
+											msg: "Ok, nevermind.",
+											onSelect: game => game.dialog = null,
+										},
+									],
+								},
+							],
+						})
+
+						game.waitCursor = true;
+						game.showTip([
+							"Hey, so since you can liquify yourself",
+							"Can you fit in this bottle?",
+						], game => {
+							game.playSound(SOUNDS.YUPA);
+							game.showTip("No way! I'm cloztrofobic!", game => {
+								game.useItem = null;
+								game.waitCursor = false;
+							},null, { x: 1, y: 20, speed: 60, talker:"yupa" });
+						});
+					} else {
+						game.showTip("I don't really have a reason to give him that.", null, null, {removeLock:true});
+					}
+					break;
+				default:
+
+			}
+			return true;
+		},
+		onClick: game => {
+			game.startDialog({
+				time: game.now,
+				index: 0,
+				conversation: [
+					{
+						options: [
+							{
+								msg: "Say Hello",
+								onSelect: (game, dialog) => {
+									game.playSound(SOUNDS.YUPA);
+									game.waitCursor = true;
+									game.showTip("Whadz up?", () => {
+										game.waitCursor = false;
+									}, null, { x: 1, y: 20, speed: 60, talker:"yupa" });
+									dialog.index = 1;
+								},
+							},
+							{
+								msg: "LATER", onSelect: game => {
+									game.dialog = null;
+								},
+							},
+						],
+					},
+					{
+						options: [
+							{
+								msg: "What can I do?",
+								onSelect: (game, dialog) => {
+									game.playSound(SOUNDS.YUPA);
+									game.waitCursor = true;
+									game.showTip([
+										"I don't know what to do.",
+										"Can you help me?",
+									], game => {
+										game.playSound(SOUNDS.YUPA);
+										game.showTip([
+											"I dun know what todo eidher!",
+										], game => {
+											game.waitCursor = false;
+											game.dialog = null;
+										}, null, { x: 1, y: 21, speed: 60, talker:"yupa" });
+									});
+								},
+							},
+							{
+								msg: "Got superpowers?",
+								hidden: game => game.data.yupa.canTurnIntoGoo,
+								onSelect: (game, dialog) => {
+									game.waitCursor = true;
+									game.showTip([
+										"So... do you have ... like",
+										"Alien super powers?",
+									], game => {
+										game.playSound(SOUNDS.YUPA);
+										game.showTip([
+											"Supapawa? You mean stuff humans cannot do?",
+											"Hum... Yupa can release smelly gas from my bottox.",
+											"Also make a very loud noise when dat happens.",
+										], game => {
+											game.showTip([
+												"No! Not that!",
+												"I mean... like super strength, super speed? Or flying?",
+											], game => {
+												game.playSound(SOUNDS.YUPA);
+												game.showTip([
+													"Welll, Aa told yo Aa can travel to paralol uverse",
+												], game => {
+													game.waitCursor = false;
+													dialog.index++;
+												}, null, { x: 1, y: 21, speed: 60, talker:"yupa" });
+											});
+										}, null, { x: 1, y: 21, speed: 60, talker:"yupa" });
+									});
+								},
+							},
+							{
+								msg: "LATER", onSelect: game => {
+									game.dialog = null;
+								},
+							},
+						],
+					},
+					{
+						options: [
+							{},
+							{
+								msg: "Impressed!",
+								onSelect: (game, dialog) => {
+									game.waitCursor = true;
+									game.showTip("Amazing! tell me more!", game => {
+										game.playSound(SOUNDS.YUPA);
+										game.showTip([
+											"In paralol uverse, Aa had a big family.",
+											"Me, my wife, my husban, and three kidz",
+											"We was goin on an adventure...",
+										], game => {
+											game.showTip(["Ok ok, I got it.", "So you don't have any useful superpawa?"], game => {
+												game.playSound(SOUNDS.YUPA);
+												game.showTip("Hum.. Yupa can shapeshit.", game => {
+													game.waitCursor = false;
+													dialog.index++;
+												}, null, { x: 1, y: 21, speed: 60, talker:"yupa" });
+											});
+										}, null, { x: 1, y: 21, speed: 60, talker:"yupa" });
+									});
+								},
+							},
+							{
+								msg: "Not impressed.",
+								onSelect: (game, dialog) => {
+									game.showTip([
+										"I think that's what's called dreaming.",
+										"Don't you have anything more useful?",
+									], game => {
+										game.playSound(SOUNDS.YUPA);
+										game.showTip("Hum.. Yupa can shapeshit.", game => {
+											game.waitCursor = false;
+											dialog.index++;
+										}, null, { x: 1, y: 21, speed: 60, talker:"yupa" });
+									});
+								},
+							},
+						],
+					},
+					{
+						onSelect: (game, dialog) => {
+							game.waitCursor = true;
+							game.showTip([
+								"That's awesome! So maybe you can transform into a big scary dragon?",
+							], game => {
+								game.playSound(SOUNDS.YUPA);
+								game.showTip([
+									"Oh no, not dat!",
+									"Yupa can liquify and turn into very dense goo.",
+								], game => {
+									game.showTip([
+										"Erghh... not sure how that would be useful.",
+									], game => {
+										game.playSound(SOUNDS.YUPA);
+										game.showTip("Maybe.", game => {
+											game.waitCursor = false;
+											game.data.yupa.canTurnIntoGoo = true;
+											game.dialog = null;
+										}, null, { x: 1, y: 21, speed: 60, talker:"yupa" });
+									});
+								}, null, { x: 1, y: 21, speed: 60, talker:"yupa" });							
+							});
+						},
+						options: [
+							{
+								msg: "No way!",
+								onSelect: (game, dialog) => {
+									dialog.conversation[dialog.index].onSelect(game, dialog);
+								},
+							},
+							{
+								msg: "No kiddin!",
+								onSelect: (game, dialog) => {
+									dialog.conversation[dialog.index].onSelect(game, dialog);
+								},
+							},
+							{
+								msg: "No shit!",
+								onSelect: (game, dialog) => {
+									dialog.conversation[dialog.index].onSelect(game, dialog);
+								},
+							},
+						],
+					},
+				],
+			});
+		},
+	};
+}
+
 function makeFoe(foe, src) {
 	return 	{
 		src, col: 4, row: 4,
@@ -1002,8 +1243,9 @@ function makeOnSceneBattle() {
 						game.playSound(SOUNDS.DUD);
 						battle.foeBlock = now;
 						game.damageFoe(data.stats.damage / 5, {blocked:true});
-						if (Math.random() >= battle.riposteChance) {
+						if (Math.random() <= battle.riposteChance) {
 							battle.nextAttack = Math.min(battle.nextAttack, now + 50);
+							console.log(now - battle.nextAttack);
 						}
 					}
 				}
@@ -1043,7 +1285,7 @@ function standardBattle() {
 			},
 			hidden: game => {
 				const {battle, arrow, useItem, bagOpening} = game;
-				return !battle || battle.belowTheBelt && (battle.playerLeftAttack || battle.playerRightAttack) || game.data.gameOver || battle.foeDefeated || (game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack && !battle.playerHit || useItem || bagOpening);
+				return !battle || battle.dummyBattle && (arrow===LEFT || arrow===RIGHT) || battle.belowTheBelt && (battle.playerLeftAttack || battle.playerRightAttack) || game.data.gameOver || battle.foeDefeated || (game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack && !battle.playerHit || useItem || bagOpening);
 			},
 		},
 		{
@@ -1061,7 +1303,7 @@ function standardBattle() {
 			},
 			hidden: game => {
 				const {battle, arrow, useItem, bagOpening} = game;
-				return !battle || battle.belowTheBelt && (battle.playerLeftAttack || battle.playerRightAttack) || game.data.gameOver || battle.foeDefeated || game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack && !battle.playerHit || useItem || bagOpening;
+				return !battle || battle.dummyBattle && (arrow===LEFT || arrow===RIGHT) ||  battle.belowTheBelt && (battle.playerLeftAttack || battle.playerRightAttack) || game.data.gameOver || battle.foeDefeated || game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack && !battle.playerHit || useItem || bagOpening;
 			},
 		},
 		{
@@ -1146,6 +1388,9 @@ function standardBattle() {
 		{
 			custom: (game, sprite, ctx) => {
 				const { stats, battle } = game.data;
+				if (battle.dummyBattle) {
+					return;
+				}
 				ctx.fillStyle = "#333333";
 				ctx.fillRect(4, 60, 56, 3);
 				ctx.fillRect(4, 2, 56, 3);
@@ -1185,6 +1430,10 @@ function standardBattle() {
 }
 
 const consumable = {
+	"cake": game => {
+		game.gotoScene("alien");
+		return true;
+	},
 	"fruit?": game => {
 		const { stats } = game.data;
 		if (game.data.stats.state.ate && !game.battle) {
@@ -1215,6 +1464,10 @@ const consumable = {
 			}
 			return true;
 		}
+	},
+	"yupa bottle": game => {
+		game.gotoScene("drink-yupa");
+		return true;
 	},
 };
 

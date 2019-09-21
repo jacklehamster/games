@@ -22,18 +22,18 @@ gameConfig.scenes.push(
 			{
 				custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
 			},
-			...getCommonMaze("_BLUE_1"),
+			...getCommonMaze("_1"),
 			...standardMenu(),
 			...standardBag(),
 		],
 		doors: {
 			1: {
 				scene: "maze-3",
+				wayDown: true,
 				exit: (game, {scene}) =>  game.fadeToScene(scene, {door:2}, 1000),
 			},
 			2: {
 				lock: true,
-				wayUp: true,
 				scene: "cell-maze", door: 2,
 				exit: (game, {scene, door}) => {
 					game.fadeToScene(scene, {door}, 1000);

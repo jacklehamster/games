@@ -1,0 +1,171 @@
+<body style="background: #eeffff">
+
+	<div id="scoreDiv">.</div>
+	<div id="itemDiv">.</div>
+	<canvas id="canvas" width=512 height=256 style="width: 1024px; height: 512px;"></canvas>
+
+<script>
+	const scoreDiv = document.getElementById("scoreDiv");
+
+	const ctx = document.getElementById("canvas").getContext("2d");
+	const dudeImage = new Image();
+	dudeImage.src = "dude.png";
+
+	const shopetteImage = new Image();
+	shopetteImage.src = "shopette.png";
+
+	const stuffImage = new Image();
+	stuffImage.src = "stuff.png";
+
+	const keyboard = {};
+
+	document.addEventListener("keydown", e => {
+		keyboard[e.keyCode] = true;
+		e.preventDefault();
+	});
+
+	document.addEventListener("keyup", e => {
+		keyboard[e.keyCode] = false;
+		e.preventDefault();
+	});
+
+	let NUM_SHOPETTES = 5;
+	const shopettes = [];
+
+
+	function addShopette() {
+		const newShopette = {
+			name: "shopette",
+			x: -64 - Math.round(Math.random() * 200),
+			y: Math.round(Math.random()* 200),
+			speed : 1,
+			src: shopetteImage,
+		};
+		shopettes.push(newShopette);
+		return newShopette;
+	}
+
+	for (let i = 0; i < NUM_SHOPETTES; i++) {
+		addShopette();
+	}
+
+	let NUM_STUFF = 40;
+	const stuffs = [];
+
+	function addStuff() {
+		const frame = Math.floor(Math.random() * 4);
+		const items = [
+			"Big screen TV",
+			"Blender",
+			"Chicken",
+			"Robot",
+		];
+		stuffs.push({
+			name: "stuff",
+			x: 200 + Math.round(Math.random() * 1000),
+			y: Math.round(Math.random()* 200),
+			frame,
+			src: stuffImage,
+			points: (5 << frame) - 1,
+			item: items[frame],
+		});
+	}
+	for (let i = 0; i < NUM_STUFF; i++) {
+		addStuff();
+	}
+
+
+	const dude = {x: 100, y: 100, src: dudeImage};
+	let sprites = [dude].concat(stuffs).concat(shopettes);
+	let score = 0;
+	let gameOver = false;
+
+	function loop(t) {
+		let dx = 0, dy = 0;
+		if (keyboard[37]) {
+			dx--;
+		}
+		if (keyboard[39]) {
+			dx++;
+		}
+		if (keyboard[38]) {
+			dy--;
+		}
+		if (keyboard[40]) {
+			dy++;
+		}
+
+		dude.x += dx * 3;
+		dude.y += dy * 3;
+		dude.x = Math.min(300, Math.max(0, dude.x));
+		dude.y = Math.min(256-64, Math.max(0, dude.y));
+		dude.frame = Math.floor(t / 100) % 4;
+
+		shopettes.forEach(shopette => {
+			shopette.frame = Math.floor(t / 100) % 4;
+			shopette.x += shopette.speed;
+			if (shopette.x > 800) {
+				shopette.x = 0;
+				if(shopette.speed < 5) {
+					shopette.speed++;
+				}
+				if (shopettes.length < 20) {
+					sprites.push(addShopette());
+				}
+			}
+		});
+
+		stuffs.forEach(sprite => {
+			sprite.x -=2;
+			if (sprite.x < -64) {
+				sprite.x = 1000;
+			}
+		});
+
+
+		sprites.forEach(sprite => {
+			if (gameOver) {
+				return;
+			}
+			if (sprite !== dude) {
+				const dx = sprite.x - dude.x;
+				const dy = sprite.y - dude.y;
+				if (dx * dx + dy * dy < 20 * 20) {
+					sprite.x = -100;
+					if (sprite.name === "stuff") {
+						score += sprite.points;
+						scoreDiv.innerText = "$" + score;
+						itemDiv.innerText = sprite.item;
+					} else {
+						scoreDiv.innerText = score;
+						gameOver = true;
+						itemDiv.innerText = "GAME OVER .Click to restart";
+						document.addEventListener("click", e => {
+							location.reload();
+						});
+//						alert("GAME OVER!. Score: " + score);
+					}
+				}
+			}
+		});
+
+		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+		sprites.sort((a, b) => a.y - b.y);
+
+		sprites.forEach(sprite => {
+			if (gameOver && sprite===dude) {
+				return;
+			}
+			const fx = (sprite.frame % 2) *64;
+			const fy = Math.floor(sprite.frame / 2) *64;
+			ctx.drawImage(sprite.src, fx, fy, 64, 64, sprite.x, sprite.y, 64, 64);
+		});
+
+		requestAnimationFrame(loop);
+	}
+
+	requestAnimationFrame(loop);
+
+</script>
+</body>

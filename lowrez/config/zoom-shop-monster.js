@@ -76,7 +76,7 @@ gameConfig.scenes.push(
 					{ item: "access card", 	name: "access card", 	cost: 20,	src: ASSETS.GRAB_ACCESS_CARD,	available:false,
 						msg: "I warned you, you should have kept this. 20 coins to get it back.",
 					},
-					{ item: "key", 			name: "key", 			cost: 7,	src: ASSETS.GRAB_KEY,			available:true,
+					{ item: "key", 			name: "key", 			cost: 7,	src: ASSETS.GRAB_KEY,			available:false,
 						msg: "You can have your key back for 15 coins.",
 					},
 				];
@@ -336,6 +336,13 @@ gameConfig.scenes.push(
 			},
 			{
 				custom: (game, sprite, ctx) => {
+					let space = game.displayTextLine(ctx, {msg: game.countItem("coin")+"", x:1, y:0 });
+					game.displayImage(ctx, {src: ASSETS.GRAB_COIN, index:1, offsetX: -10 + space, offsetY: -46});
+				},
+				hidden: ({now, sceneData}) => (!sceneData.showStats || now - sceneData.showStats < 300) && !sceneData.forSale,
+			},
+			{
+				custom: (game, sprite, ctx) => {
 					let count = 0;
 					const { mouse } = game;
 					ctx.fillStyle = "#889933";
@@ -351,9 +358,6 @@ gameConfig.scenes.push(
 							count ++;
 						}
 					});
-					let space = game.displayTextLine(ctx, {msg: game.countItem("coin")+"", x:1, y:0 });
-					game.displayImage(ctx, {src: ASSETS.GRAB_COIN, index:1, offsetX: -10 + space, offsetY: -46});
-
 				},
 				onClick: game => {
 					let count = 0;
