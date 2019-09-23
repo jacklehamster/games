@@ -29,6 +29,7 @@ gameConfig.scenes.push(
 			},
 			...getCommonMaze("_BLUE_1"),
 			makeFoe('guard', ASSETS.GUARD),
+			makeYupa(),
 			...standardBattle(),
 			...standardMenu(),
 			...standardBag(),

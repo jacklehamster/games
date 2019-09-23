@@ -120,6 +120,7 @@ gameConfig.scenes.push(
 					}
 				],
 			});
+			game.gameLoaded = true;
 		},
 	},
 );

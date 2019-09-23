@@ -1,0 +1,599 @@
+injector.register("game", [
+	"utils", "canvas", "texture-manager", "worldmap", "canvas-resizer", "engine", "debug", "pool",
+	(Utils, canvas, textureManager, WorldMap, CanvasResizer, Engine, debug, Pool) => {
+		const vec3pool = new Pool(vec3.create);
+
+		function lake(id, size, x, y, z) {
+			return () => {
+				//	[botleft, botright, topright, topleft]	
+				const waveSize = 1;			
+				const wave = Float32Array.from([waveSize,waveSize,waveSize,waveSize]);
+				const waveLeftShore = Float32Array.from([0,waveSize,waveSize,0]);
+				const waveRightShore = Float32Array.from([waveSize,0,0,waveSize]);
+				const waveTopShore = Float32Array.from([waveSize,waveSize,0,0]);
+				const waveBottomShore = Float32Array.from([0,0,waveSize,waveSize]);
+
+				return new Array(size * size).fill(null).map((n, index) => {
+					const col = index % size;
+					const row = Math.floor(index / size);
+					const midSize = size / 2;
+					const dx = col - midSize;
+					const dy = row - midSize;
+					if (dx * dx + dy * dy > midSize * midSize) {
+						return null;
+					}
+
+					return {
+						id,
+						chunk: [ col, row ],
+						pos: [ x + 10 * (col - midSize) / size, y, z + 10 * (row - midSize) / size ],
+						type: "floor",
+						timeOffset: Math.floor(Math.random()*10000),
+						fps: 3,
+						wave: 
+							col <= 1 ? waveLeftShore :
+							col >= size - 1 ? waveRightShore :
+							row <= 1 ? waveTopShore :
+							row >= size - 1 ? waveBottomShore :
+							wave,
+					};
+				}).filter(a => a);
+			};
+		}
+
+		const penguinScale = [1, .92].map(a => a*2);
+		// const penguinSprites = [
+		//     {id:'penguin-down',		src:'assets/penguin-down.png',		scale: penguinScale,	flip:false,	},
+		//     {id:'penguin-bot-right',src:'assets/penguin-bot-left.png',	scale: penguinScale,	flip:true,	},
+		//     {id:'penguin-right',	src:'assets/penguin-right.png',		scale: penguinScale,	flip:false, },
+		//     {id:'penguin-top-right',src:'assets/penguin-top-left.png',	scale: penguinScale,	flip:true,	},
+		//     {id:'penguin-up',		src:'assets/penguin-up.png',		scale: penguinScale,	flip:false, },
+		//     {id:'penguin-top-left',	src:'assets/penguin-top-left.png',	scale: penguinScale,	flip:false, },
+		//     {id:'penguin-left',		src:'assets/penguin-right.png',		scale: penguinScale,	flip:true,	},
+		//     {id:'penguin-bot-left',	src:'assets/penguin-bot-left.png',	scale: penguinScale,	flip:false, },
+		// ];
+		const penguinSprites = [
+		    {id:'penguin-down',		src:'assets/bear.png',	scale: penguinScale,	flip:false,	},
+		    {id:'penguin-bot-right',src:'assets/bear.png',	scale: penguinScale,	flip:true,	},
+		    {id:'penguin-right',	src:'assets/bear.png',	scale: penguinScale,	flip:false, },
+		    {id:'penguin-top-right',src:'assets/bear.png',	scale: penguinScale,	flip:true,	},
+		    {id:'penguin-up',		src:'assets/bear.png',	scale: penguinScale,	flip:false, },
+		    {id:'penguin-top-left',	src:'assets/bear.png',	scale: penguinScale,	flip:false, },
+		    {id:'penguin-left',		src:'assets/bear.png',	scale: penguinScale,	flip:true,	},
+		    {id:'penguin-bot-left',	src:'assets/bear.png',	scale: penguinScale,	flip:false, },
+		];
+
+		const waterSize = 50 + 1;
+		const groundLevel = -1;
+
+		const cameraDistance = 6;
+		const cameraHeight = 1;
+		const horizonRangeSize = 90;
+		const areaMapArraySize = horizonRangeSize * 2;
+
+		const worldmap = new WorldMap();
+
+		let count = 0;
+
+		worldmap.add(
+			// {
+			// 	range: WorldMap.makeRange(0, -6.5, 5),
+			// 	unique: true,
+			// 	sprite: {
+			// 		id: "test",
+			// 		pos: [ 0, -1, -6.5 ],
+			// 		type: "sprite",
+			// 	},
+			// }, 
+			{
+				range: WorldMap.makeRange(0, 0, Number.MAX_VALUE),
+				map: Utils.makeDoubleArray(areaMapArraySize/1, areaMapArraySize/1),
+				step: 1,
+				onUpdate: (element, type, col, row) => {
+					if ((Math.round(Math.abs(col)/3) * 7 ^ Math.round(Math.abs(row)/3) * 13 + 5) % 9 === 0) {
+						return;
+					}
+
+					const { map, sprite } = element;
+					const w = map.length;
+					const h = map[0].length;
+					let mapcol = col/element.step % w; if (mapcol < 0) mapcol += w;
+					let maprow = row/element.step % h; if (maprow < 0) maprow += h;
+
+					switch(type) {
+						case WorldMap.ADD: {
+							if (!map[mapcol][maprow]) {
+								const { id, type } = sprite;
+								const x = -col, y = groundLevel, z = -row - cameraDistance;
+								const spriteInstance = engine.addSprite({
+									id, type, chunk: [ -col, -row ], pos: [ x, y, z ],
+								});
+								map[mapcol][maprow] = spriteInstance;
+							}
+							break;
+						}
+						case WorldMap.REMOVE: {
+							const spriteInstance = map[mapcol][maprow];
+							if (spriteInstance) {
+								engine.removeSprite(spriteInstance);
+								map[mapcol][maprow] = null;
+							}
+							break;
+						}
+					}
+				},
+				sprite: {
+					id: "basicwall",
+					type: "floor",
+					chunk: [ 0, 0 ],
+					pos: [ 0, groundLevel, 0 ],
+				},
+			},
+			{
+				range: WorldMap.makeRange(0, 0, Number.MAX_VALUE),
+				map: Utils.makeDoubleArray(areaMapArraySize/3, areaMapArraySize/3, () => []),
+				step: 3,
+				blocks : (element, from, to) => {
+					return false;
+				},
+				onUpdate: (element, type, col, row) => {
+					if ((Math.abs(col) * 7 ^ Math.abs(row) * 13 + 5) % 5 !== 0) {
+						return;
+					}
+					// if (col % 2 === 0) {
+					// 	return;
+					// }
+					const { map, sprite } = element;
+					const w = map.length;
+					const h = map[0].length;
+					let mapcol = col/element.step % w; if (mapcol < 0) mapcol += w;
+					let maprow = row/element.step % h; if (maprow < 0) maprow += h;
+
+					switch (type) {
+						case WorldMap.ADD: {
+							if (map[mapcol][maprow].length === 0) {
+								const x = -col, y = groundLevel, z = -row - cameraDistance;
+
+								let { id } = sprite;
+
+								spriteInstance = engine.addSprite({
+									id, type: "sprite", chunk: [ -col, -row ], pos: [ x, y, z - 0 ],
+									fps: 10,
+								});
+								spriteInstance = engine.addSprite({
+									id, type: "sprite", chunk: [ -col, -row ], pos: [ x, y, z - .1 ],
+									fps: 8,
+								});
+								spriteInstance = engine.addSprite({
+									id, type: "sprite", chunk: [ -col, -row ], pos: [ x, y, z - .2 ],
+									fps: 12,
+								});
+								map[mapcol][maprow].push(spriteInstance);
+							}
+							break;						
+						}
+						case WorldMap.REMOVE: {
+							const spriteInstances = map[mapcol][maprow];
+							if (spriteInstances.length) {
+								spriteInstances.forEach(spriteInstance => engine.removeSprite(spriteInstance));
+								map[mapcol][maprow].length = 0;
+							}							
+							break;
+						}
+					}
+				},
+				sprite: {
+					id: "spider",
+					type: "sprite",
+					chunk: [ 0, 0 ],
+					pos: [ 0, groundLevel, 0 ],
+				},
+			},
+			{
+				range: WorldMap.makeRange(0, 0, Number.MAX_VALUE),
+				map: Utils.makeDoubleArray(areaMapArraySize/3, areaMapArraySize/3, () => []),
+				step: 3,
+				blocks : (element, from, to) => {
+					return false;
+				},
+				onUpdate: (element, type, col, row) => {
+					if ((Math.abs(col) * 7 ^ Math.abs(row) * 13 + 5) % 9 !== 0) {
+						return;
+					}
+					// if (col % 2 === 0) {
+					// 	return;
+					// }
+					const { map, sprite } = element;
+					const w = map.length;
+					const h = map[0].length;
+					let mapcol = col/element.step % w; if (mapcol < 0) mapcol += w;
+					let maprow = row/element.step % h; if (maprow < 0) maprow += h;
+
+					switch (type) {
+						case WorldMap.ADD: {
+							if (map[mapcol][maprow].length === 0) {
+								const x = -col, y = groundLevel, z = -row - cameraDistance;
+
+								let { id, type } = sprite;
+								// let spriteInstance;
+								// spriteInstance = engine.addSprite({
+								// 	id, type: "backwall", chunk: [ -col, -row ], pos: [ x, y, z - 2 ],
+								// });
+								// map[mapcol][maprow].push(spriteInstance);
+								// spriteInstance = engine.addSprite({
+								// 	id, type: "wall", chunk: [ -col, -row ], pos: [ x, y, z + 2 ],
+								// });
+								// map[mapcol][maprow].push(spriteInstance);
+								// spriteInstance = engine.addSprite({
+								// 	id, type: "right", chunk: [ -col, -row ], pos: [ x - 2, y, z ],
+								// });
+								// map[mapcol][maprow].push(spriteInstance);
+								// spriteInstance = engine.addSprite({
+								// 	id, type: "left", chunk: [ -col, -row ], pos: [ x + 2, y, z ],
+								// });
+								// map[mapcol][maprow].push(spriteInstance);
+								// spriteInstance = engine.addSprite({
+								// 	id, type: "floor", chunk: [ -col, -row ], pos: [ x, y + 4, z - 1.5 ],
+								// });
+								// map[mapcol][maprow].push(spriteInstance);
+								
+
+								spriteInstance = engine.addSprite({
+									id, type, chunk: [ -col, -row ], pos: [ x, y-2, z - 0 ],
+									fps: 10,
+								});
+								map[mapcol][maprow].push(spriteInstance);
+							}
+							break;						
+						}
+						case WorldMap.REMOVE: {
+							const spriteInstances = map[mapcol][maprow];
+							if (spriteInstances.length) {
+								spriteInstances.forEach(spriteInstance => engine.removeSprite(spriteInstance));
+								map[mapcol][maprow].length = 0;
+							}							
+							break;
+						}
+					}
+				},
+				sprite: {
+					id: "hole",
+					type: "sprite",
+					chunk: [ 0, 0 ],
+					pos: [ 0, groundLevel, 0 ],
+				},
+			},
+		);
+
+		const camArea = worldmap.getArea();
+		const canvasResizer = new CanvasResizer(canvas);
+		const engine = new Engine();
+
+		function getPenguinPos(camPos) {
+			const [ x, y, z ] = camPos;
+			return Utils.set3(vec3pool.get(), -x, -y + groundLevel, -z - cameraDistance + 7);
+		}
+
+		function setupEngine(engine, game, assets) {
+			const sceneIndex = game.firstScene || Object.keys(game.scenes)[0];
+			const { title, settings, cameraSettings, moveSettings } = game;
+			const [ width, height ] = settings.size;
+			
+			document.title = title;
+			canvas.width = width;
+			canvas.height = height;
+			canvas.style.background = "#" + (0x1000000 | settings.background).toString(16).substr(1);
+			canvasResizer.setCallback((width, height) => engine.setSize(width, height));
+			canvasResizer.resize();
+
+			engine.setBackground(settings.background);
+			engine.setupAsset(assets);
+			engine.refreshScene(game, sceneIndex);	
+			engine.setCameraSettings(cameraSettings);
+			engine.setMoveSettings(moveSettings);	
+			engine.start();
+
+			camArea.addCallback((type, element, range, oldRange) => {
+				if (element.sprite) {
+					switch (type) {
+						case WorldMap.ADD:
+							if (element.unique) {
+								element.spriteInstance = engine.addSprite(element.sprite);
+							}
+							if (element.onUpdate) {
+								Utils.applyCellDiff(range, oldRange, element.step, (x, y) => {
+									element.onUpdate(element, WorldMap.ADD, x, y);
+								});
+							}
+							break;
+						case WorldMap.REMOVE:
+							if (element.spriteInstance) {
+								engine.removeSprite(element.spriteInstance);
+								delete engine.spriteInstance;							
+							}
+							break;
+						case WorldMap.UPDATE:
+							if (element.onUpdate) {	
+								Utils.applyCellDiff(range, oldRange, element.step, (x, y) => {
+									element.onUpdate(element, WorldMap.ADD, x, y);
+								});
+
+								Utils.applyCellDiff(oldRange, range, element.step, (x, y) => {
+									element.onUpdate(element, WorldMap.REMOVE, x, y);
+								});
+							}
+							break;
+					}
+				}
+			});
+
+		}
+
+		const assets = [
+			penguin => {
+				const spriteSize = [400, 400];
+				return penguinSprites.map(({ id, src, scale, flip }) => {
+					return {
+						id, src, spriteSize,
+						options: {
+							scale, flip,
+						},
+					};
+				});
+			},
+			{
+				id: 'test',
+				src: 'assets/32x64.png',
+				spriteSize: [32, 64],
+				options: {
+					scale: 2,
+				},
+			},
+			{
+				id: 'icewall',
+				src: 'assets/icewall.jpg',
+				spriteSize: [800, 800],
+				options: {
+					chunks: 8,
+					scale: 1,
+				},
+			},
+			{
+				id: 'spider',
+				src: 'assets/spider.png',
+				spriteSize: [256, 256],
+				options: {
+					chunks: 1,
+					scale: 2,
+				},
+			},
+			{
+				id: 'hole',
+				src: 'assets/merchant.png',
+				spriteSize: [64, 64],
+				options: {
+					chunks: 1,
+					scale: 2,
+				},
+			},
+			{
+				id: 'icefloor',
+				src: 'assets/icefloor.jpg',
+				spriteSize: [800, 800],
+				options: {
+					chunks: 8,
+					scale: 8,
+				},
+			},
+			{
+				id: 'basicwall',
+				src: 'assets/basicwall.png',
+				spriteSize: [32, 32],
+				options: {
+					chunks: 1,
+					scale: 1,
+				},
+			},
+			{
+				id: 'water',
+				src: 'assets/water.png',
+				spriteSize: [32, 32],
+				options: {
+					scale: (12 / waterSize),
+					chunks: Math.max(1, Math.floor(waterSize / 10)),
+				},
+			},
+			{
+				id: 'background',
+				src: 'assets/landscape.jpg',
+				spriteSize: [2560, 978],
+				options: {
+					chunks: 8,
+					scale: 80,
+				},
+			},
+		];
+
+		const game = {
+			start: () => setupEngine(engine, game, assets),
+			title: "Tower Up",
+			settings: {
+				size: [ 3240, 2160 ],
+				background: 0,//0xE0F0FF,
+			},
+			moveSettings: {
+				scale: .5,
+				angleStep: Math.PI / 4,
+				canMove: (from, to) => {
+					const elements = camArea.getElements();
+					for (let id in elements) {
+						const element = elements[id];
+						if (element.blocks && element.blocks(element, from, to)) {
+							return false;
+						}
+					}
+					return true;
+				},
+				onMove: ([x, y, z]) => camArea.update(WorldMap.makeRange(x, z, horizonRangeSize)),
+			},
+			cameraSettings: {
+				height: cameraHeight,
+				distance: cameraDistance,
+			},
+			scenes: {
+				"demo": {
+					spriteDefinitions: [
+						penguin => {
+							let movDirection = Utils.getDirectionAngle(vec3.set(vec3pool.get(), 0, 0, -1));
+							let previousMoveDirection = -Number.MAX_VALUE;
+							let previousCamRotation = -Number.MAX_VALUE;
+							let textureIndex = -1;
+
+							const angleToTextureIndex = penguinSprites.map(({id}) => textureManager.getTextureData(id).index);
+
+							return {
+								textureIndex: ({cam}) => {
+									if (cam.moving) {
+										movDirection = cam.getMovDirection();
+									}
+									if (movDirection !== previousMoveDirection || previousCamRotation !== cam.rotation) {
+										const turn = Utils.getCameraAngle(movDirection, cam.rotation);
+									    const angleIndex = Utils.getAngleIndex(turn, angleToTextureIndex.length);
+									    textureIndex = angleToTextureIndex[angleIndex];
+										previousMoveDirection = movDirection;
+										previousCamRotation = cam.rotation;
+									}
+									return textureIndex;
+								},
+								pos: ({cam}) => {
+									const penguinPos = getPenguinPos(cam.pos);
+									debug.penguin = penguinPos;
+									return penguinPos;
+								},
+								type: "sprite",
+								fps: ({cam}) => {
+									return 20;//return cam.moving ? 10 : 0;
+								},
+								wave: 0,
+							};
+						},
+						// doublewall => {
+						// 	const id = "icewall";
+						// 	const chunk = [1,0];
+						// 	const pos = [-0.5, -1, -6];
+						// 	return [
+						// 		{
+						// 			id,
+						// 			chunk,
+						// 			pos,
+						// 			"type": "left",
+						// 		},
+						// 		{
+						// 			id,
+						// 			chunk,
+						// 			pos,
+						// 			"type": "right",
+						// 		}
+						// 	];
+						// },
+						// {
+						// 	"id": "icewall",
+						// 	"chunk": [
+						// 		0,
+						// 		0
+						// 	],
+						// 	"pos": [
+						// 		-0.5,
+						// 		-1,
+						// 		-5
+						// 	],
+						// 	"type": "left"
+						// },
+						// {
+						// 	"id": "icewall",
+						// 	"chunk": [
+						// 		2,
+						// 		0
+						// 	],
+						// 	"pos": [
+						// 		-0.5,
+						// 		-1,
+						// 		-5
+						// 	],
+						// 	"type": "right"
+						// },
+						// {
+						// 	"id": "icewall",
+						// 	"chunk": [
+						// 		1,
+						// 		0
+						// 	],
+						// 	"pos": [
+						// 		0.5,
+						// 		-1,
+						// 		-6
+						// 	],
+						// 	"type": "left"
+						// },
+						// {
+						// 	"id": "icewall",
+						// 	"chunk": [
+						// 		1,
+						// 		0
+						// 	],
+						// 	"pos": [
+						// 		0.5,
+						// 		-1,
+						// 		-6
+						// 	],
+						// 	"type": "right"
+						// },
+						// {
+						// 	"id": "icewall",
+						// 	"chunk": [
+						// 		0,
+						// 		0
+						// 	],
+						// 	"pos": [
+						// 		0.5,
+						// 		-1,
+						// 		-5
+						// 	],
+						// 	"type": "left"
+						// },
+						// {
+						// 	"id": "icewall",
+						// 	"chunk": [
+						// 		2,
+						// 		0
+						// 	],
+						// 	"pos": [
+						// 		0.5,
+						// 		-1,
+						// 		-5
+						// 	],
+						// 	"type": "right"
+						// },
+						landscape => {
+							const pos = vec3.create();
+							return {
+								id: "background",
+								chunk: [
+									0, 0,
+								],
+								pos: ({cam}) => {
+									const [ x, y, z ] = cam.pos;
+									return Utils.set3(pos, -x, -y + groundLevel + 60, -z - cameraDistance - 300);
+								},
+								type: "sprite",
+							};
+						},
+//						lake("water", waterSize, 0, groundLevel + .2, 0),
+					],
+				},
+			},
+			assets,
+		};
+		return game;
+	}
+]);

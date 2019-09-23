@@ -815,10 +815,10 @@ function standardMenu() {
 			onClick: game => {
 				game.hideCursor = true;
 				game.openMenu(game.now, game => {
-					const currentSceneIndex = game.sceneIndex;
+					const currentSceneName = game.sceneName;
 					const currentScreenshot = game.screenshot();
 					game.gotoScene("disk-screen");
-					game.sceneData.returnScene = currentSceneIndex;
+					game.sceneData.returnScene = currentSceneName;
 					game.sceneData.screenshot = currentScreenshot;
 				});
 			},
@@ -886,7 +886,7 @@ function standardMenu() {
 		},
 		{
 			hidden: game => !game.menuOpening && (game.arrow !== MENU || game.sceneData.firstShot) || game.hideCursor && game.frameIndex === 0 || game.battle,
-			custom: ({data, frameIndex}, sprite, ctx)=> {
+			custom: ({data, frameIndex, sceneData}, sprite, ctx)=> {
 				const { stats } = data;
 				const offsetX = frameIndex === 3 ? 0 : frameIndex === 2 ? 1 : -10;
 				ctx.fillStyle = "#110044";
@@ -898,6 +898,23 @@ function standardMenu() {
 				ctx.fillStyle = "#bbcc22";
 				ctx.fillRect(51, 3 + offsetX, 10 * stats.life / stats.maxLife, 1);
 
+				if (sceneData.lifeIncrease) {
+					const progress = (game.now - sceneData.lifeIncrease.time) / 2000;
+					if (progress < 1) {
+						ctx.fillStyle = sceneData.lifeIncrease.color;
+						const preValue = Math.max(0, stats.life - sceneData.lifeIncrease.value * (1 - progress));
+						ctx.fillRect(51 + 10 * preValue / stats.maxLife, 3 + offsetX, 10 * (stats.life - preValue) / stats.maxLife, 1);
+					}
+				}
+			},
+			onRefresh: game => {
+				if (game.sceneData.lifeIncrease) {
+					const progress = (game.now - game.sceneData.lifeIncrease.time) / 2000;
+					if (progress >= 2) {
+						game.frameIndex = 0;
+						game.menuOpening = 0;
+					}
+				}
 			},
 		},
 	];
@@ -1388,21 +1405,23 @@ function standardBattle() {
 		{
 			custom: (game, sprite, ctx) => {
 				const { stats, battle } = game.data;
-				if (battle.dummyBattle) {
-					return;
-				}
 				ctx.fillStyle = "#333333";
 				ctx.fillRect(4, 60, 56, 3);
-				ctx.fillRect(4, 2, 56, 3);
 
 				ctx.fillStyle = "#aa0022";
 				ctx.fillRect(5, 61, 54, 1);
 
-				ctx.fillStyle = "#770022";
-				ctx.fillRect(5, 3, 54, 1);
-
 				ctx.fillStyle = "#bbcc22";
 				ctx.fillRect(5, 61, 54 * stats.life / stats.maxLife, 1);
+
+				if (battle.dummyBattle) {
+					return;
+				}
+				ctx.fillStyle = "#333333";
+				ctx.fillRect(4, 2, 56, 3);
+
+				ctx.fillStyle = "#770022";
+				ctx.fillRect(5, 3, 54, 1);
 
 				ctx.fillStyle = "#cc22bb";
 				ctx.fillRect(5, 3, 54 * battle.foeLife / battle.foeMaxLife, 1);
@@ -1441,7 +1460,7 @@ const consumable = {
 			return false;
 		} else {
 			game.playSound(SOUNDS.EAT);
-			stats.life = Math.min(stats.life + 100, stats.maxLife);
+			game.addToLife(100, "#663300");
 			game.data.stats.state.ate = game.now;
 			if (!game.battle) {
 				game.showTip("Delicious!");						
@@ -1457,7 +1476,7 @@ const consumable = {
 		} else {
 			game.playSound(SOUNDS.DRINK);
 			game.addToInventory({item:"empty bottle", image:ASSETS.GRAB_BOTTLE});
-			stats.life = Math.min(stats.life + 30, stats.maxLife);
+			game.addToLife(30, "#0099aa");
 			game.data.stats.state.drank = game.now;
 			if (!game.battle) {
 				game.showTip("Refreshing!");

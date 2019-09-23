@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <title></title>
+		<meta charset="utf-8"/>
+		<style>
+			canvas {  
+		        image-rendering: optimizeSpeed;
+				image-rendering: -moz-crisp-edges;
+				image-rendering: -webkit-crisp-edges;
+				image-rendering: pixelated;
+				image-rendering: crisp-edges;
+		        image-rendering: optimize-contrast;
+		        -ms-interpolation-mode: nearest-neighbor;
+		        width: 500px;
+		        height: 500px;
+		        background-color: black;
+			}
+
+			html, body {
+			    height: 100%;
+			}
+			body {
+			    margin: 0;
+			}
+		</style>
+	</head>
+	<script src="../lib/dependency-injector.js"></script>
+	<script src="../lib/init.js"></script>
+	<script src="../lib/grid-slot.js"></script>
+
+	<script>
+		document.addEventListener("DOMContentLoaded", e => {
+			const canvas = document.getElementById("canvas");
+			injector.register("texture-size", [ () => 1000 ]);
+			const size = injector.get("texture-size");
+			canvas.width = size; canvas.height = size;
+			const context = canvas.getContext("2d");
+
+			let selection = null;
+			let hovered = -1;
+			document.addEventListener("mousedown", e => {
+				if (e.target !== canvas) {
+					return;
+				}
+				if (hovered >= 0) {
+					const { box, slot } = rects[hovered];
+					rects[hovered] = rects[rects.length - 1];
+					rects.pop();
+					gridSlot.putBackSlot(slot);
+					hovered = -1;
+				} else {
+					const x0 = e.pageX / 500 * canvas.width;
+					const y0 = e.pageY / 500 * canvas.height;
+					selection = { 
+						x0, y0,
+						x1: x0, y1: y0,
+					};
+				}
+				e.preventDefault();
+			});
+			document.addEventListener("mousemove", e => {
+				hovered = -1;
+				const mouseX = e.pageX / 500 * canvas.width;
+				const mouseY = e.pageY / 500 * canvas.height;
+				if (e.buttons === 1) {
+					if (selection) {
+						selection.x1 = mouseX;
+						selection.y1 = mouseY;
+					}
+				} else {
+					rects.forEach(({ box, slot }, idx) => {
+						const { x, y, width, height, index } = slot;
+						if (index === activeIndex) {
+							if (mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height) {
+								hovered = idx;
+							}
+						}
+					});
+				}
+				e.preventDefault();
+			});
+			document.addEventListener("mouseup", e => {
+				if (selection) {
+					const { x0, y0, x1, y1 } = selection;
+					const x = Math.min(x0, x1), y = Math.min(y0, y1);
+					let width = Math.abs(x1 - x0 + 1), height = Math.abs(y1 - y0 + 1);
+
+					if (document.getElementById("rotate").checked && width < height) {
+						const temp = width;
+						width = height;
+						height = temp;
+					}
+
+					const slot = gridSlot.getSlot(width, height);
+					rects.push({
+						box: { x, y, width, height },
+						slot,
+					});
+
+					selection = null;
+					updateButtons();
+				}
+				e.preventDefault();
+			});
+
+			function updateButtons() {
+				const pager = document.getElementById('pager');
+				pager.innerHTML = "";
+				for (let i = 0; i <= gridSlot.maxIndex; i++) {
+					{
+						const button = document.createElement('button');
+						button.innerText = i;
+						button.addEventListener("click", ({currentTarget}) => {
+							activeIndex = parseInt(currentTarget.innerText);
+						});
+						pager.appendChild(button);
+					}
+				}
+			}
+
+			let activeIndex = 0;
+			const [ gridSlot ] = injector.get("grid-slot");
+			const rects = [];
+
+			updateButtons();
+
+			function refresh() {
+				context.clearRect(0, 0, canvas.width, canvas.height);
+
+				context.beginPath();
+				context.lineWidth = 2;
+				context.strokeStyle = "#9999FF";
+				context.fillStyle = "#00FF00";
+				rects.forEach(({ box, slot }, idx) => {
+					const {x, y, width, height, index } = slot;
+					if (activeIndex === index) {
+						context.rect(x, y, width, height);
+						context.fillStyle = hovered === idx ? "#FF0000" : "#00FF00";
+						context.fillRect(box.x, box.y, box.width, box.height);
+						box.x += (x - box.x) / 2;
+						box.y += (y - box.y) / 2;
+					}
+				});
+				context.stroke();
+
+				context.beginPath();
+				context.lineWidth = 1;
+				context.strokeStyle = "#666666";
+				gridSlot.gridSlots.forEach(({x, y, width, height, index}) => {
+					if (index === activeIndex) {
+						context.rect(x,y,width,height);
+					}
+				});
+				context.stroke();
+
+				if(selection) {
+					const { x0, y0, x1, y1 } = selection;
+					context.beginPath();
+					context.lineWidth = 2;
+					context.strokeStyle = "#99FF99";
+					context.rect(x0, y0, x1-x0, y1-y0);
+					context.stroke();
+				}
+				requestAnimationFrame(refresh);
+			}
+			refresh();
+		});
+	</script>
+
+	<body style="margin: 0;">
+		<canvas id="canvas"></canvas>
+		<br>
+		<div id="pager"></div>
+		<div>
+			<label for="rotate">rotate when tall</label>
+			<input type="checkbox" id="rotate"></div>
+		</div>
+	</body>
+</html>

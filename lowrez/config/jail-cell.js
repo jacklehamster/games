@@ -375,7 +375,7 @@ gameConfig.scenes.push(
 				index: game => (game.rotation + 8) % 8,
 				hidden: game => game.rotation === 0,
 				combine: (item, game) => {
-					if (item === "empty bottle") {
+					if (item === "empty bottle" && game.data.pickedUp["empty bottle"]) {
 						delete game.data.pickedUp["empty bottle"];
 						game.removeFromInventory("empty bottle");
 					}

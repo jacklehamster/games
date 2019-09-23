@@ -8,13 +8,12 @@ gameConfig.scenes.push(
 			game.sceneData.estimate = 3600000;
 		},
 		onSceneRefresh: game => {
-			const progress = game.loadCount / game.countAssets();
+			const progress = game.countAssets(true) / game.countAssets();
 			const progressSpeed = progress / (game.now - game.sceneData.startTime);
 			const estimate = (1 - progress) / progressSpeed;
 			if (game.sceneData.estimate > estimate) {
 				game.sceneData.estimate = estimate;
 			}
-			console.log(game.loadCount, game.countAssets(game), progress, estimate);
 			if (progress >= 1) {
 				game.gotoScene("start-screen");
 			}
@@ -26,7 +25,7 @@ gameConfig.scenes.push(
 					ctx.fillStyle = "#003377";
 					ctx.fillRect(5, 35, 51, 2);
 					ctx.fillStyle = "#999999";
-					const progress = game.loadCount / game.countAssets();
+					const progress = game.countAssets(true) / game.countAssets();
 					ctx.fillRect(5, 35, 1 + progress * 50, 2);
 
 					ctx.font = "14px Trebuchet MS";

@@ -30,6 +30,7 @@ gameConfig.scenes.push(
 			},
 			...getCommonMaze("_BLUE_1"),
 			makeFoe('slimar', ASSETS.SLIMAR),
+			makeYupa(),
 			...standardBattle(),
 			...standardMenu(),
 			...standardBag(),

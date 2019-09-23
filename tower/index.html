@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <title>Tower</title>
+		<meta charset="utf-8"/>
+		<style>
+			canvas {  
+		        image-rendering: optimizeSpeed;
+				image-rendering: -moz-crisp-edges;
+				image-rendering: -webkit-crisp-edges;
+				image-rendering: pixelated;
+				image-rendering: crisp-edges;
+		        image-rendering: optimize-contrast;
+		        -ms-interpolation-mode: nearest-neighbor;
+			}
+
+			html, body {
+			    height: 100%;
+			}
+			body {
+			    margin: 0;
+			}
+			.flex-container {
+			    height: 100%;
+			    padding: 0;
+			    margin: 0;
+			    display: -webkit-box;
+			    display: -moz-box;
+			    display: -ms-flexbox;
+			    display: -webkit-flex;
+			    display: flex;
+			    align-items: center;
+			    justify-content: center;
+			}
+			.row {
+			    width: auto;
+			}
+			.flex-item {
+			    text-align: center;
+			}
+
+			pre {outline: 1px solid #ccc; padding: 2px; margin: 2px; }
+			.string { color: darkgreen; }
+			.number { color: blue; }
+			.boolean { color: darkblue; }
+			.null { color: gray; }
+			.key { font-weight: bold; color: black; }
+		</style>
+	</head>
+	<script src="lib/gl-matrix.js"></script>
+	<script src="lib/dependency-injector.js"></script>
+	<script src="lib/init.js"></script>
+	<script src="lib/utils.js"></script>
+	<script src="lib/recycler.js"></script>
+	<script src="lib/grid-slot.js"></script>
+	<script src="lib/image-splitter.js"></script>
+	<script src="lib/texture-manager.js"></script>
+	<script src="lib/keyboard.js"></script>
+	<script src="lib/worldmap.js"></script>
+	<script src="lib/camera.js"></script>
+	<script src="lib/canvas-resizer.js"></script>
+	<script src="lib/engine.js"></script>
+	<script src="lib/sprite.js"></script>
+	<script src="lib/pool.js"></script>
+	<script src="game.js"></script>
+	<script>
+		document.addEventListener("DOMContentLoaded", e => {
+			const [ game ] = injector.get("game");
+			game.start();
+		});
+	</script>
+
+	<body style="margin: 0; background-color: #000000">
+		<div class="flex-container">
+			<canvas class="flex-item" id="canvas"></canvas>
+			<script>
+				injector.register("canvas", identity(document.getElementById('canvas')));
+			</script>
+		</div>
+		<div id="debug" style="display: none; background-color: #FFcccc; min-height: 100px; padding: 5px">
+			<div>
+				<label for="tosky">Bring to top</label>
+				<input id="tosky" type="checkbox">
+				<script>
+					const checkbox = document.getElementById('tosky');
+					checkbox.checked = localStorage.getItem("debugTop") === "top";
+					checkbox.addEventListener("change", check);
+					function check() {
+						localStorage.setItem("debugTop", checkbox.checked ? "top" : "");
+						document.getElementById('log').style.position = checkbox.checked ? 'absolute' : '';
+					}
+					document.addEventListener("DOMContentLoaded", check);
+				</script>
+			</div>
+			<pre id="log" style="background-color: #FFccccEE; left: 0px; top: 0px; padding: 2px; font-size: 8pt"></pre>
+		</div>
+	</body>
+	<script src="test/test.js"></script>
+</html>

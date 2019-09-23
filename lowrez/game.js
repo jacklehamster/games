@@ -126,17 +126,30 @@ const Game = (() => {
 			return this.inventory[item] ? this.inventory[item].count || 1 : 0;
 		}
 
-		set sceneIndex(index) {
-			if (index !== this.sceneIndex) {
+		// set sceneIndex(index) {
+		// 	if (index !== this.sceneIndex) {
+		// 		this.data.scene = {
+		// 			index,
+		// 		};
+		// 		console.log("SCENE", this.data.scene);
+		// 	}
+		// }
+
+		// get sceneIndex() {
+		// 	return this.data.scene ? this.data.scene.index || 0 : 0;
+		// }
+
+		set sceneName(name) {
+			if (name !== this.sceneName) {
 				this.data.scene = {
-					index,
+					name,
 				};
-				console.log("SCENE", this.data.scene);
+				console.log("SCENE", this.data.scene.name);
 			}
 		}
 
-		get sceneIndex() {
-			return this.data.scene ? this.data.scene.index || 0 : 0;
+		get sceneName() {
+			return (this.data.scene ? this.data.scene.name : null) || this.config.scenes.filter(scene => scene.startScene)[0].name;
 		}
 
 		unlock(cell) {
@@ -390,13 +403,16 @@ const Game = (() => {
 					console.error(`${index}: unknown scene.`);
 				}
 			}
-			this.sceneIndex = index;
+			this.sceneName = this.config.scenes[index].name;
 			this.door = door || 1;
-			this.loadScene(this.config.scenes[this.sceneIndex], restoreMapInfo);
+			this.loadScene(this.config.scenes[index], restoreMapInfo);
 		}
 
 		get currentScene() {
-			return this.config.scenes[this.sceneIndex];
+			if (typeof (this.sceneByName[this.sceneName]) != 'undefined') {
+				return this.sceneByName[this.sceneName];
+			}
+			return this.sceneByName[this.sceneName] = this.config.scenes.filter(({name}) => name === this.sceneName)[0];
 		}
 
 		set door (value) {
@@ -412,11 +428,11 @@ const Game = (() => {
 		}
 
 		get situation() {
-			const { data, sceneIndex } = this;
-			if (!data.situation[sceneIndex]) {
-				data.situation[sceneIndex] = {};
+			const { data, sceneName } = this;
+			if (!data.situation[sceneName]) {
+				data.situation[sceneName] = {};
 			}
-			return data.situation[sceneIndex];
+			return data.situation[sceneName];
 		}
 
 		get mute() {
@@ -439,11 +455,10 @@ const Game = (() => {
 
 		getSituation(sceneName) {
 			const { data, config } = this;
-			const index = config.scenes.map(({name}, idx) => name === sceneName ? idx : -1).filter(index => index >= 0)[0];
-			if (!data.situation[index]) {
-				data.situation[index] = {};
+			if (!data.situation[sceneName]) {
+				data.situation[sceneName] = {};
 			}			
-			return data.situation[index];
+			return data.situation[sceneName];
 		}
 
 		hasVisited(sceneName) {
@@ -495,6 +510,7 @@ const Game = (() => {
 			this.pos = null;
 			this.rotation = 0;
 			this.lastMouseCheck = 0;
+			this.sceneByName = {};
 
 			this.prepareAssets();
 			this.prepareSounds();
@@ -882,7 +898,7 @@ const Game = (() => {
 					index,
 					text: message[index],
 					time: this.now + 200,
-					speed: (speed || 100) * TEXTSPEEDER,
+					speed: (speed || 80) * TEXTSPEEDER,
 					end: 0,
 					x, y,
 					talker,
@@ -902,7 +918,7 @@ const Game = (() => {
 				this.pendingTip = {
 					text: message,
 					time: this.now + 200,
-					speed: (speed || 110) * TEXTSPEEDER,
+					speed: (speed || 90) * TEXTSPEEDER,
 					end: 0,
 					x, y,
 					talker,
@@ -914,6 +930,7 @@ const Game = (() => {
 
 		startDialog(dialog) {
 			this.dialog = dialog;
+			dialog.time = game.now;
 		}
 
 		checkMouseHover() {
@@ -1189,6 +1206,9 @@ const Game = (() => {
 		}
 
 		hasLeftWallWhenRotating() {
+			if (!this.pos) {
+				return false;
+			}
 			const { x, y } = this.pos;
 			switch(this.granular_orientation) {
 				case 'NW':
@@ -1211,6 +1231,9 @@ const Game = (() => {
 		}
 
 		hasRightWallWhenRotating() {
+			if (!this.pos) {
+				return false;
+			}
 			const { x, y } = this.pos;
 			switch(this.granular_orientation) {
 				case 'NW':
@@ -1238,6 +1261,9 @@ const Game = (() => {
 		}
 
 		mazeHole({direction, distance}) {
+			if (!this.pos) {
+				return false;
+			}
 			const { x, y } = this.pos;
 			const dx = direction === LEFT ? -1 : direction === RIGHT ? 1 : 0;
 			const dy = distance === FURTHER ? 2 : distance === FAR ? 1 : distance === CLOSE ? 0 : 0;
@@ -1249,17 +1275,26 @@ const Game = (() => {
 		}
 
 		closeWall() {
+			if (!this.pos) {
+				return false;
+			}
 			const { x, y } = this.pos;
 			return this.matchCell(this.map,x,y,0,+1,this.orientation,'XM12345',[]) || this.matchCell(this.map,x,y,0,0,this.orientation,'12345',[]) && this.frontCell()==='.';
 		}
 
 		closeDoor() {
+			if (!this.pos) {
+				return false;
+			}
 			const { x, y } = this.pos;
 			return this.matchCell(this.map,x,y,0,+1,this.orientation,'12345',[])
 				|| this.matchCell(this.map,x,y,0,0,this.orientation,'12345',[]) && this.frontCell() === '.';			
 		}
 
 		onDoor() {
+			if (!this.pos) {
+				return false;
+			}
 			const { x, y } = this.pos;
 			return this.matchCell(this.map,x,y,0,0,this.orientation,'12345',[]);			
 		}
@@ -1272,16 +1307,25 @@ const Game = (() => {
 		}
 
 		frontCell() {
+			if (!this.pos) {
+				return false;
+			}
 			const { x, y } = this.pos;
 			return getCell(this.map, ... Game.getPosition(x,y,0,1,this.orientation));			
 		}
 
 		closeMap() {
+			if (!this.pos) {
+				return false;
+			}
 			const { x, y } = this.pos;
 			return this.matchCell(this.map,x,y,0,+1,this.orientation,'M',[]);			
 		}
 
 		farMap() {
+			if (!this.pos) {
+				return false;
+			}
 			const { x, y } = this.pos;
 			return this.matchCell(this.map,x,y,0,+2,this.orientation,'M',[]);
 		}
@@ -1294,16 +1338,25 @@ const Game = (() => {
 		}
 
 		farWall() {
+			if (!this.pos) {
+				return false;
+			}
 			const { x, y } = this.pos;
 			return this.matchCell(this.map,x,y,0,+2,this.orientation,'XM12345',[]);
 		}
 
 		furtherWall() {
+			if (!this.pos) {
+				return false;
+			}
 			const { x, y } = this.pos;
 			return this.matchCell(this.map,x,y,0,+3,this.orientation,'XM12345',[]);
 		}
 
 		farDoor() {
+			if (!this.pos) {
+				return false;
+			}
 			const { x, y } = this.pos;
 			return this.matchCell(this.map,x,y,0,+2,this.orientation,'12345',[]);
 		}
@@ -1561,10 +1614,17 @@ const Game = (() => {
 			}
 		}
 
-		countAssets() {
+		countAssets(loaded) {
 			let count = 0;
 			for (let a in ASSETS) {
-				count++;
+				if (!loaded || imageStock[ASSETS[a]] && imageStock[ASSETS[a]].loaded) {
+					count++;
+				}
+			}
+			for (let a in SOUNDS) {
+				if (!loaded || soundStock[SOUNDS[a]] && soundStock[SOUNDS[a]].loaded) {
+					count++;
+				}
 			}
 			return count;
 		}
@@ -1574,10 +1634,9 @@ const Game = (() => {
 				const src = ASSETS[a];
 				if (!imageStock[src]) {
 					this.prepareImage(src, () => {
-						this.loadCount++;
-						this.prepareAssets();
+//						this.prepareAssets();
 					});
-					return;
+//					return;
 				}
 			}
 		}
@@ -1587,36 +1646,10 @@ const Game = (() => {
 				const src = SOUNDS[a];
 				if (!soundStock[src]) {
 					this.prepareSound(src, () => {
-//						this.loadCount++;
-						this.prepareSounds();
+//						this.prepareSounds();
 					});
-					return;
+//					return;
 				}
-			}
-		}
-
-		prepareSound(src, callback) {
-			if (!src) {
-				console.error("Invalid sound.");
-			}
-			const soundData = soundStock[src];
-			if (!soundData) {
-				const stock = {}
-				const audio = new Audio(src);
-				this.loadPending = true;
-				audio.addEventListener("loadeddata", () => {
-					stock.loaded = true;
-					this.loadPending = false;
-					if (callback) {
-						callback(stock);
-					}
-				});
-				audio.addEventListener("error", () => {
-					delete soundStock[src];
-					this.loadPending = false;
-				});
-				stock.audio = audio;
-				soundStock[src] = stock;
 			}
 		}
 
@@ -1668,6 +1701,31 @@ const Game = (() => {
 			}
 		}
 
+		prepareSound(src, callback) {
+			if (!src) {
+				console.error("Invalid sound.");
+			}
+			const soundData = soundStock[src];
+			if (!soundData) {
+				const stock = {}
+				const audio = new Audio(src);
+				this.loadPending = true;
+				audio.addEventListener("loadeddata", () => {
+					stock.loaded = true;
+					this.loadPending = false;
+					if (callback) {
+						callback(stock);
+					}
+				});
+				audio.addEventListener("error", () => {
+					delete soundStock[src];
+					this.loadPending = false;
+				});
+				stock.audio = audio;
+				soundStock[src] = stock;
+			}
+		}
+
 		prepareImage(src, callback) {
 			const spriteData = imageStock[src];
 			if (spriteData) {
@@ -1678,7 +1736,7 @@ const Game = (() => {
 				} else {
 					if (callback) {
 						spriteData.img.addEventListener("load", () => {
-							callback(stock);
+							callback(spriteData);
 						});
 					};
 				}
@@ -1923,7 +1981,7 @@ const Game = (() => {
 		}
 
 		refresh(dt) {
-			if (this.paused) {
+			if (this.paused && this.gameLoaded) {
 				return;
 			}
 			this.data.time += dt;
@@ -2110,6 +2168,9 @@ const Game = (() => {
 				return;
 			}
 
+			const dialogTime = this.now - this.dialog.time;
+			const dialogShift = dialogTime < 300 ? (300-dialogTime) / 30 : 0;
+
 			const {options} = conversation[index];
 			const filteredOptions = options.filter(({hidden}) => !hidden || !this.evaluate(hidden));
 			const y = this.mouse ? Math.floor((this.mouse.y - 43) / 7) : -1;
@@ -2118,7 +2179,7 @@ const Game = (() => {
 				const { msg, cantSelect } = filteredOptions[y];
 				if (this.evaluate(msg) && !this.evaluate(cantSelect)) {
 					this.dialog.hovered = filteredOptions[y];
-					ctx.fillRect(0, y * 7 + 42, 64, 7);
+					ctx.fillRect(0, dialogShift + y * 7 + 42, 64, 7);
 				} else {
 					this.dialog.hovered = null;
 				}
@@ -2130,7 +2191,7 @@ const Game = (() => {
 			filteredOptions.forEach((option, row) => {
 				const msg = this.evaluate(option.msg);
 				if (msg) {
-					this.displayTextLine(tempCtx, {msg, x: 2, y: row * 7 + 43});
+					this.displayTextLine(tempCtx, {msg, x: 2, y: dialogShift + row * 7 + 43});
 				}
 			});
 			this.displayOutlinedImage(tempCtx.canvas, "black", 16);
@@ -2348,7 +2409,7 @@ const Game = (() => {
 			const saves = JSON.parse(localStorage.getItem(SAVES_LOCATION) || "{}");
 			this.data = saves[name];
 			this.setupStats();
-			this.gotoScene(this.sceneIndex, this.door, true);
+			this.gotoScene(this.sceneName, this.door, true);
 			if (this.data.theme) {
 				this.playTheme(this.data.theme.song, {volume:this.data.theme.volume});
 			}
@@ -2491,6 +2552,16 @@ const Game = (() => {
 				s = Math.floor(s / 10);
 			}
 			return str;			
+		}
+
+		addToLife(value, color) {
+			const { stats } = this.data;
+			this.sceneData.lifeIncrease = {
+				value: Math.min(value, stats.maxLife - stats.life), time: this.now,
+				color,
+			};
+			stats.life = Math.min(stats.life + value, stats.maxLife);			
+			this.openMenu(this.now);
 		}
 	}
 

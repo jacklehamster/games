@@ -37,7 +37,7 @@ gameConfig.scenes.push(
 				if (game.situation.gotApple && !game.situation.grabbedApple) {
 					const frame = Math.floor((game.now - game.situation.gotApple)) / 100;
 					if (frame > 4) {
-						game.pickUp({item:"fruit?", image:ASSETS.GRAB_APPLE, message:"That looks eatable."});
+						game.pickUp({item:"fruit?", image:ASSETS.GRAB_APPLE, message:"Looks eatable."});
 						game.situation.grabbedApple = game.now;
 					}					
 				}

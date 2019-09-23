@@ -23,6 +23,7 @@ gameConfig.scenes.push(
 				custom: (game, sprite, ctx) => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height),
 			},
 			...getCommonMaze("_1"),
+			makeYupa(),
 			...standardMenu(),
 			...standardBag(),
 		],

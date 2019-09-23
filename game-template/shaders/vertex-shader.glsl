@@ -77,8 +77,10 @@ void main(void) {
 		vPos.y += getSinWaveOffset(now, isSprite ? aPosition : vPos.xyz, aWave);
 	}
 
+	//	curvature of the earth
 	vec4 position = uProjectionMatrix * uViewMatrix * vPos;
 	position.y -= (position.z * position.z + position.x * position.x) / 100.0;
+//	position.y -= (position.x * position.x) / 100.0 * 5.0;
 
 	vec4 textureInfo = uTextureInfo[frame];
 	textureSlot = floor(textureInfo[0]);

@@ -180,6 +180,10 @@ const ASSETS = {
 	YUPA_DANCE: "assets/yupa-dance.png",
 	GRAB_YUPA_BOTTLE: "assets/grab-yupa-bottle.png",
 	DRINK_YUPA: "assets/drink-yupa.png",
+	HOLE: "assets/hole.png",
+	LADDER: "assets/ladder.png",
+	BOTTOM: "assets/bottom.png",
+	FEMBOT: "assets/fembot.png",
 };
 
 const SOUNDS = {

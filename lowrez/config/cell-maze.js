@@ -74,9 +74,9 @@ gameConfig.scenes.push(
 										});
 									} else {
 										game.dialog = null;
-										const currentSceneIndex = game.sceneIndex;
+										const currentSceneName = game.sceneName;
 										game.gotoScene("name-screen");
-										game.sceneData.returnScene = currentSceneIndex;
+										game.sceneData.returnScene = currentSceneName;
 									}
 								},
 							},
@@ -210,7 +210,7 @@ gameConfig.scenes.push(
 						return;
 					}
 					game.situation.skeletonRopeFound = game.now;
-					game.pickUp({item:"robe", image:ASSETS.GRAB_ROPE, message:"This rope might be handy."});					
+					game.pickUp({item:"rope", image:ASSETS.GRAB_ROPE, message:"This rope might be handy."});					
 				},
 			},
 			{
@@ -460,7 +460,7 @@ gameConfig.scenes.push(
 				lock: true,
 				wayUp: true,
 //				scene: "cell-maze-2", door: 5,
-				scene: "in-progress", door: 1,
+				scene: "ceiling-maze", door: 5,
 				exit: (game, {scene, door}) =>  game.fadeToScene(scene, {door}, 1000),
 			},
 		},

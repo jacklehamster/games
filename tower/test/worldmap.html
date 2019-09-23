@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <title></title>
+		<meta charset="utf-8"/>
+		<style>
+			canvas {  
+		        image-rendering: optimizeSpeed;
+				image-rendering: -moz-crisp-edges;
+				image-rendering: -webkit-crisp-edges;
+				image-rendering: pixelated;
+				image-rendering: crisp-edges;
+		        image-rendering: optimize-contrast;
+		        -ms-interpolation-mode: nearest-neighbor;
+		        width: 500px;
+		        height: 500px;
+		        background-color: black;
+			}
+
+			html, body {
+			    height: 100%;
+			}
+			body {
+			    margin: 0;
+			}
+		</style>
+	</head>
+	<script src="../lib/gl-matrix.js"></script>
+	<script src="../lib/dependency-injector.js"></script>
+	<script src="../lib/utils.js"></script>
+	<script src="../lib/worldmap.js"></script>
+
+	<script>
+		document.addEventListener("DOMContentLoaded", e => {
+			const canvas = document.getElementById("canvas");
+			canvas.width = 1000; canvas.height = 1000;
+			const context = canvas.getContext("2d");
+
+			const points = new Array(100).fill(null).map((a, id) => {
+				const size = Math.max(3, Math.ceil(Math.pow(Math.random(), 30) * 300));
+				return{
+					id,
+					x: Math.floor(Math.random() * canvas.width),
+					y: Math.floor(Math.random() * canvas.height),
+					width: size,
+					height: size,
+				};
+			});
+
+			const [ WorldMap ] = injector.get("worldmap");
+			const wm = new WorldMap();
+
+			points.forEach(point => {
+				const {x, y, width, height} = point;
+				point.range = {
+					left: x,
+					right: x + width,
+					top: y,
+					bottom: y + height,
+				};
+				wm.add(point);
+			});
+
+			let selection = null;
+			document.addEventListener("mousedown", e => {
+				const x0 = e.pageX * 2;
+				const y0 = e.pageY * 2;
+				selection = { 
+					x0, y0,
+					x1: x0, y1: y0,
+				};
+				e.preventDefault();
+			});
+			document.addEventListener("mousemove", e => {
+				if (selection) {
+					selection.x1 = e.pageX * 2;
+					selection.y1 = e.pageY * 2;
+				}
+				e.preventDefault();
+			});
+			document.addEventListener("mouseup", e => {
+				selection = null;
+				area = null;
+				e.preventDefault();
+			});
+
+			let area = null;
+			function refresh() {
+				context.clearRect(0, 0, canvas.width, canvas.height);
+				points.forEach(({x, y, width, height}) => {
+					context.beginPath();
+					context.strokeStyle = "#cccccc";
+					context.rect(x, y, width, height);
+					context.stroke();
+				});
+
+				if(selection) {
+					const { x0, y0, x1, y1 } = selection;
+
+					const left = Math.min(x0, x1);
+					const right = Math.max(x0, x1);
+					const top = Math.min(y0, y1);
+					const bottom = Math.max(y0, y1);
+
+					if (!area || !document.getElementById('useAreaUpdate').checked) {
+						area = wm.getArea({left, right, top, bottom});
+					} else {
+						area.update({left, right, top, bottom});
+					}
+
+					const { elementHash, lineIndexRange } = area;
+					context.fillStyle = "#FF9999";
+					for (let e in elementHash) {
+						const { x, y, width, height } = elementHash[e];
+						context.fillRect(x-1, y-1, width+2, height+2);
+					}
+
+					context.beginPath();
+					context.strokeStyle = "#00FF00";
+					const leftPos = wm.lineGroups[WorldMap.VERTICAL][lineIndexRange.left].position;
+					context.moveTo(leftPos, 0);
+					context.lineTo(leftPos, canvas.height);
+					const rightPos = wm.lineGroups[WorldMap.VERTICAL][lineIndexRange.right].position;
+					context.moveTo(rightPos, 0);
+					context.lineTo(rightPos, canvas.height);
+					const topPos = wm.lineGroups[WorldMap.HORIZONTAL][lineIndexRange.top].position;
+					context.moveTo(0, topPos);
+					context.lineTo(canvas.width, topPos);
+					const bottomPos = wm.lineGroups[WorldMap.HORIZONTAL][lineIndexRange.bottom].position;
+					context.moveTo(0, bottomPos);
+					context.lineTo(canvas.width, bottomPos);
+					context.stroke();
+
+
+					context.beginPath();
+					context.strokeStyle = "#FF0000";
+					context.rect(x0, y0, x1-x0, y1-y0);
+					context.stroke();
+				}
+
+				requestAnimationFrame(refresh);
+			}
+			refresh();
+		});
+	</script>
+
+	<body style="margin: 0;">
+		<canvas id="canvas"></canvas>
+		<br>
+		<input type="checkbox" checked id="useAreaUpdate"><label for="useAreaUpdate">Use Area.update(range)</label>
+	</body>
+</html>
