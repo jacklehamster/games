@@ -3,6 +3,9 @@ gameConfig.scenes.push(
 			name: "lock-zoom",
 			onScene: game => {
 				game.save();
+				game.showTip(!game.getSituation("zoom-arcade").gotHighScore 
+					? "The combination seems to be in alien symbols."
+					: "Where have I seen those?...", null, null, {removeLock: true})
 				game.startDialog({
 					time: game.now,
 					index: 0,
@@ -63,6 +66,7 @@ gameConfig.scenes.push(
 						const { situation } = game;
 						const code = [situation.digit1||0, situation.digit2||0, situation.digit3||0, situation.digit4||0].join("");
 						console.log(code);
+						game.pendingTip = null;
 					},
 				},
 				{
@@ -88,6 +92,7 @@ gameConfig.scenes.push(
 						const { situation } = game;
 						const code = [situation.digit1||0, situation.digit2||0, situation.digit3||0, situation.digit4||0].join("");
 						console.log(code);
+						game.pendingTip = null;
 					},
 				},
 				{
@@ -113,6 +118,7 @@ gameConfig.scenes.push(
 						const { situation } = game;
 						const code = [situation.digit1||0, situation.digit2||0, situation.digit3||0, situation.digit4||0].join("");
 						console.log(code);
+						game.pendingTip = null;
 					},
 				},
 				{
@@ -139,6 +145,7 @@ gameConfig.scenes.push(
 						const { situation } = game;
 						const code = [situation.digit1||0, situation.digit2||0, situation.digit3||0, situation.digit4||0].join("");
 						console.log(code);
+						game.pendingTip = null;
 					},
 				},
 				{

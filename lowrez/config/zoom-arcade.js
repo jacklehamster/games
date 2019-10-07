@@ -97,6 +97,7 @@ gameConfig.scenes.push(
 						situation.highscores[situation.highscores.length-1] = { score: sceneData.score, player: 4 };
 						situation.highscores.sort((a,b) => b.score-a.score);
 						situation.showHighScore = now;
+						situation.gotHighScore = now;
 						game.showTip(`That was fun!`);
 						game.playTheme(null);
 					} else if(!situation.showHighScore) {

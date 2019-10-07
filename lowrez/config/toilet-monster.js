@@ -19,7 +19,7 @@ gameConfig.scenes.push(
 					}
 				} else {
 					if (!game.data.gameOver) {
-						game.gameOver();
+						game.gameOver("  “What a sad way\n         to die!”");
 					}
 				}
 			},

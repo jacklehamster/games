@@ -184,6 +184,33 @@ const ASSETS = {
 	LADDER: "assets/ladder.png",
 	BOTTOM: "assets/bottom.png",
 	FEMBOT: "assets/fembot.png",
+	CEILING_HOLE: "assets/ceiling-hole.png",
+	CEILING_ROPE_MOVE: "assets/ceiling-rope-move.png",
+	HOLE_BOTTOM: "assets/hole-bottom.png",
+	THE_HOLE: "assets/the-hole.png",
+	CEILING_HOLE_ONLY: "assets/ceiling-hole-only.png",
+	HOLE_IN_CEILING_ROPE: "assets/hole-in-ceiling-rope.png",
+	HOLE_IN_CEILING_HOLE: "assets/hole-in-ceiling-hole.png|darken",
+	HOLE_IN_CEILING_BACK: "assets/hole-in-ceiling-back.png|darken",
+	LAB_ENTRANCE: "assets/lab-entrance.png",
+	ELECTRO_DIAL: "assets/electro-dial.png",
+	BOTTLE_SLOT: "assets/bottle-slot.png",
+	LAB_DOOR: "assets/lab-door.png",
+	YUPA_IN_LAB: "assets/yupa-in-lab.png",
+	LAB: "assets/lab.png",
+	LAB_EXIT: "assets/lab-exit.png",
+	LAB_MONSTER: "assets/lab-monster.png",
+	LAB_MONSTER_WAKE: "assets/lab-monster-wake.png",
+	LAB_MONSTER_BATTLE: "assets/lab-monster-battle.png",
+	LAB_MONSTER_THROUGH_HOLE: "assets/lab-monster-through-hole.png",
+	ROPE_CEILING: "assets/rope-ceiling.png",
+	EXIT_OUT: "assets/exit-out.png|chroma-key-pink",
+	EXIT_OUT_CARNAGE: "assets/exit-out-carnage.png|chroma-key-pink",
+	EXIT_GATE: "assets/exit-gate.png|chroma-key-pink",
+	GATE_OPEN: "assets/gate-open.png|chroma-key-pink",
+	OUTSIDE: "assets/outside.png",
+	OUTSIDE_CARNAGE: "assets/outside-carnage.png",
+	OUTSIDE_BG: "assets/outside-bg.png",
 };
 
 const SOUNDS = {
@@ -215,10 +242,15 @@ const SOUNDS = {
 	BOP: 'sounds/bop.mp3',
 	YUPA: 'sounds/yupa.mp3',
 	YUPA_HAHA: 'sounds/yupa-haha.mp3',
+	FEMBOT: 'sounds/fembot.mp3',
+	DIVING: 'sounds/diving.mp3',
+//	ISLAND: 'sounds/island.mp3',
+	HUM: 'sounds/hum.mp3',
+	GOGOL: 'sounds/gogol.mp3',
 };
 
 const ALPHAS = (() => {
-	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz.,?'#@!♪()[]/-+_ "
+	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz.,?'#@!♪()[]/-+_“” "
    	   + new Array(10).fill(null).map((a, index) => String.fromCharCode(1000 + index)).join("");
 	const array = [];
 	for(let c = 0; c < letters.length; c++) {

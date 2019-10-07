@@ -56,7 +56,7 @@ gameConfig.scenes.push(
 				}
 			} else {
 				if (!game.data.gameOver) {
-					game.gameOver();
+					game.gameOver(" “That was\n             not cake!”");
 				}
 			}
 		},

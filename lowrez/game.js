@@ -48,6 +48,13 @@ const Game = (() => {
 
 	const gameSettings = {};
 
+	// ['N','NW','W','SW','S','SE','E','NE'];
+	const ROTATION_FRAMES = [
+		[1, 0, 7],
+		[2, 4, 6],
+		[3, 4, 5],
+	];
+
 	class Game {
 		static setTextSpeeder(value) {
 			TEXTSPEEDER = value;
@@ -175,7 +182,9 @@ const Game = (() => {
 			});
 
 			canvas.addEventListener("mousemove", ({currentTarget, offsetX, offsetY}) => {
-				this.lastMouseCheck = 0;
+				if (this.now - this.lastMouseCheck < 100) {
+					this.lastMouseCheck = 0;
+				}
 				const { offsetWidth, offsetHeight } = currentTarget;
 				if (!this.mouse) {
 					this.mouse = {};
@@ -183,7 +192,7 @@ const Game = (() => {
 				this.mouse.x = offsetX / offsetWidth * canvas.width;
 				this.mouse.y = offsetY / offsetHeight * canvas.height;
 
-				if (this.pendingTip && this.pendingTip.progress < 1 && !this.pendingTip.removeLock || this.waitCursor || this.hideCursor) {
+				if (this.pendingTip && (this.pendingTip.progress < 1 || this.pendingTip.moreText) && !this.pendingTip.removeLock || this.waitCursor || this.hideCursor) {
 					return;
 				}
 				if (this.pickedUp && this.pickedUp.tip && this.pickedUp.tip.progress < 1) {
@@ -202,7 +211,7 @@ const Game = (() => {
 				this.lastMouseCheck = 0;
 				e.preventDefault();
 				const {currentTarget, offsetX, offsetY} = e;
-				if (this.battle) {
+				if (this.battle && !this.bagOpening) {
 					if (!this.blocking() && !this.battle.playerHit && !this.battle.playerBlock && this.arrow !== BAG  && !(this.battle.dummyBattle && (this.arrow===LEFT || this.arrow===RIGHT)) && !this.battle.playerLeftAttack && !this.battle.playerRightAttack) {
 						if (this.onScenePunch(this, this.battle)) {
 							if (this.battle.fist === LEFT && !this.battle.playerLeftAttack) {
@@ -217,7 +226,7 @@ const Game = (() => {
 						}
 					}
 				}
-				if (this.pendingTip && this.pendingTip.progress < 1 && !this.pendingTip.removeLock || this.waitCursor || this.hideCursor) {
+				if (this.pendingTip && (this.pendingTip.progress < 1 || this.pendingTip.moreText) && !this.pendingTip.removeLock || this.waitCursor || this.hideCursor) {
 					return;
 				}
 				if (this.useItem === "gun" && (!this.hoverSprite || !this.hoverSprite.bag && !this.hoverSprite.menu)) {
@@ -245,7 +254,7 @@ const Game = (() => {
 				if (this.useItem) {
 					const { image, item, message, col, row } = this.inventory[this.useItem];
 					if (game.isMouseHover({ src: image, index: 3, col, row }, 0, this.mouse)) {
-						this.pickUp({item, image, message:message||""});
+						this.pickUp({item, image, message:message||"", justLooking: true});
 						return;
 					}
 				}				
@@ -384,7 +393,7 @@ const Game = (() => {
 			this.createLoop(this.refresh.bind(this));
 		}
 
-		fadeToScene(index, entrance, fadeDuration) {
+		fadeToScene(index, entrance, fadeDuration, afterScene) {
 			if (!fadeDuration) {
 				fadeDuration = 1000;
 			}
@@ -392,6 +401,9 @@ const Game = (() => {
 			this.fadeOut(this.now, {duration:fadeDuration * 1.5, fadeDuration, color:"#000000", onDone: game => {
 				game.waitCursor = false;
 				game.gotoScene(index, entrance);
+				if (afterScene) {
+					afterScene(game);
+				}
 			}});
 		}
 
@@ -580,20 +592,23 @@ const Game = (() => {
 			}
 		}
 
-		pickUp({item, image, message, count, col, row, index, onPicked, onTipDone}) {
+		pickUp({item, image, message, inventoryMessage, count, col, row, index, onPicked, onTipDone, justLooking}) {
 			if (!item) {
 				console.error(`Your item (${image}) needs a name.`);
 			}
-			this.markPickedUp(item);
 			const time = this.now;
-			this.addToInventory({
-				item,
-				image,
-				col: col||2,
-				row: row||2,
-				count: count || 1,
-			});
-			this.playSound(SOUNDS.PICKUP);
+			if (!justLooking) {
+				this.markPickedUp(item);
+				this.addToInventory({
+					item,
+					image,
+					col: col||2,
+					row: row||2,
+					count: count || 1,
+					message: inventoryMessage,
+				});
+				this.playSound(SOUNDS.PICKUP);
+			}
 
 			this.pickedUp = {
 				item,
@@ -647,8 +662,8 @@ const Game = (() => {
 			if (this.battle) {
 				if (this.battle.dummyBattle) {
 					this.setVisited(false);
+					this.battle = null;
 				}
-				this.battle = null;
 			}
 			if (this.rotation % 2 === 0 && this.canTurn(direction)) {
 				this.actions.push({
@@ -902,6 +917,7 @@ const Game = (() => {
 					end: 0,
 					x, y,
 					talker,
+					moreText: message.length > 1,
 					onDone: message.length === 1 ? onDone : game => {
 						index++;
 						tip.index = index;
@@ -934,7 +950,7 @@ const Game = (() => {
 		}
 
 		checkMouseHover() {
-			if (this.now - this.lastMouseCheck < 250) {
+			if (this.now - this.lastMouseCheck < 300) {
 				return;
 			}
 			this.lastMouseCheck = this.now;
@@ -969,6 +985,14 @@ const Game = (() => {
 									}
 								} else if (sprite.onClick) {
 									sprite.onClick(this, sprite);
+								} else if (sprite.tip) {
+									const hoveredTip = this.evaluate(sprite.tip);
+									if (hoveredTip) {
+										const tip = this.tips[hoveredTip];
+										if (tip) {
+											tip.time = Math.min(this.now, tip.time);
+										}
+									}									
 								}
 								return;
 							}
@@ -1067,6 +1091,30 @@ const Game = (() => {
 			return Game.getPosition(x,y,0,1,orientation);
 		}
 
+		behindEvent() {
+			const { events } = this;
+			if (!events) {
+				return null;
+			}
+			const { pos, orientation } = this;
+			const { x, y } = pos;
+			const mapPosition = Game.getPosition(x,y,0,-1,orientation);
+			const cell = getCell(this.map, ... mapPosition);
+			return events[cell];			
+		}
+
+		currentEvent() {
+			const { events } = this;
+			if (!events) {
+				return null;
+			}
+			const { pos, orientation } = this;
+			const { x, y } = pos;
+			const mapPosition = Game.getPosition(x,y,0,0,orientation);
+			const cell = getCell(this.map, ... mapPosition);
+			return events[cell];			
+		}
+
 		facingEvent() {
 			const { events } = this;
 			if (!events) {
@@ -1075,6 +1123,18 @@ const Game = (() => {
 			const mapPosition = this.facingPosition();
 			const cell = getCell(this.map, ... mapPosition);
 			return events[cell];
+		}
+
+		furtherEvent() {
+			const { events } = this;
+			if (!events) {
+				return null;
+			}
+			const { pos, orientation } = this;
+			const { x, y } = pos;
+			const mapPosition = Game.getPosition(x,y,0,2,orientation);
+			const cell = getCell(this.map, ... mapPosition);
+			return events[cell];			
 		}
 
 		setVisited(value) {
@@ -1155,7 +1215,7 @@ const Game = (() => {
 			});
 			const { yupa } = game.data;
 			if (yupa) {
-				yupa.rotation = direction === "forward" ? (game.rotation + 4) % 8 : game.rotation;
+				yupa.rotation = direction === "forward" ? (this.rotation + 4) % 8 : this.rotation;
 				if (direction==="forward") {
 					yupa.position = Math.random()<.5 ? -9 : 9;
 				}
@@ -1279,6 +1339,9 @@ const Game = (() => {
 				return false;
 			}
 			const { x, y } = this.pos;
+			if (this.facingEvent() && this.facingEvent().wall) {
+				return true;
+			}
 			return this.matchCell(this.map,x,y,0,+1,this.orientation,'XM12345',[]) || this.matchCell(this.map,x,y,0,0,this.orientation,'12345',[]) && this.frontCell()==='.';
 		}
 
@@ -1342,6 +1405,9 @@ const Game = (() => {
 				return false;
 			}
 			const { x, y } = this.pos;
+			if (this.furtherEvent() && this.furtherEvent().wall) {
+				return true;
+			}
 			return this.matchCell(this.map,x,y,0,+2,this.orientation,'XM12345',[]);
 		}
 
@@ -1386,9 +1452,9 @@ const Game = (() => {
 		}
 
 		displayTips() {
-			if (this.bagOpening || this.pickedUp) {
-				return;
-			}
+			// if (this.bagOpening || this.pickedUp) {
+			// 	return;
+			// }
 			if (this.pendingTip) {
 				const tip = this.pendingTip;
 				tip.fade = Math.min(1, (this.now - (tip.end || tip.time + (tip.text.length + 10) * tip.speed)) / 350);
@@ -1453,8 +1519,9 @@ const Game = (() => {
 					const { item, count } = this.inventory[tipItem];	
 					const msg = item==="gun" ? `gun with ${this.countItem('bullet')} bullet${this.countItem('bullet')>1?'s':''}` : (count||1) > 1 ? `${item} x${count}` : `${item}`;
 					ctx.fillStyle = "#000000aa";
-					ctx.fillRect(1, this.mouse.y >= 58 ? 40 : 57, 62, 7);
-					this.displayTextLine(ctx, {msg,  x:3, y: this.mouse.y >= 58 ? 40 : 58 });
+					const showAbove = this.mouse.y >= 55;
+					ctx.fillRect(1, showAbove ? 40 : 57, 62, 7);
+					this.displayTextLine(ctx, {msg,  x:3, y: showAbove ? 40 : 58 });
 				}
 			}
 		}
@@ -1481,7 +1548,7 @@ const Game = (() => {
 					return;
 				}
 
-				if (this.pendingTip && this.pendingTip.progress < 1 && !this.pendingTip.removeLock || this.pickedUp && this.pickedUp.tip && this.pickedUp.tip.progress < 1 || this.waitCursor || customCursor==="wait") {
+				if (this.pendingTip && (this.pendingTip.progress < 1 || this.pendingTip.moreText) && !this.pendingTip.removeLock || this.pickedUp && this.pickedUp.tip && this.pickedUp.tip.progress < 1 || this.waitCursor || customCursor==="wait") {
 					const angle = this.now / 200;
 					const radius = 2;
 					ctx.strokeStyle = "#FFFFFF";
@@ -1680,6 +1747,7 @@ const Game = (() => {
 				} else {
 					const soundBite = audio.cloneNode(true);
 					soundBite.volume = volume || .5;
+					soundBite.loop = false;
 					if (!this.mute) {
 						soundBite.play();
 					}
@@ -1828,6 +1896,37 @@ const Game = (() => {
 				return;
 			}
 
+			if (src.split("|").pop() === "chroma-key-pink") {
+				this.prepareImage(src.split("|").slice(0,-1).join("|"), stock => {
+					const tempCanvas = document.createElement("canvas");
+					tempCanvas.width = stock.img.naturalWidth || stock.img.width;
+					tempCanvas.height = stock.img.naturalHeight || stock.img.height;
+					const tempCtx = tempCanvas.getContext("2d");
+					tempCtx.drawImage(stock.img, 0, 0);
+					const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+					const { data } = imageData;
+					for (let i = 0; i < data.length; i+=4) {
+						if (data[i + 3]) {
+							if (data[i + 0] === 0xFF && data[i + 1] === 0 && data[i + 2] === 0xFF) {
+								data[i + 0] = 0;
+								data[i + 1] = 0;
+								data[i + 2] = 0;
+								data[i + 3] = 0;
+							}
+						}
+					}
+					tempCtx.putImageData(imageData, 0, 0);
+					imageStock[src] = {
+						loaded: true,
+						img: tempCanvas,
+					};
+					if (callback) {
+						callback(imageStock[src]);
+					}
+				});
+				return;	
+			}
+
 			if (!spriteData) {
 				const stock = {}
 				const img = new Image();
@@ -1946,7 +2045,14 @@ const Game = (() => {
 					}
 				});
 
-				this.checkEvents();
+				if (this.facingEvent() && !this.facingEvent().foe) {
+					this.checkEvents();
+				}
+
+				const { yupa } = game.data;
+				if (yupa) {
+					yupa.rotation = (this.rotation + 4) % 8;
+				}
 			}
 			this.onSceneRefresh(this);
 			if(this.battle && !this.data.gameOver) {
@@ -2026,7 +2132,14 @@ const Game = (() => {
 				tempCtx.globalAlpha = Math.min(1, (this.now - this.data.gameOver) / 3000);
 				tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 				tempCtx.globalAlpha = 1;
-				this.displayTextLine(tempCtx, {msg: "GAME OVER",  x:11, y:20 });
+				if (this.sceneData.gameOverMessage) {
+					const lines = this.sceneData.gameOverMessage.split("\n");
+					lines.forEach((msg, index) => {
+						this.displayTextLine(tempCtx, {msg, x: 1, y: 15 + index * 7})
+					});
+				} else {
+					this.displayTextLine(tempCtx, {msg: "GAME OVER",  x:11, y:20 });					
+				}
 				this.displayTextLine(tempCtx, {msg: "try again",  x:16, y:40 });
 				this.displayTextLine(tempCtx, {msg: "start over", x:14, y:50 });
 				this.displayOutlinedImage(tempCtx.canvas, "black", 4, 2);
@@ -2112,7 +2225,7 @@ const Game = (() => {
 
 		displayTextLine(ctx, {msg, x, y, spacing}) {
 			const letterTemplate = {
-				src: ASSETS.ALPHABET, col:10, row:9, size:[5,6],
+				src: ASSETS.ALPHABET, col:10, row:10, size:[5,6],
 				offsetX: 20, offsetY: 20,
 				index: game => Math.floor(game.now / 100) % 62,
 				isText: true,
@@ -2163,13 +2276,13 @@ const Game = (() => {
 			}
 			const { index, conversation, time } = this.dialog;
 			const frame = Math.min(3, Math.floor((this.now - time) / 80));
-			if (frame < 3 || this.bagOpening || this.useItem || this.pendingTip && !this.pendingTip.removeLock) {
+			if (this.bagOpening || this.useItem || this.pendingTip && !this.pendingTip.removeLock) {
 				this.dialog.hovered = null;
 				return;
 			}
 
 			const dialogTime = this.now - this.dialog.time;
-			const dialogShift = dialogTime < 300 ? (300-dialogTime) / 30 : 0;
+			const dialogShift = Math.round((dialogTime < 50 ? (50 - dialogTime) / 50 : 0) * 4);
 
 			const {options} = conversation[index];
 			const filteredOptions = options.filter(({hidden}) => !hidden || !this.evaluate(hidden));
@@ -2247,7 +2360,7 @@ const Game = (() => {
 		}
 
 		displayImage(ctx, sprite) {
-			const {src, index, side, col, row, size, hidden, offsetX, offsetY, alpha, custom, ending, isText } = sprite;			
+			const {src, index, side, col, row, size, hidden, offsetX, offsetY, alpha, custom, ending, isText, globalCompositeOperation } = sprite;			
 			if (this.evaluate(hidden, sprite)) {
 				return;
 			}
@@ -2314,9 +2427,23 @@ const Game = (() => {
 					shiftY = Math.round((Math.random() - .5) * intensity * (200 / hitTime));
 				}
 			}
+			if (this.sceneData.shakeTime && !isText) {
+				const hitTime = Math.max(10, this.now - this.sceneData.shakeTime);
+				if (hitTime < 500) {
+					const intensity = 1;
+					shiftY += Math.round((Math.random()-.5) * intensity * (200 / hitTime));
+				}
+			}
+			if (globalCompositeOperation) {
+				ctx.globalCompositeOperation = this.evaluate(globalCompositeOperation, sprite);
+			}
+
 			ctx.drawImage(spriteData.img, srcX, srcY, srcW, srcH, dstX + shiftX, dstY + shiftY, dstW, dstH);
 			if (alphaColor) {
 				ctx.globalAlpha = 1.0;
+			}
+			if (globalCompositeOperation) {
+				ctx.globalCompositeOperation = "source-over";
 			}
 		}
 
@@ -2337,9 +2464,7 @@ const Game = (() => {
 				}
 			}
 			this.openBag(this.now, game => {
-				if (this.useItem) {
-					this.onSceneHoldItem(game, this.useItem);
-				}
+				this.onSceneHoldItem(game, this.useItem);
 			});
 		}
 
@@ -2406,9 +2531,15 @@ const Game = (() => {
 				name = LAST_CONTINUE;
 			}
 			this.playTheme(null);
+			const triedAgain = this.data.gameOver;
 			const saves = JSON.parse(localStorage.getItem(SAVES_LOCATION) || "{}");
 			this.data = saves[name];
 			this.setupStats();
+			if (triedAgain) {
+				this.data.stats.life = Math.max(this.data.stats.maxLife / 2, this.data.stats.life)
+				this.data.stats.state.drank = 0;
+				this.data.stats.state.ate = 0;
+			}
 			this.gotoScene(this.sceneName, this.door, true);
 			if (this.data.theme) {
 				this.playTheme(this.data.theme.song, {volume:this.data.theme.volume});
@@ -2486,7 +2617,7 @@ const Game = (() => {
 						ate: 0,
 						drank: 0,
 					};
-					if (!shot) {
+					if (!shot && this.battle.xp) {
 						this.battle.gainedXP = this.battle.xp;
 						const currentLevel = this.getLevel(this.data.stats.xp);
 						this.gainXP(this.battle.xp);
@@ -2561,7 +2692,15 @@ const Game = (() => {
 				color,
 			};
 			stats.life = Math.min(stats.life + value, stats.maxLife);			
-			this.openMenu(this.now);
+			if (!game.battle || game.battle.foeDefeated) {
+				this.openMenu(this.now);
+			}
+		}
+
+		getAnimation(dx, dy) {
+			dx = dx < 0 ? -1 : dx > 0 ? 1 : 0;
+			dy = dy < 0 ? -1 : dy > 0 ? 1 : 0;
+			return ROTATION_FRAMES[dy + 1][dx + 1];
 		}
 	}
 

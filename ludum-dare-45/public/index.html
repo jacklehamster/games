@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Welcome to Firebase Hosting</title>
+
+    <!-- update the version number as needed -->
+    <script defer src="/__/firebase/7.1.0/firebase-app.js"></script>
+    <!-- include only the Firebase features as you need -->
+    <script defer src="/__/firebase/7.1.0/firebase-auth.js"></script>
+    <script defer src="/__/firebase/7.1.0/firebase-database.js"></script>
+    <script defer src="/__/firebase/7.1.0/firebase-messaging.js"></script>
+    <script defer src="/__/firebase/7.1.0/firebase-storage.js"></script>
+    <!-- initialize the SDK after all desired features are loaded -->
+    <script defer src="/__/firebase/init.js"></script>
+
+    <style media="screen">
+      body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
+      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
+      #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
+      #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
+      #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }
+      #message a { display: block; text-align: center; background: #039be5; text-transform: uppercase; text-decoration: none; color: white; padding: 16px; border-radius: 4px; }
+      #message, #message a { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
+      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
+      @media (max-width: 600px) {
+        body, #message { margin-top: 0; background: white; box-shadow: none; }
+        body { border-top: 16px solid #ffa100; }
+      }
+
+
+
+
+
+      canvas {  
+        width: 800px;
+        height: 600px;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: -webkit-crisp-edges;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
+      body {
+        height: 100%;
+          overflow: hidden; 
+          background-color: pink; 
+      }
+
+    </style>
+
+
+
+
+
+  </head>
+  <body>
+<!--     <div id="message">
+      <h2>Welcome</h2>
+      <h1>Firebase Hosting Setup Complete</h1>
+      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>
+      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>
+    </div>
+ -->    <p style="display:none" id="load">Firebase SDK Loading&hellip;</p>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+        // // The Firebase SDK is initialized and available here!
+        //
+        // firebase.auth().onAuthStateChanged(user => { });
+        // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
+        // firebase.messaging().requestPermission().then(() => { });
+        // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
+        //
+        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+
+        try {
+          let app = firebase.app();
+          let features = ['auth', 'database', 'messaging', 'storage'].filter(feature => typeof app[feature] === 'function');
+          document.getElementById('load').innerHTML = `Firebase SDK loaded with ${features.join(', ')}`;
+        } catch (e) {
+          console.error(e);
+          document.getElementById('load').innerHTML = 'Error loading the Firebase SDK, check the console.';
+        }
+      });
+    </script>
+
+
+
+
+  <div id="shadows">
+  </div>
+<canvas id="subcanvas-top-left"></canvas>
+<canvas id="subcanvas"></canvas>
+<canvas id="subcanvas-top"></canvas>
+<canvas id="subcanvas-left"></canvas>
+<canvas id="subcanvas-top-right"></canvas>
+<canvas id="subcanvas-right"></canvas>
+<canvas id="subcanvas-bot-left"></canvas>
+<canvas id="subcanvas-bot-right"></canvas>
+<canvas id="subcanvas-bot"></canvas>
+
+
+
+<canvas id="canvas" style="position: absolute; width: 800; height: 600" width=800 height=600></canvas>
+<script src="generated/assets.js"></script>
+<script>
+  const frontResolution = 1;
+  const resolution = 4;
+  const ctx = document.getElementById("canvas").getContext("2d");
+  ctx.canvas.width = ctx.canvas.offsetWidth / frontResolution;
+  ctx.canvas.height = ctx.canvas.offsetHeight / frontResolution;
+
+  const subCanvases = [
+    document.getElementById("subcanvas"),
+    document.getElementById("subcanvas-top-left"),
+    document.getElementById("subcanvas-top"),
+    document.getElementById("subcanvas-top-right"),
+    document.getElementById("subcanvas-left"),
+    document.getElementById("subcanvas-right"),
+    document.getElementById("subcanvas-bot-left"),
+    document.getElementById("subcanvas-bot-right"),
+    document.getElementById("subcanvas-bot"),
+  ];
+
+  // subCanvases.forEach(canvas => {
+  //  canvas.style.
+  // });
+
+  document.getElementById("subcanvas").px = 0;
+  document.getElementById("subcanvas").py = 0;
+  document.getElementById("subcanvas-top-left").px = -1;
+  document.getElementById("subcanvas-top-left").py = -1;
+  document.getElementById("subcanvas-top").px = 0;
+  document.getElementById("subcanvas-top").py = -1;
+  document.getElementById("subcanvas-left").px = -1;
+  document.getElementById("subcanvas-left").py = 0;
+  document.getElementById("subcanvas-top-right").px = +1;
+  document.getElementById("subcanvas-top-right").py = -1;
+  document.getElementById("subcanvas-right").px = +1;
+  document.getElementById("subcanvas-right").py = 0;
+  document.getElementById("subcanvas-bot-left").px = -1;
+  document.getElementById("subcanvas-bot-left").py = +1;
+  document.getElementById("subcanvas-bot-right").px = +1;
+  document.getElementById("subcanvas-bot-right").py = +1;
+  document.getElementById("subcanvas-bot").px = 0;
+  document.getElementById("subcanvas-bot").py = +1;
+
+  subCanvases.forEach(canvas => {
+    canvas.width = ctx.canvas.offsetWidth / resolution;
+    canvas.height = ctx.canvas.offsetHeight / resolution;
+    canvas.x = canvas.px * canvas.width;
+    canvas.y = canvas.py * canvas.height;
+    canvas.style.width = ctx.canvas.style.width;
+    canvas.style.height = ctx.canvas.style.height;
+    canvas.style.position = "absolute";
+
+    canvas.shadow = canvas.cloneNode();
+    canvas.shadowCtx = canvas.shadow.getContext("2d");
+    document.getElementById("shadows").appendChild(canvas.shadow);
+  });
+
+
+  const imageDatas = {};
+
+  const subCtx = subCanvases.map(canvas => canvas.getContext("2d"));
+  const shadowCtx = subCanvases.map(canvas => canvas.shadow.getContext("2d"));
+  const centerCtx = document.getElementById("subcanvas").getContext("2d");
+
+  const keyboard = [];
+  document.addEventListener("keydown", e => {
+    if (!keyboard[e.keyCode]) {
+      keyboard[e.keyCode] = true;
+      world.sprites.forEach(sprite => {
+        if (sprite.onKey) {
+          sprite.onKey(sprite, world, e.keyCode);
+        }
+      });
+    }
+    e.preventDefault();
+  });
+  document.addEventListener("keyup", e => {
+    keyboard[e.keyCode] = false;
+    e.preventDefault();
+  });
+
+  for (let f in files) {
+    files[f].img = new Image();
+    files[f].img.src = files[f].path;
+  }
+
+  function display(sprite, world, ctx) {
+    let {id, offsetX, offsetY, frame} = sprite;
+    const {now} = world;
+
+    offsetX = evaluate(offsetX, sprite, world) || 0;
+    offsetY = evaluate(offsetY, sprite, world) || 0;
+    frame = evaluate(frame, sprite, world);
+
+    const { img, width, height } = files[id];
+    const col = frame % (width/64);
+    const row = Math.floor(frame / (width/64)) % (height/64);
+    ctx.drawImage(img, col*64, row*64, 64, 64, offsetX, offsetY, 64, 64);
+  }
+
+  const DIRECTIONS = [
+    ['NW', 'N', 'NE'],
+    ['W',  null, 'E'],
+    ['SW', 'S', 'SE'],
+  ];
+
+  function moveToDirection(dx, dy) {
+    dx = dx<0?-1:dx>0?1:0;
+    dy = dy<0?-1:dy>0?1:0;
+    return DIRECTIONS[dy+1][dx+1];
+  }
+
+
+  const world = {
+    now: 0,
+    registry: {},
+    size: [ctx.canvas.width / resolution, ctx.canvas.height / resolution],
+    x: 0, y: 0,
+    init: world => {
+      world.x = 0;
+      world.y = 0;
+    },
+    refresh: (world, ctx, subCtx) => {
+      const [ width, height ] = world.size;
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+      //  center minigod
+      const { x, y } = world.registry.minigod;
+      const preX = world.x;
+      const preY = world.y;
+      world.x += ((x - width/2) - world.x) / 5;
+      world.y += ((y - height/2) - world.y) / 5;
+//      console.log(preX - world.x);
+
+      subCtx.forEach(({canvas}) => {
+        canvas.x += (preX - world.x);
+        canvas.y += (preY - world.y);
+        canvas.style.left = Math.round(canvas.x * resolution) + "px";
+        canvas.style.top = Math.round(canvas.y * resolution) + "px";
+        canvas.shadow.style.left = canvas.style.left;
+        canvas.shadow.style.top = canvas.style.top;
+      });
+
+      let curCanvas = subCanvases.filter(canvas => 
+        canvas.x < width/2 && canvas.x > -width/2 
+        && canvas.y < height/2 && canvas.y > -height/2)[0];
+      if (curCanvas) {
+        const subCanvas = document.getElementById("subcanvas");
+        const midX = subCanvas.px, midY = subCanvas.py;
+        let shiftX = 0, shiftY = 0;
+        switch(curCanvas.id) {
+          case "subcanvas-top-left":
+            shiftX = -1; shiftY = -1;
+            break;
+          case "subcanvas-top-right":
+            shiftX = 1; shiftY = -1;
+            break;
+          case "subcanvas-top":
+            shiftX = 0; shiftY = -1;
+            break;
+          case "subcanvas-left":
+            shiftX = -1; shiftY = 0;
+            break;
+          case "subcanvas-right":
+            shiftX = 1; shiftY = 0;
+            break;
+          case "subcanvas-bot-left":
+            shiftX = -1; shiftY = 1;
+            break;
+          case "subcanvas-bot-right":
+            shiftX = 1; shiftY = 1;
+            break;
+          case "subcanvas-bot":
+            shiftX = 0; shiftY = 1;
+            break;
+        }
+        const newMidX = midX + shiftX;
+        const newMidY = midY + shiftY;
+
+        // // save canvases
+        subCtx.forEach(context => {
+          const { px, py, shadowCtx } = context.canvas;
+          imageDatas[`${px}_${py}`] = context.getImageData(0, 0, width, height);
+          imageDatas[`shadow_${px}_${py}`] = shadowCtx.getImageData(0, 0, width, height);
+        });
+
+        // // move canvases
+        subCtx.forEach(({canvas}) => {
+          canvas.px += shiftX;
+          canvas.py += shiftY;
+          canvas.x += width * shiftX;
+          canvas.y += height * shiftY;
+          canvas.style.left = Math.round(canvas.x * resolution) + "px";
+          canvas.style.top = Math.round(canvas.y * resolution) + "px";
+          canvas.shadow.style.left = canvas.style.left;
+          canvas.shadow.style.top = canvas.style.top;
+        });
+
+        // // update canvases
+        subCtx.forEach(context => {
+          const { px, py, shadowCtx } = context.canvas;
+          context.clearRect(0, 0, width, height);
+          shadowCtx.clearRect(0, 0, width, height);
+          if (imageDatas[`${px}_${py}`]) {
+            context.putImageData(imageDatas[`${px}_${py}`], 0, 0);
+          }
+          if (imageDatas[`shadow_${px}_${py}`]) {
+            shadowCtx.putImageData(imageDatas[`shadow_${px}_${py}`], 0, 0);           
+          }
+        });
+        curCanvas = document.getElementById("subcanvas");
+      }
+
+    },
+    sprites: [
+      {
+        name: "minigod",
+        pre: { x: 0, y: 0 },
+        x: 0, y: 0,
+        jumpPeriod: 150,
+        offsetX: (self, world) => (self.x - world.x) * resolution - 32,
+        offsetY: (self, world) => {
+          let jump = 0;
+          if (self.land) {
+            const dir = moveToDirection(self.movx, self.movy);
+            if (dir) {
+              const period = (world.now - self.land) % self.jumpPeriod;
+              const p = (period - self.jumpPeriod/2) * (period - self.jumpPeriod/2);
+              const d = (self.jumpPeriod/2*self.jumpPeriod/2 - p) / 800;
+              jump = -d;
+            }
+          }
+          return (self.y - world.y) * resolution - 64 + jump;
+        },
+        id: "alien",
+        animation: {
+          land: [4,5,6,7,8,9],
+          lift: [11,12,13,14,15,16,17],
+          idle: new Array(30).fill(18).concat([19]),
+          walk: {
+            S:  [20,21],
+            SW: [22,23],
+            SE: [24,25],
+            NW: [26,27],
+            N:  [26,27],
+            NE: [26,27],
+            W:  [28,29],
+            E:  [30,31],
+          },
+        },
+        frame: (self, {now}) => {
+          if (self.land) {
+            const { animation } = self;
+            const idx = Math.floor((now - self.land) / 80);
+            if (idx < animation.land.length - 1) {
+              return animation.land[idx];
+            } else {
+              //  Landed
+              if (!world.registry.saucer.left) {
+                world.registry.saucer.left = now;
+                world.registry.saucer.x = self.x;
+                world.registry.saucer.y = self.y;
+              }
+              const dir = moveToDirection(self.movx, self.movy);
+              if (dir) {
+                const anim = animation.walk[dir];
+                return anim[Math.floor((now - self.land) / self.jumpPeriod) % anim.length];
+              }
+              return animation.idle[idx % animation.idle.length];
+            }
+          }
+          if (self.lift) {
+            const { animation } = self;
+            const idx = Math.max(0, Math.floor((now - self.lift) / 80));
+            if (idx < animation.lift.length) {
+              if (idx > 0) {
+                world.registry.saucer.left = 0;
+                world.registry.saucer.back = 0;
+              }
+              return animation.lift[idx];
+            } else {
+              self.lift = 0;
+            }
+          }
+          return Math.floor(now / 100) % 4;
+        },
+        movx: 0, movy: 0,
+        onKey: (self, world, keyCode) => {
+          if (keyCode === 9) {  //  tab
+            if (self.land) {
+              self.movx = 0;
+              self.movy = 0;
+              const saucerBackTime = 400;
+              self.lift = world.now + saucerBackTime;
+              world.registry.saucer.back = world.now + saucerBackTime;
+              world.registry.saucer.x = self.x;
+              world.registry.saucer.y = self.y;
+              self.land = 0;
+            } else {
+              self.lift = 0;
+              self.land = world.now;
+            }
+          }
+        },        
+        init: (self, world) => {
+          const [width, height] = world.size;
+          self.x = width / 2;
+          self.y = height / 2;
+        },
+        refresh: (self, world, ctx, subCtx) => {
+          display(self, world, ctx);
+          let dx = 0, dy = 0;
+          if (keyboard[37]) {
+            dx--;
+          } else if(keyboard[39]) {
+            dx++;
+          }
+          if (keyboard[38]) {
+            dy--;
+          } else if(keyboard[40]) {
+            dy++;
+          }
+          if (!self.lift) {
+            self.movx += dx;
+            self.movy += dy;
+            if (self.movx || self.movy) {
+              self.movx *= .7;
+              self.movy *= .7;
+              const dist = Math.sqrt(self.movx*self.movx + self.movy*self.movy);
+              self.x += self.movx / dist / resolution * (self.land ? 3 : keyboard[32] ? 4 : 6);
+              self.y += self.movy / dist / resolution * (self.land ? 3 : keyboard[32] ? 4 : 6);
+              if (Math.abs(self.movx) < .5) {
+                self.movx = 0;
+              }
+              if (Math.abs(self.movy) < .5) {
+                self.movy = 0;
+              }
+            }
+          }
+          if (keyboard[32] && !self.land) { //  space
+            const [width, height] = world.size;
+            const color = "#" + (Math.floor(Math.random() * 0x8 + 0x40) | 0x100).toString(16).substr(1) + "3322";
+            // const color = "#443322";
+            const size = (2 + Math.random() * 40) / resolution;
+            const digSize = 30 /resolution;
+            subCtx.forEach(context => {
+              const { canvas } = context;
+
+              canvas.shadowCtx.fillStyle = "#000000";
+              canvas.shadowCtx.beginPath();
+              canvas.shadowCtx.arc(width/2 - canvas.x - digSize, height/2 - canvas.y - digSize, size*1.5, 0, 2 * Math.PI);
+              canvas.shadowCtx.fill();
+
+              context.fillStyle = color;
+              context.beginPath();
+              context.arc(width/2 - canvas.x, height/2 - canvas.y, size, 0, 2 * Math.PI);
+              context.fill();
+            });
+          }
+        },
+      },
+      {
+        name: "saucer",
+        id: "alien",
+        frame: 10,
+        x: 0, y: 0,
+        offsetX: (self, world) => (self.x - world.x) * resolution - 32,
+        offsetY: (self, world) => {
+          if (self.back) {
+            const saucerD = Math.max(0, (self.back - world.now)/20);
+            return (self.y - world.y) * resolution - 64 - saucerD*saucerD;
+          }
+          const saucerD = (world.now - self.left)/20;
+          return (self.y - world.y) * resolution - 64 - saucerD*saucerD;
+        },
+        hidden: (self, world) => {
+          if (self.back) {
+            return false;
+          }
+          if (!self.left || world.now - self.left > 1000) {
+            return true;
+          }
+          return false;
+        },
+        refresh: (self, world, ctx, subCtx) => {
+          display(self, world, ctx);
+        },
+      },      
+    ],
+  };
+
+
+
+  function evaluate(prop, sprite, world) {
+    return prop && prop.constructor === Function ? prop(sprite, world) : prop;
+  }
+
+
+  function loop(t) {
+    if (!world.data) {
+      world.data = {};
+      world.init(world);
+      world.sprites.forEach(sprite => {
+        if (!sprite.data) {
+          sprite.data = {};
+          if (sprite.init) {
+            sprite.init(sprite, world);
+          }
+          if (sprite.name) {
+            world.registry[sprite.name] = sprite;
+          }
+        }
+      });
+    }
+
+    world.now = t;
+    world.refresh(world, ctx, subCtx);
+    world.sprites.forEach(sprite => {
+      if (sprite.refresh) {
+        const hidden = evaluate(sprite.hidden, sprite, world);
+        if (!hidden) {
+          sprite.refresh(sprite, world, ctx, subCtx);
+        }
+      }
+    });
+
+
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+
+
+</script>
+
+  </body>
+</html>

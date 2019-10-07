@@ -2,6 +2,9 @@ gameConfig.scenes.push(
 	{
 		name: "zoom-shop-monster",
 		onSceneHoldItem: (game, item) => {
+			if (!item) {
+				return;
+			}
 			game.useItem = null;
 			switch(item) {
 				case "gun":
@@ -30,6 +33,7 @@ gameConfig.scenes.push(
 					break;
 				case "photo":
 					game.showTip(["A photo of a newborn human?", "That's worthless!"], game => {
+						game.playSound(SOUNDS.HUM);
 						game.showTip("Actually, I just wanted to know if you've seen this baby before.", game => {
 							game.showTip("All humans more or less look the same to me.", game => {
 								game.showTip("But no, I've never seen a newborn human before.", null, null, { x: 1, y: 15, speed: 60, talker:"monster", removeLock: true });
@@ -70,7 +74,7 @@ gameConfig.scenes.push(
 					{ item: "water bottle", name: "water", 			cost: 2,	src: ASSETS.GRAB_WATER_BOTTLE,	available:true,
 						msg: "Fresh water to quensh your thirst. Only 2 coins.",
 					},
-					{ item: "bullet", 		name: "bullet", 		cost: 10,	src: ASSETS.GRAB_GUN,			available:true,
+					{ item: "bullet", 		name: "bullet", 		cost: 5,	src: ASSETS.GRAB_GUN,			available:true,
 						msg: "A bit expensive, but it'll help you out in a fight.",
 					},
 					{ item: "access card", 	name: "access card", 	cost: 20,	src: ASSETS.GRAB_ACCESS_CARD,	available:false,

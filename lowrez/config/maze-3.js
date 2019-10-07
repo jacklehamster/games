@@ -79,7 +79,6 @@ gameConfig.scenes.push(
 				belowTheBelt: true,				
 				onEvent: (game, {foe, foeLife, foeBlockChance, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin, xp, belowTheBelt}) => {
 					const {data, now} = game;
-					game.canPunch = false;
 					game.chest = null;
 					game.playTheme(SOUNDS.BATTLE_THEME, {volume:.8});
 					if (!data.battle) {

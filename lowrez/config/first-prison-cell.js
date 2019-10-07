@@ -40,6 +40,7 @@ gameConfig.scenes.push(
 					game.gotoScene("zoom-shop-monster");
 				},
 				hidden: game => game.rotation !== 0,
+				tip: "There's a hole in the ceiling, with a creature in it.",
 			},
 			{
 				src: ASSETS.CAGE_OPENED, col: 2, row: 2,

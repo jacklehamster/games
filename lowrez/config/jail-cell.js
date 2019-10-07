@@ -22,9 +22,9 @@ gameConfig.scenes.push(
 			}
 		},
 		onSceneHoldItem: (game, item) => {
-			if (game.data.shot.lamp && !game.data.scene.lighterOn && item === "lighter") {
+			if (game.data.shot.lamp && !game.situation.lighterOn && item === "lighter") {
 				game.playSound(SOUNDS.HIT);
-				game.data.scene.lighterOn = game.now + 500;
+				game.situation.lighterOn = game.now + 500;
 				game.useItem = null;
 			}
 		},
@@ -196,7 +196,7 @@ gameConfig.scenes.push(
 					game.fade = game.sceneData.firstShot ? .9 * progress : 0;
 					game.fadeColor = "#990000";
 					if (progress >= 1 && !game.data.gameOver) {
-						game.gameOver();
+						game.gameOver("  “That was too\n       noticeable”");
 					}
 				}
 			}
@@ -281,7 +281,7 @@ gameConfig.scenes.push(
 			},					
 			{
 				src: ASSETS.CAGE, col:2, row:3,
-				index: game => (game.data.scene.lighterOn ? 3 : 0) + (game.situation.explode ? Math.min(2, Math.floor((game.now - game.situation.explode) / 100)) : 0),
+				index: game => (game.situation.lighterOn ? 3 : 0) + (game.situation.explode ? Math.min(2, Math.floor((game.now - game.situation.explode) / 100)) : 0),
 				hidden: game => game.rotation !== 0,
 			},
 			{
@@ -300,6 +300,7 @@ gameConfig.scenes.push(
 						return true;
 					}
 				},
+				tip: game => game.sceneData.leftShot && game.sceneData.rightShot ? "There must be a way to bust this lock..." : "There must be a way to bust this lock, when noone's watching...",
 			},
 			{
 				name: "cakelock",
@@ -460,8 +461,8 @@ gameConfig.scenes.push(
 			},
 			{
 				fade: game => {
-					if (game.data.scene.lighterOn) {
-						const progress = Math.max(0, Math.min(1, (game.now - game.data.scene.lighterOn) / 10000));
+					if (game.situation.lighterOn) {
+						const progress = Math.max(0, Math.min(1, (game.now - game.situation.lighterOn) / 10000));
 						return .9 * (1 - progress) + 0 * progress;
 					}
 					return .9
@@ -479,7 +480,7 @@ gameConfig.scenes.push(
 			},
 			{
 				fade: game => {
-					const progress = Math.max(0, Math.min(1, (game.now - game.data.scene.lighterOn) / 5000));
+					const progress = Math.max(0, Math.min(1, (game.now - game.situation.lighterOn) / 5000));
 					return progress * .75 + Math.cos(game.now / 15)*.01;
 				},
 				fadeColor: "#331100",
@@ -490,18 +491,18 @@ gameConfig.scenes.push(
 					if (game.sceneData.leftShot && game.now - game.sceneData.leftShot < 150) {
 						return true;
 					}
-					return !game.data.scene.lighterOn || game.gunFiredWithin(150);
+					return !game.situation.lighterOn || game.gunFiredWithin(150);
 				}
 			},
 			{
 				fade: .9,
 				fadeColor: "#ffffff",
-				hidden: game => !game.data.shot.lamp || game.now - game.data.shot.lamp >= 100,
+				hidden: ({data, now}) => !data.shot.lamp || now - data.shot.lamp >= 100,
 			},
 			{
 				src: ASSETS.DIMMING_LIGHT, col:2, row:2,
 				index: 2,
-				hidden: game => !game.data.shot.lamp || game.now - game.data.shot.lamp >= 100 || game.rotation !== 0,
+				hidden: ({data, now, rotation}) => !data.shot.lamp || now - data.shot.lamp >= 100 || rotation !== 0,
 			},
 			...standardMenu(),
 			...standardBag(),

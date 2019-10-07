@@ -42,13 +42,13 @@ gameConfig.scenes.push(
 					{
 						options: [
 							{
-								msg: "Say Hello",
+								msg: "Hello Yupa!",
 								onSelect: (game, dialog) => {
 									game.playSound(SOUNDS.YUPA);
 									game.waitCursor = true;
 									game.showTip("Who ar yoouu?", () => {
 										game.waitCursor = false;
-									}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
+									}, null, { x: 1, y: 15, speed: 80, talker:"yupa" });
 									dialog.index = 1;
 								},
 							},
@@ -70,7 +70,7 @@ gameConfig.scenes.push(
 											game.playSound(SOUNDS.YUPA);
 											game.showTip("A still don know youu", () => {
 												game.waitCursor = false;
-											}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
+											}, null, { x: 1, y: 15, speed: 80, talker:"yupa" });
 										});
 									} else {
 										game.dialog = null;
@@ -89,7 +89,7 @@ gameConfig.scenes.push(
 											"Yes, Aa waz travel round, til you soak me!",
 										], () => {
 										game.waitCursor = false;
-									}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
+									}, null, { x: 1, y: 15, speed: 80, talker:"yupa" });
 									dialog.index ++;
 								},
 							},
@@ -114,7 +114,7 @@ gameConfig.scenes.push(
 										"Oh that's right, yo can't do that coz you a human.",
 									], () => {
 										game.waitCursor = false;
-									}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
+									}, null, { x: 1, y: 15, speed: 80, talker:"yupa" });
 									dialog.index ++;
 								},
 							},
@@ -130,7 +130,7 @@ gameConfig.scenes.push(
 											"Haha, only one life. Must be so boring!",
 										], () => {
 											game.waitCursor = false;
-										}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
+										}, null, { x: 1, y: 15, speed: 80, talker:"yupa" });
 									});
 									dialog.index ++;
 								},
@@ -155,7 +155,7 @@ gameConfig.scenes.push(
 											game.showTip("fifteen years?!!!", () => {
 												game.waitCursor = false;
 											});
-										}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
+										}, null, { x: 1, y: 15, speed: 80, talker:"yupa" });
 									});
 									dialog.index = 1;
 								},
@@ -260,6 +260,7 @@ gameConfig.scenes.push(
 					if (!game.situation.seenYupa) {
 						game.situation.seenYupa = game.now;
 						game.showTip([
+								"Oh no!!!",
 								"This.. this was my alien friend.. Yupa!",
 								"He took me on his spaceship, and we travelled the stars together...",
 								"I recognize him. Oh Yupa, what have they done to you...",
@@ -364,7 +365,7 @@ gameConfig.scenes.push(
 						switch (item) {
 							case "water bottle":
 								game.playSound(SOUNDS.YUPA);
-								game.showTip("I'm good now. Thanks.", null, null, { x: 1, y: 15, speed: 60, talker:"yupa"});
+								game.showTip("I'm good now. Thanks.", null, null, { x: 1, y: 15, speed: 80, talker:"yupa"});
 								break;
 							case "photo":
 								game.sceneData.yupa_photo = game.now;
@@ -373,7 +374,7 @@ gameConfig.scenes.push(
 								break;
 							default:
 								game.playSound(SOUNDS.YUPA);
-								game.showTip("I don't need that.", null, null, { x: 1, y: 15, speed: 60, talker:"yupa"});
+								game.showTip("I don't need that.", null, null, { x: 1, y: 15, speed: 80, talker:"yupa"});
 								break;
 						}
 					}
@@ -432,7 +433,7 @@ gameConfig.scenes.push(
 										position: -12,
 									};
 									game.showTip("Yupa has joined me! Now I don't feel lonely anymore.", null, null, {removeLock:true});
-								}, null, { x: 1, y: 15, speed: 60, talker:"yupa"});
+								}, null, { x: 1, y: 15, speed: 80, talker:"yupa"});
 							});
 						}, null, { x: 1, y: 15, speed: 60, talker: "yupa"});
 					}					
@@ -523,7 +524,6 @@ gameConfig.scenes.push(
 				blockMap: true,
 				onEvent: (game, {foe, foeLife, foeBlockChance, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin, xp, belowTheBelt}) => {
 					const {data, now} = game;
-					game.canPunch = false;
 					game.chest = null;
 					game.playTheme(SOUNDS.BATTLE_THEME, {volume:.8});
 					if (!data.battle) {
@@ -574,7 +574,6 @@ gameConfig.scenes.push(
 				chest: true,
 				onEvent: (game, {foe, foeLife, foeBlockChance, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin, xp, belowTheBelt}) => {
 					const {data, now} = game;
-					game.canPunch = false;
 					game.chest = null;
 					game.playTheme(SOUNDS.BATTLE_THEME, {volume:.8});
 					if (!data.battle) {

@@ -13,6 +13,8 @@ gameConfig.scenes.push(
 		],
 		map: `
 			XXXXXXXXXXXXXXXXX
+			X...TXXXXXXXXXXXX
+			X.XXXXXXXXXXXXXXX
 			X.........:5XXXXX
 			X.XXXXXXXXXXXXXXX
 			X.XMXXXXXXXXXXXXX
@@ -62,6 +64,17 @@ gameConfig.scenes.push(
 		},
 		... makeOnSceneBattle(),
 		events: {
+			T: {
+				chest: true,
+				blocking: true,
+				onEvent: (game, event) => {
+					const {data, now} = game;
+					game.findChest(now, {
+						item:"coin", image:ASSETS.GRAB_COIN,
+						cleared: game.situation.chestCleared,
+					});
+				},
+			},
 			':': {
 				foe: "guard",
 				foeLife: 80,
@@ -75,7 +88,6 @@ gameConfig.scenes.push(
 				belowTheBelt: false,
 				onEvent: (game, {foe, foeLife, foeBlockChance, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin, xp, belowTheBelt}) => {
 					const {data, now} = game;
-					game.canPunch = false;
 					game.chest = null;
 					game.playTheme(SOUNDS.BATTLE_THEME, {volume:.8});
 					if (!data.battle) {

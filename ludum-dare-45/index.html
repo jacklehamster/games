@@ -1,0 +1,2288 @@
+<head>
+
+
+
+<style>
+	canvas {  
+	  width: 800px;
+	  height: 600px;
+	  image-rendering: -moz-crisp-edges;
+	  image-rendering: -webkit-crisp-edges;
+	  image-rendering: pixelated;
+	  image-rendering: crisp-edges;
+	}
+	body {
+		margin: 0;
+		padding: 0;
+		height: 100%;
+  		overflow: hidden;	
+  		background-color: #ccaa88;	
+	}
+</style>
+</head>
+<body>
+	<div id="shadows">
+	</div>
+<canvas id="subcanvas-top-left"></canvas>
+<canvas id="subcanvas"></canvas>
+<canvas id="subcanvas-top"></canvas>
+<canvas id="subcanvas-left"></canvas>
+<canvas id="subcanvas-top-right"></canvas>
+<canvas id="subcanvas-right"></canvas>
+<canvas id="subcanvas-bot-left"></canvas>
+<canvas id="subcanvas-bot-right"></canvas>
+<canvas id="subcanvas-bot"></canvas>
+
+
+
+<canvas id="canvas" style="position: absolute; width: 800; height: 600" width=800 height=600></canvas>
+<img id="bg" src="assets/startgame.png">
+<script src="generated/assets.js"></script>
+<script>
+	let digCount = 0;
+	const lazerSound = new Audio("sounds/lazer.mp3");
+	lazerSound.volume = .3;
+	const boomSound = new Audio("sounds/boom.mp3");
+	boomSound.volume = .5;
+	const powerupSound = new Audio("sounds/powerup.mp3");
+	powerupSound.volume = .7;
+	const levelupSound = new Audio("sounds/levelup.mp3");
+	levelupSound.volume = .7;
+	const pickupSound = new Audio("sounds/pickup.mp3");
+	pickupSound.volume = .5;
+
+	const CHEAT = false;//true;//false;
+	const difficulty = 1;
+	const gamespeed = 10;//5 * (2 / difficulty);
+	const frontResolution = 1;
+	const resolution = 5;
+	const ctx = document.getElementById("canvas").getContext("2d");
+	ctx.canvas.width = ctx.canvas.offsetWidth / frontResolution;
+	ctx.canvas.height = ctx.canvas.offsetHeight / frontResolution;
+
+	const subCanvases = [
+		document.getElementById("subcanvas"),
+		document.getElementById("subcanvas-top-left"),
+		document.getElementById("subcanvas-top"),
+		document.getElementById("subcanvas-top-right"),
+		document.getElementById("subcanvas-left"),
+		document.getElementById("subcanvas-right"),
+		document.getElementById("subcanvas-bot-left"),
+		document.getElementById("subcanvas-bot-right"),
+		document.getElementById("subcanvas-bot"),
+	];
+
+	// subCanvases.forEach(canvas => {
+	// 	canvas.style.
+	// });
+
+	document.getElementById("subcanvas").px = 0;
+	document.getElementById("subcanvas").py = 0;
+	document.getElementById("subcanvas-top-left").px = -1;
+	document.getElementById("subcanvas-top-left").py = -1;
+	document.getElementById("subcanvas-top").px = 0;
+	document.getElementById("subcanvas-top").py = -1;
+	document.getElementById("subcanvas-left").px = -1;
+	document.getElementById("subcanvas-left").py = 0;
+	document.getElementById("subcanvas-top-right").px = +1;
+	document.getElementById("subcanvas-top-right").py = -1;
+	document.getElementById("subcanvas-right").px = +1;
+	document.getElementById("subcanvas-right").py = 0;
+	document.getElementById("subcanvas-bot-left").px = -1;
+	document.getElementById("subcanvas-bot-left").py = +1;
+	document.getElementById("subcanvas-bot-right").px = +1;
+	document.getElementById("subcanvas-bot-right").py = +1;
+	document.getElementById("subcanvas-bot").px = 0;
+	document.getElementById("subcanvas-bot").py = +1;
+
+	subCanvases.forEach(canvas => {
+		canvas.width = ctx.canvas.offsetWidth / resolution;
+		canvas.height = ctx.canvas.offsetHeight / resolution;
+		canvas.x = canvas.px * canvas.width;
+		canvas.y = canvas.py * canvas.height;
+		canvas.style.width = ctx.canvas.style.width;
+		canvas.style.height = ctx.canvas.style.height;
+		canvas.style.position = "absolute";
+
+		canvas.shadow = canvas.cloneNode();
+		canvas.shadow.id = "shadow-" + canvas.shadow.id;
+		canvas.shadowCtx = canvas.shadow.getContext("2d");
+		document.getElementById("shadows").appendChild(canvas.shadow);
+	});
+
+
+	const imageDatas = {};
+
+	const subCtx = subCanvases.map(canvas => canvas.getContext("2d"));
+	const shadowCtx = subCanvases.map(canvas => canvas.shadow.getContext("2d"));
+	const centerCtx = document.getElementById("subcanvas").getContext("2d");
+
+	const keyboard = [];
+	document.addEventListener("keydown", e => {
+		if (!keyboard[e.keyCode]) {
+			keyboard[e.keyCode] = true;
+			world.sprites.forEach(sprite => {
+				if (sprite.onKey) {
+					sprite.onKey(sprite, world, e.keyCode);
+				}
+			});
+		}
+		e.preventDefault();
+	});
+	document.addEventListener("keyup", e => {
+		keyboard[e.keyCode] = false;
+		e.preventDefault();
+	});
+
+	for (let f in files) {
+		files[f].img = new Image();
+		files[f].img.src = files[f].path;
+	}
+
+	function display(sprite, world, ctx) {
+		let {id, offsetX, offsetY, frame} = sprite;
+		const {now} = world;
+
+		offsetX = evaluate(offsetX, sprite, world) || 0;
+		offsetY = evaluate(offsetY, sprite, world) || 0;
+		frame = evaluate(frame, sprite, world) || 0;
+
+		const { img, width, height } = files[id];
+		const col = frame % (width/64);
+		const row = Math.floor(frame / (width/64)) % (height/64);
+		ctx.drawImage(img, col*64, row*64, 64, 64, offsetX, offsetY, 64, 64);
+	}
+
+	const DIRECTIONS = [
+		['NW', 'N', 'NE'],
+		['W',  null, 'E'],
+		['SW', 'S', 'SE'],
+	];
+
+	function moveToDirection(dx, dy) {
+		dx = dx<0?-1:dx>0?1:0;
+		dy = dy<0?-1:dy>0?1:0;
+		return DIRECTIONS[dy+1][dx+1];
+	}
+
+	function updateCanvases({width, height}) {
+		subCtx.forEach(context => {
+			const { px, py, shadowCtx } = context.canvas;
+			context.clearRect(0, 0, width, height);
+			shadowCtx.clearRect(0, 0, width, height);
+			if (imageDatas[`${px}_${py}`]) {
+				context.putImageData(imageDatas[`${px}_${py}`], 0, 0);
+			}
+			if (imageDatas[`shadow_${px}_${py}`]) {
+				shadowCtx.putImageData(imageDatas[`shadow_${px}_${py}`], 0, 0);						
+			}
+		});
+	}
+
+	const BOTTOM_GROUND = 1, SHADOW_GROUND = 0, TOP_GROUND = 2;
+
+	function onTop(x, y) {
+//		return TOP_GROUND;
+		const canvas = getCanvasAt(x, y);
+		if (!canvas) {
+			return TOP_GROUND;
+		}
+		//console.log(canvas.id);
+		const ctx = canvas.getContext("2d");
+		return ctx.getImageData(Math.round(x - canvas.px * canvas.width), Math.round(y - canvas.py * canvas.height), 1, 1).data[3] !== 0
+			? BOTTOM_GROUND
+			// : canvas.shadowCtx.getImageData(Math.round(x - canvas.px * canvas.width), Math.round(y - canvas.py * canvas.height), 1, 1).data[3] !== 0 
+			// ? 0
+			: TOP_GROUND;
+	}
+
+	function getCanvasAt(x, y) {
+		let curCanvas = subCanvases.filter(canvas => 
+			canvas.x < x && canvas.x + canvas.width > x && canvas.y < y && canvas.y + canvas.height > y)
+		[0];
+		return curCanvas;	
+	}
+
+	function countSurroundPlants(plant, dist) {
+		if (!dist) {
+			dist = 500;
+		}
+		let count = 0;
+		const { x, y } = plant;
+		const plants = world.registry.plant.data.plants;
+		for (let i = 0; i < plants.length; i++) {
+			if (plant !== plants[i]) {
+				const dx = x - plants[i].x;
+				const dy = y - plants[i].y;
+				if (dx * dx + dy * dy < dist) {
+					count++;;
+				}
+			}
+		}
+		return count;
+	}
+
+	function aroundPlant(x, y, dist, except, subject) {
+		if (!dist) {
+			dist = 100;
+		}
+		const plants = world.registry.plant.data.plants;
+		for (let i = 0; i < plants.length; i++) {
+			if (except === plants[i]) {
+				return;
+			}
+			const dx = x - plants[i].x;
+			const dy = y - plants[i].y;
+			if (dx * dx + dy * dy <= dist) {
+				if (subject) {
+					const name = getName(plants[i], world);
+					return subject === name ? plants[i] : null;
+				}
+				return plants[i];
+			}
+		}
+		return null;
+	}
+
+	function aroundHuman(x, y, dist, except, subject) {
+		if (!dist) {
+			dist = 100;
+		}
+		const humans = world.registry.human.data.humans;
+		for (let i = 0; i < humans.length; i++) {
+			if (except === humans[i]) {
+				return;
+			}
+			const dx = x - humans[i].x;
+			const dy = y - humans[i].y;
+			if (dx * dx + dy * dy <= dist) {
+				if (subject) {
+					const name = getName(humans[i], world);
+					return subject === name ? humans[i] : null;
+				}
+				return humans[i];
+			}
+		}
+		return null;		
+	}
+
+	function aroundBunny(x, y, dist, except, subject) {
+		if (!dist) {
+			dist = 100;
+		}
+		const bunnies = world.registry.bunny.data.bunnies;
+		for (let i = 0; i < bunnies.length; i++) {
+			if (except === bunnies[i]) {
+				return;
+			}
+			const dx = x - bunnies[i].x;
+			const dy = y - bunnies[i].y;
+			if (dx * dx + dy * dy <= dist) {
+				if (subject) {
+					const name = getName(bunnies[i], world);
+					return subject === name ? bunnies[i] : null;
+				}
+				return bunnies[i];
+			}
+		}
+		return null;		
+	}
+
+	function aroundAny(x, y, dist, except, subject) {
+		return aroundHuman(x, y, dist, except, subject) || aroundBunny(x, y, dist, except, subject) || aroundPlant(x, y, dist, except, subject);	
+	}
+
+	function getEnergyTime(bunny) {
+		return bunny.type==="bunny" ? BUNNY_ENERGY_TIME : 
+			bunny.type==="human" ? HUMAN_ENERGY_TIME : HUMAN_ENERGY_TIME * 2;
+	}
+
+	const BUNNY_ENERGY_TIME = 300000;
+	const HUMAN_ENERGY_TIME = BUNNY_ENERGY_TIME * 2;
+	function getPlantEnergy(plant, now) {
+		if (!plant) {
+			return 0;
+		}
+		if (plant.type === "plant") {
+			const {growthFactor, born} = plant;
+			return Math.min(1000, Math.floor(Math.sqrt((plant.freezeTime || now) - born) * growthFactor * gamespeed));
+		}
+		if (plant.type === "bunny") {
+			const { energyExpiration } = plant;
+			const percent = Math.max(0, Math.min(1, (energyExpiration - now) / BUNNY_ENERGY_TIME));
+			return Math.round(percent * getMaxEnergy(plant));
+//			return plant.energy;
+		}
+		if (plant.type === "human") {
+			const { energyExpiration } = plant;
+			const percent = Math.max(0, Math.min(1, (energyExpiration - now) / HUMAN_ENERGY_TIME));
+			return Math.round(percent * getMaxEnergy(plant));
+//			return plant.energy;
+		}
+	}
+
+	function getPlantStage(plant, now) {
+		const energyPercent = Math.min(1, .2 + getPlantEnergy(plant, now) / 1000);
+		const stage = Math.floor(10 * energyPercent * energyPercent); //Math.min(10, Math.floor(getPlantEnergy(plant, now) / 50));
+		return stage;
+	}
+
+	const STAGES = ["seed", "seed", "seedling", "seedling", "sprout", "sprout", "sprout", "sprout", "plant"];
+	function getPlantStageName(stage) {
+		return STAGES[Math.min(stage, STAGES.length-1)];
+	}
+
+
+
+
+	const world = {
+		now: 0,
+		registry: {},
+		size: [ctx.canvas.width / resolution, ctx.canvas.height / resolution],
+		x: 0, y: 0,
+		init: world => {
+			world.x = 0;
+			world.y = 0;
+
+			globalMessage = {
+				message: `WELCOME MINIGOD\n\nThis planet looks pretty empty, but dig a bit and we might be able to find some plants.\nGrow them, spread them, evolve them.\n\nARROWS to move. SPACE to dig. TAB to leave spaceship.`,
+				time: world.now + 10000,
+			};
+		},
+		refresh: (world, ctx, subCtx) => {
+			const [ width, height ] = world.size;
+			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+			//	center minigod
+			const { x, y } = world.registry.minigod;
+			const preX = world.x;
+			const preY = world.y;
+			world.x += ((x - width/2) - world.x) / 5;
+			world.y += ((y - height/2) - world.y) / 5;
+//			console.log(preX - world.x);
+
+			subCtx.forEach(({canvas}) => {
+				canvas.x += (preX - world.x);
+				canvas.y += (preY - world.y);
+				canvas.style.left = Math.round(canvas.x * resolution) + "px";
+				canvas.style.top = Math.round(canvas.y * resolution) + "px";
+				canvas.shadow.style.left = canvas.style.left;
+				canvas.shadow.style.top = canvas.style.top;
+			});
+
+			let curCanvas = getCanvasAt(width/2, height/2);
+			//console.log(curCanvas.id);
+
+			// subCanvases.filter(canvas => 
+			// 	canvas.x < width/2 && canvas.x > -width/2 
+			// 	&& canvas.y < height/2 && canvas.y > -height/2)[0];
+			if (curCanvas) {
+				const subCanvas = document.getElementById("subcanvas");
+				const midX = subCanvas.px, midY = subCanvas.py;
+				let shiftX = 0, shiftY = 0;
+				switch(curCanvas.id) {
+					case "subcanvas-top-left":
+						shiftX = -1; shiftY = -1;
+						break;
+					case "subcanvas-top-right":
+						shiftX = 1; shiftY = -1;
+						break;
+					case "subcanvas-top":
+						shiftX = 0; shiftY = -1;
+						break;
+					case "subcanvas-left":
+						shiftX = -1; shiftY = 0;
+						break;
+					case "subcanvas-right":
+						shiftX = 1; shiftY = 0;
+						break;
+					case "subcanvas-bot-left":
+						shiftX = -1; shiftY = 1;
+						break;
+					case "subcanvas-bot-right":
+						shiftX = 1; shiftY = 1;
+						break;
+					case "subcanvas-bot":
+						shiftX = 0; shiftY = 1;
+						break;
+				}
+				const newMidX = midX + shiftX;
+				const newMidY = midY + shiftY;
+
+				// // save canvases
+				subCtx.forEach(context => {
+					const { px, py, shadowCtx } = context.canvas;
+					imageDatas[`${px}_${py}`] = context.getImageData(0, 0, width, height);
+					imageDatas[`shadow_${px}_${py}`] = shadowCtx.getImageData(0, 0, width, height);
+				});
+
+				// // move canvases
+				subCtx.forEach(({canvas}) => {
+					canvas.px += shiftX;
+					canvas.py += shiftY;
+					canvas.x += width * shiftX;
+					canvas.y += height * shiftY;
+					canvas.style.left = Math.round(canvas.x * resolution) + "px";
+					canvas.style.top = Math.round(canvas.y * resolution) + "px";
+					canvas.shadow.style.left = canvas.style.left;
+					canvas.shadow.style.top = canvas.style.top;
+				});
+
+				// // update canvases
+				updateCanvases({width, height});
+				curCanvas = document.getElementById("subcanvas");
+			}
+
+		},
+		sprites: [
+			{
+				name: "plant",
+				id: "plant",
+				init: (self, world) => {
+					self.data.plants = [];
+				},
+				refresh: (self, world, ctx, subCtx) => {
+					const displayData = { id:self.id};
+					const selected = minigod.selectedPlant;
+					self.data.plants.forEach(plant => {
+						const { x, y, born, firstBorn } = plant;
+
+						const age = Math.floor((world.now - firstBorn) / 10000);
+						if (age > 100) {
+							plant.dead = true;
+							return;
+						}
+
+						if (world.registry.minigod.pickedUpPlant === plant) {
+							displayData.offsetX = (x - world.x) * resolution - 32;
+							displayData.offsetY = (y - world.y) * resolution - 64 + 10 * Math.sin(world.now/100);
+							displayData.frame = getPlantStage(plant, world.now);
+							display(displayData, world, ctx);
+							return;
+						} else if (selected === plant && Math.random()<.3) {
+							return;
+						}
+						displayData.offsetX = (x - world.x) * resolution - 32;
+						displayData.offsetY = (y - world.y) * resolution - 64;
+						displayData.frame = getPlantStage(plant, world.now);
+						display(displayData, world, ctx);
+					});
+
+					const ais = self.data.plants.filter(plant => plant.ai && plant.ai.length);
+					const rando = ais[Math.floor(world.now) % ais.length];
+					if (rando) {
+						for(let i = 0; i < rando.ai.length; i++) {
+							if (processAI(rando.ai[i], rando, world)) {
+								break;
+							}
+						}
+					}
+
+					self.data.plants = self.data.plants.filter(plant => !plant.dead);
+
+				},				
+			},
+			{
+				name: "bunny",
+				id: "bunny",
+				init: (self, world) => {
+					self.data.bunnies = [];
+				},
+				refresh: (self, world, ctx, subCtx) => {
+					const displayData = { id:self.id};
+					const selected = minigod.selectedPlant;
+					self.data.bunnies.forEach(bunny => {
+						const { x, y, born, firstBorn, goal } = bunny;
+
+						const age = Math.floor((world.now - firstBorn) / 10000);
+						if (age > 100 || getPlantEnergy(bunny, world.now) <= 0) {
+							bunny.dead = true;
+							return;
+						}
+
+						displayData.frame = Math.floor((world.now - bunny.firstBorn)/100) % 4;
+						if (bunny.hasEaten && world.now - bunny.hasEaten < 1000) {
+							displayData.frame = Math.floor((world.now - bunny.hasEaten)/100) % 3 + 4;
+						}
+
+						if (world.registry.minigod.pickedUpPlant === bunny) {
+							displayData.offsetX = (x - world.x) * resolution - 32;
+							displayData.offsetY = (y - world.y) * resolution - 64 + 10 * Math.sin(world.now/100);
+
+							display(displayData, world, ctx);
+							return;
+						} else if (selected === bunny && Math.random()<.3) {
+							return;
+						}
+
+						if (goal) {
+							if (!goal.validated) {
+								goal.validated = true;
+								if (onTop(goal.x, goal.y) !== BOTTOM_GROUND) {
+									goal.x = x;
+									goal.y = y;
+								}
+							}
+							const dx = (goal.x - x);
+							const dy = (goal.y - y);
+							const dist = dx*dx + dy*dy;
+							if (dist < .5) {
+								bunny.goal = null;
+							} else {
+								const speed = 2;
+								const dsqrt = Math.sqrt(dist);
+								bunny.x += (dx / dsqrt) * Math.min(speed, dsqrt);
+								bunny.y += (dy / dsqrt) * Math.min(speed, dsqrt);
+							}
+						}
+
+						displayData.offsetX = (x - world.x) * resolution - 32;
+						displayData.offsetY = (y - world.y) * resolution - 64;
+//						displayData.frame = Math.floor((world.now - bunny.firstBorn)/100) % 4;
+						display(displayData, world, ctx);
+						const percent = getPlantEnergy(bunny, world.now) / getMaxEnergy(bunny);
+						ctx.fillStyle = "black";
+						ctx.fillRect(displayData.offsetX+23-1, displayData.offsetY+ 63-1, 20+2, 1+2);
+						ctx.fillStyle = "red";
+						ctx.fillRect(displayData.offsetX+23, displayData.offsetY+ 63, 20, 1);
+						ctx.fillStyle = "green";
+						ctx.fillRect(displayData.offsetX+23, displayData.offsetY+ 63, 20 * percent, 1);
+					});
+
+					const ais = self.data.bunnies.filter(bunny => bunny.ai && bunny.ai.length);
+					const rando = ais[Math.floor(world.now) % ais.length];
+					if (rando) {
+						for(let i = 0; i < rando.ai.length; i++) {
+							if (processAI(rando.ai[i], rando, world)) {
+								break;
+							}
+						}
+					}
+					self.data.bunnies = self.data.bunnies.filter(bunny => !bunny.dead);
+				},				
+			},
+			{
+				name: "human",
+				id: "human",
+				init: (self, world) => {
+					self.data.humans = [];
+				},
+				refresh: (self, world, ctx, subCtx) => {
+					const displayData = { id:self.id};
+					const selected = minigod.selectedPlant;
+					self.data.humans.forEach(human => {
+						const { x, y, born, firstBorn, goal } = human;
+
+						const age = Math.floor((world.now - firstBorn) / 10000);
+						if (age > 100 || getPlantEnergy(human, world.now) <= 0) {
+							human.dead = true;
+							return;
+						}
+
+						displayData.frame = goal ? Math.floor((world.now - human.firstBorn)/100) % 4 : 0;
+						if (human.hasEaten && world.now - human.hasEaten < 1000) {
+							displayData.frame = Math.floor((world.now - human.hasEaten)/100) % 3 + 4;
+						}
+
+						if (world.registry.minigod.pickedUpPlant === human) {
+							displayData.offsetX = (x - world.x) * resolution - 32;
+							displayData.offsetY = (y - world.y) * resolution - 64 + 10 * Math.sin(world.now/100);
+
+							display(displayData, world, ctx);
+							return;
+						} else if (selected === human && Math.random()<.3) {
+							return;
+						}
+
+						if (goal) {
+							if (!goal.validated) {
+								goal.validated = true;
+								if (onTop(goal.x, goal.y) !== BOTTOM_GROUND) {
+									goal.x = x;
+									goal.y = y;
+								}
+							}
+							const dx = (goal.x - x);
+							const dy = (goal.y - y);
+							const dist = dx*dx + dy*dy;
+							if (dist < .5) {
+								human.goal = null;
+							} else {
+								const speed = 1;
+								const dsqrt = Math.sqrt(dist);
+								human.x += (dx / dsqrt) * Math.min(speed, dsqrt);
+								human.y += (dy / dsqrt) * Math.min(speed, dsqrt);
+							}
+						}
+
+						displayData.offsetX = (x - world.x) * resolution - 32;
+						displayData.offsetY = (y - world.y) * resolution - 64;
+//						displayData.frame = Math.floor((world.now - human.firstBorn)/100) % 4;
+						display(displayData, world, ctx);
+						const percent = getPlantEnergy(human, world.now) / getMaxEnergy(human);
+						ctx.fillStyle = "black";
+						ctx.fillRect(displayData.offsetX+23-1, displayData.offsetY+ 63-1, 20+2, 1+2);
+						ctx.fillStyle = "red";
+						ctx.fillRect(displayData.offsetX+23, displayData.offsetY+ 63, 20, 1);
+						ctx.fillStyle = "green";
+						ctx.fillRect(displayData.offsetX+23, displayData.offsetY+ 63, 20 * percent, 1);
+					});
+
+					const ais = self.data.humans.filter(human => human.ai && human.ai.length);
+					const rando = ais[Math.floor(world.now) % ais.length];
+					if (rando) {
+						for(let i = 0; i < rando.ai.length; i++) {
+							if (processAI(rando.ai[i], rando, world)) {
+								break;
+							}
+						}
+					}
+
+					self.data.humans = self.data.humans.filter(human => !human.dead);
+
+				},				
+			},
+			{
+				name: "minigod",
+				pre: { x: 0, y: 0 },
+				x: 0, y: 0,
+				jumpPeriod: 150,
+				offsetX: (self, world) => (self.x - world.x) * resolution - 32,
+				offsetY: (self, world) => {
+					let jump = 0;
+					if (self.land) {
+						const dir = moveToDirection(self.movx, self.movy);
+						if (dir) {
+							const period = (world.now - self.land) % self.jumpPeriod;
+							const p = (period - self.jumpPeriod/2) * (period - self.jumpPeriod/2);
+							const d = (self.jumpPeriod/2*self.jumpPeriod/2 - p) / 800;
+							jump = -d;
+						}
+					}
+					return (self.y - world.y) * resolution - 64 + jump;
+				},
+				id: "alien",
+				animation: {
+					land: [4,5,6,7,8,9],
+					lift: [11,12,13,14,15,16,17],
+					idle: new Array(30).fill(18).concat([19]),
+					walk: {
+						S: 	[20,21],
+						SW: [22,23],
+						SE: [24,25],
+						NW: [26,27],
+						N:  [26,27],
+						NE: [26,27],
+						W:  [28,29],
+						E:  [30,31],
+					},
+					dig: [32,33],
+				},
+				frame: (self, {now}) => {
+					const { animation } = self;
+					if (self.land) {
+						const idx = Math.floor((now - self.land) / 80);
+						if (idx < animation.land.length - 1) {
+							return animation.land[idx];
+						} else {
+							//	Landed
+							if (!world.registry.saucer.left) {
+								world.registry.saucer.left = now;
+								world.registry.saucer.x = self.x;
+								world.registry.saucer.y = self.y;
+							}
+							const dir = moveToDirection(self.movx, self.movy);
+							if (dir) {
+								const anim = animation.walk[dir];
+								return anim[Math.floor((now - self.land) / self.jumpPeriod) % anim.length];
+							}
+							return animation.idle[idx % animation.idle.length];
+						}
+					}
+					if (self.lift) {
+						const idx = Math.max(0, Math.floor((now - self.lift) / 80));
+						if (idx < animation.lift.length) {
+							if (idx > 0) {
+								world.registry.saucer.left = 0;
+								world.registry.saucer.back = 0;
+							}
+							return animation.lift[idx];
+						} else {
+							self.lift = 0;
+						}
+					}
+					if (keyboard[32]) {
+						return animation.dig[Math.floor(now / 50) % animation.dig.length];
+					}
+					return Math.floor(now / 100) % 4;
+				},
+				movx: 0, movy: 0,
+				onKey: (self, world, keyCode) => {
+					if (keyCode === 9) {	//	tab
+						powerupSound.play();
+						if (self.land) {
+							self.movx = 0;
+							self.movy = 0;
+							const saucerBackTime = 400;
+							self.lift = world.now + saucerBackTime;
+							world.registry.saucer.back = world.now + saucerBackTime;
+							world.registry.saucer.x = self.x;
+							world.registry.saucer.y = self.y;
+							self.land = 0;
+							self.selectedPlant = null;
+							self.examine = 0;
+						} else {
+
+							// const theTop = onTop(self.x, self.y);
+							// if (theTop !== SHADOW_GROUND) {
+								self.lift = 0;
+								self.land = world.now;
+//								self.onTop = theTop;
+								self.examine = 0
+//								console.log(theTop);
+//							}
+							if (self.pickedUpPlant) {
+								self.pickedUpPlant.born = (world.now - (self.pickedUpPlant.freezeTime - self.pickedUpPlant.born));
+								self.pickedUpPlant.freezeTime = 0;
+								self.pickedUpPlant.left = self.pickedUpPlant.right = self.pickedUpPlant.top = self.pickedUpPlant.bottom = null;
+								self.pickedUpPlant.goal = null;
+								self.pickedUpPlant = null;
+								pickupSound.play();
+							}
+						}
+						globalMessage = null;
+					}
+
+					if (keyCode === 32) {
+						if (self.pickedUpPlant) {
+							self.pickedUpPlant.born = (world.now - (self.pickedUpPlant.freezeTime - self.pickedUpPlant.born));
+							self.pickedUpPlant.freezeTime = 0;
+							self.pickedUpPlant.left = self.pickedUpPlant.right = self.pickedUpPlant.top = self.pickedUpPlant.bottom = null;
+							self.pickedUpPlant = null;
+						} else if (self.land && self.selectedPlant !== null) {
+							if (self.examine || plantToTeach) {
+								self.examine = 0;
+								plantToTeach = null;
+								customMenu = null;
+								performAction(self.selectedPlant, self.menuSelection, world);
+								self.menuSelection = "- Exit";
+								if (!plantToTeach) {
+									pendingLesson = [];
+								}
+							} else {
+								globalMessage = null;
+								self.examine = world.now;
+								self.movx = self.movy = 0;
+								self.menuSelection = "- Exit";
+							}
+						}
+					}
+
+					let dx = 0, dy = 0;
+					if (keyCode === 38) {
+						dy--;
+					} else if(keyCode === 40) {
+						dy++;
+					}
+					if (self.examine && self.selectedPlant) {
+						const menu = getPlantMenu(self.selectedPlant, world);
+						let menuIndex = menu.indexOf(self.menuSelection);
+						if (menuIndex < 0) {
+							self.menuSelection = "- Exit";
+						} else {
+							menuIndex = (menuIndex + dy + menu.length) % menu.length;
+							self.menuSelection = menu[menuIndex];
+						}
+					}
+					if (plantToTeach) {
+						const menu = getPlantTeachMenu(self.selectedPlant, world);
+						let menuIndex = menu.indexOf(self.menuSelection);
+						if (menuIndex < 0) {
+							self.menuSelection = "- Exit";
+						} else {
+							menuIndex = (menuIndex + dy + menu.length) % menu.length;
+							self.menuSelection = menu[menuIndex];
+						}
+					}
+
+				},				
+				init: (self, world) => {
+					const [width, height] = world.size;
+					self.x = width / 2;
+					self.y = height / 2;
+					window.minigod = self;
+					self.lastBeep = 0;
+				},
+				refresh: (self, world, ctx, subCtx) => {
+					display(self, world, ctx);
+					let dx = 0, dy = 0;
+					if (keyboard[37]) {
+						dx--;
+					} else if(keyboard[39]) {
+						dx++;
+					}
+					if (keyboard[38]) {
+						dy--;
+					} else if(keyboard[40]) {
+						dy++;
+					}
+
+					if (!self.lift && !self.examine && !plantToTeach) {
+						self.movx += dx;
+						self.movy += dy;
+						if (self.movx || self.movy) {
+							self.movx *= .7;
+							self.movy *= .7;
+							const dist = Math.sqrt(self.movx*self.movx + self.movy*self.movy);
+							const nextX = self.x + self.movx / dist / resolution * (self.land ? 3 : keyboard[32] ? 4 : 6);
+							const nextY = self.y + self.movy / dist / resolution * (self.land ? 3 : keyboard[32] ? 4 : 6);
+
+							if (self.pickedUpPlant) {
+								self.pickedUpPlant.x += (nextX - self.x);
+								self.pickedUpPlant.y += (nextY - self.y);
+							}
+							self.x = nextX;
+							self.y = nextY;
+							if (Math.abs(self.movx) < .5) {
+								self.movx = 0;
+							}
+							if (Math.abs(self.movy) < .5) {
+								self.movy = 0;
+							}
+
+							if (self.land) {
+								self.selectedPlant = aroundHuman(self.x, self.y) || aroundBunny(self.x, self.y) || aroundPlant(self.x, self.y);
+								if (self.selectedPlant) {
+									self.selectedPlant.growthOptions = calculateGrowthOptions(self.selectedPlant);
+								}
+							}
+
+						}
+					}
+					if (keyboard[32]) {
+						lazerSound.play();
+					}
+
+					//	space
+					if (keyboard[32] && !self.land && onTop(self.x, self.y) !== BOTTOM_GROUND) {
+						boomSound.play();
+						digCount++;
+
+						// DIG
+						const [width, height] = world.size;
+						const color = "#" + (Math.floor(Math.random() * 0x8 + 0x40) | 0x100).toString(16).substr(1) + "3322";
+						// const color = "#443322";
+						const size = (2 + Math.random() * 40) / resolution;
+						const digSize = 15 /resolution;
+						subCtx.forEach(context => {
+							const { canvas } = context;
+
+							canvas.shadowCtx.fillStyle = "#000000";
+							canvas.shadowCtx.beginPath();
+							canvas.shadowCtx.arc(width/2 - canvas.x - digSize, height/2 - canvas.y - digSize, size*1.5, 0, 2 * Math.PI);
+							canvas.shadowCtx.fill();
+
+							context.fillStyle = color;
+							context.beginPath();
+							context.arc(width/2 - canvas.x, height/2 - canvas.y, size, 0, 2 * Math.PI);
+							context.fill();
+						});
+
+						if (Math.random() < plantChance(world)) {
+							world.registry.plant.data.plants.push({
+								type: "plant",
+								x:self.x, y:self.y,
+								born: world.now,
+								firstBorn: world.now,
+								growthFactor: Math.random() / 2 * (1.2 / difficulty),
+								baseSpreadChance: Math.random() * (4 / (difficulty+2)),
+								baseEvolveChance: Math.random() * (1.5 / difficulty),
+							});
+						}
+					}
+					if (self.selectedPlant && self.selectedPlant.dead) {
+						self.selectedPlant = null;
+						self.examine = null;
+					}
+				},
+			},
+			{
+				name: "saucer",
+				id: "alien",
+				frame: 10,
+				x: 0, y: 0,
+				offsetX: (self, world) => (self.x - world.x) * resolution - 32,
+				offsetY: (self, world) => {
+					if (self.back) {
+						const saucerD = Math.max(0, (self.back - world.now)/20);
+						return (self.y - world.y) * resolution - 64 - saucerD*saucerD;
+					}
+					const saucerD = (world.now - self.left)/20;
+					return (self.y - world.y) * resolution - 64 - saucerD*saucerD;
+				},
+				hidden: (self, world) => {
+					if (self.back) {
+						return false;
+					}
+					if (!self.left || world.now - self.left > 1000) {
+						return true;
+					}
+					return false;
+				},
+				refresh: (self, world, ctx, subCtx) => {
+					display(self, world, ctx);
+				},
+			},
+			{
+				name: "UI",
+				hidden: (self, world) => {
+					return !world.registry.minigod.pickedUpPlant && !globalMessage && (!world.registry.minigod.selectedPlant || !world.registry.minigod.land);
+				},
+				refresh: (self, world, ctx, subCtx) => {
+					if (plantToTeach) {
+
+						const plant = plantToTeach;
+						const name = getName(plant, world);
+
+						ctx.fillStyle = "#000000aa";
+						ctx.font = "20px Arial";
+						const msg = `${name}\n\n`
+							+ (pendingLesson.length ? " 👉 " + pendingLesson.map(({action, value}) => {
+								return `${action} ${value}`;
+							}).join(" ➕ ") + "\n" : "")
+							+ getPlantTeachMenu(plant, world).join("\n");
+						const lines = msg.split("\n");
+						const UISize = lines.length * 20 + 20;
+						ctx.fillRect(10, ctx.canvas.height - UISize, ctx.canvas.width - 20, UISize);
+
+						ctx.fillStyle = "#FFFFaa";
+						lines.forEach((line, index) => {
+
+							if (line === world.registry.minigod.menuSelection) {
+								ctx.fillStyle = "#000088cc";
+								ctx.fillRect(15, ctx.canvas.height - UISize + 20 + index * 20 - 16, ctx.canvas.width - 30, 20);								
+							}
+
+							if (index > 0) {
+								ctx.fillStyle = "#ffffff";
+							} else if (line === "- Exit") {
+								ctx.fillStyle = "#aaaaff";
+							}
+							ctx.fillText(line + extraInfo(line, plant, world), 20, ctx.canvas.height - UISize + 20 + index * 20);
+						});		
+						return;
+					}
+
+					if (world.registry.minigod.pickedUpPlant) {
+						const plant = world.registry.minigod.pickedUpPlant;
+						const name = plant.name || getPlantStageName(getPlantStage(plant, world.now));
+						ctx.fillStyle = "#00000033";
+						ctx.font = "20px Arial";
+						const UISize = 50;
+						ctx.fillRect(10, ctx.canvas.height - UISize, ctx.canvas.width - 20, UISize);
+						ctx.fillStyle = "#FFFFFF";
+						ctx.fillText(`Picked up ${name}.`, 20, ctx.canvas.height - UISize + 25);
+
+						return;
+					}
+
+					if (!self.examine && globalMessage && world.now - globalMessage.time < 5000) {
+						const lines = globalMessage.message.split("\n");
+						ctx.fillStyle = "#00000033";
+						ctx.font = "20px Arial";
+						const UISize = 20 + lines.length * 20;
+						ctx.fillRect(10, ctx.canvas.height - UISize, ctx.canvas.width - 20, UISize);
+						ctx.fillStyle = "#FFFFFF";
+						lines.forEach((line, index) => {
+							ctx.fillText(line, 20, ctx.canvas.height - UISize + 25 + index*20);
+						});
+
+						return;
+					}
+
+					const plant = world.registry.minigod.selectedPlant;
+					if (!plant) {
+						return;
+					}
+
+					const name = plant.name || (plant.type==="plant" ? getPlantStageName(getPlantStage(plant, world.now)) : plant.type);
+					if (world.registry.minigod.examine) {
+						ctx.fillStyle = "#000000aa";
+						ctx.font = "20px Arial";
+
+						const msg = `${name}\n${getPlantStats(plant, world)}\n\n`
+							+ getPlantMenu(plant, world).join("\n");
+						const lines = msg.split("\n");
+
+						const UISize = 20 + lines.length * 20;
+						ctx.fillRect(10, ctx.canvas.height - UISize, ctx.canvas.width - 20, UISize);
+
+						ctx.fillStyle = "#FFFFaa";
+						lines.forEach((line, index) => {
+
+							if (line === world.registry.minigod.menuSelection) {
+								ctx.fillStyle = "#000088cc";
+								ctx.fillRect(15, ctx.canvas.height - UISize + 20 + index * 20 - 16, ctx.canvas.width - 30, 20);								
+							}
+
+							if (index > 0) {
+								ctx.fillStyle = "#ffffff";
+							} else if (line === "- Exit") {
+								ctx.fillStyle = "#aaaaff";
+							}
+							ctx.fillText(line + extraInfo(line, plant, world), 20, ctx.canvas.height - UISize + 20 + index * 20);
+						});
+
+					} else {
+						ctx.fillStyle = "#00000033";
+						ctx.font = "20px Arial";
+						const UISize = 50;
+						ctx.fillRect(10, ctx.canvas.height - UISize, ctx.canvas.width - 20, UISize);
+						ctx.fillStyle = "#FFFFFF";
+						ctx.fillText(name, 20, ctx.canvas.height - UISize + 25);
+
+					}
+					// msg.split("\n").forEach((line, index) => {
+					// 	ctx.fillText(line, 20, ctx.canvas.height - UISize + 20);
+					// });
+				},
+			},
+			{
+				refresh: (self, world, ctx, subCtx) => {
+					ctx.fillStyle = "#00000022";
+					ctx.fillRect(650, 0, 150, 450);
+					ctx.fillRect(655, 35, 140, 410);
+					ctx.fillStyle = "#88880088";
+					ctx.fillRect(660, 245, 130, 200);
+
+					ctx.fillStyle = "#FFFFFF";
+					ctx.shadowBlur = 10;
+					ctx.shadowColor = "black";
+
+					ctx.font = "25px Arial";
+					ctx.fillText("MINIGOD", 675, 25);
+
+					ctx.font = "16px Arial";
+					ctx.fillText(`DUG: ${digCount/100} km²`, 660, 60);
+
+
+					const names = { };
+					world.registry.plant.data.plants.forEach(plant => {
+						const name = getName(plant, world);
+						names[name] = (names[name] || 0) + 1;
+					});
+					world.registry.bunny.data.bunnies.forEach(plant => {
+						const name = getName(plant, world);
+						names[name] = (names[name] || 0) + 1;
+					});
+					world.registry.human.data.humans.forEach(plant => {
+						const name = getName(plant, world);
+						names[name] = (names[name] || 0) + 1;
+					});
+					let count = 0;
+					for (let n in names) {
+						ctx.fillText(`${n.toUpperCase()}: ${names[n]}`, 660, 100 + count*20);
+						count++;
+					}
+					ctx.shadowBlur = 0;
+
+
+					ACHIEVEMENTS.forEach(([achievement, condition], index) => {
+						if (condition() || ACHIEVED[achievement]) {
+							if (!ACHIEVED[achievement]) {
+								ACHIEVED[achievement] = true;
+								globalMessage = {
+									time: world.now + 5000,
+									message: `Congratulations. You achieved:\n\n${achievement}` 
+									+ (index === ACHIEVEMENTS.length-1 ? "\n\nThis is the final achievement.": ""),
+								};
+							}
+							ctx.fillStyle = "#FFFF77";
+							ctx.fillText(achievement, 670, 270 + index*20);
+						} else {
+							ctx.fillStyle = "#cccc55";
+							ctx.fillText("????????????", 670, 270 + index*20);
+						}
+					});
+
+
+
+				},
+			}
+		],
+	};
+
+	const ACHIEVED = {};
+
+	const ACHIEVEMENTS = [
+		["DUG 10 km²",() => digCount/100 >= 10],
+		["DUG 100 km²",() => digCount/100 >= 100],
+		["FIRST PLANT",() => world.registry.plant.data.plants.length > 0],
+		["100 PLANTS",() => world.registry.plant.data.plants.length >= 100],
+		["FIRST BUNNY",() => world.registry.bunny.data.bunnies.length > 0],
+		["100 BUNNIES",() => world.registry.bunny.data.bunnies.length >= 100],
+		["FIRST HUMAN",() => world.registry.human.data.humans.length > 0],
+		["100 HUMANS",() => world.registry.human.data.humans.length >= 100],
+		["1000 HUMANS",() => world.registry.human.data.humans.length >= 1000],
+	];
+
+	function plantChance(world) {
+		return .01 / (world.registry.plant.data.plants.length + 1);
+	}
+
+	function explore(bunny, world) {
+		goto(bunny, world, bunny.x + (Math.random()-.5) * 100, bunny.y + (Math.random()-.5) * 100);
+	}
+
+	function goto(bunny, world, x, y, validate) {
+		if (!bunny.goal) {
+			bunny.goal = {x:0, y:0};
+		}
+		bunny.goal.x = x;
+		bunny.goal.y = y;
+		bunny.goal.validated = validate;
+	}
+
+	function feedPlant(bunny, world, showMessage, subject) {
+		const plant = !subject ? aroundPlant(bunny.x, bunny.y, 100, bunny)
+			: aroundAny(bunny.x, bunny.y, 100, bunny, subject);
+		if (plant) {
+			goto(bunny, world, plant.x, plant.y, true);
+			plant.dead = true;
+			const newEnergy = Math.min(getMaxEnergy(bunny), getPlantEnergy(bunny, world.now) + getPlantEnergy(plant, world.now));
+			bunny.energyExpiration = world.now + newEnergy / getMaxEnergy(bunny) * getEnergyTime(bunny);
+			bunny.hasEaten = world.now;
+
+			if (showMessage) {
+				globalMessage = {
+					message: `Fed ${name} with ${getName(plant, world)}.\n${getPlantStats(plant, world)}`,
+					time: world.now,
+				};
+			}
+		}
+	}
+
+
+	let plantToTeach = null;
+	function teachPlant(plant) {
+		plantToTeach = plant;
+		plant.ai = plant.ai || [];
+	}
+
+	function getMaxEnergy(plant) {
+		return plant.type === "plant" ? 1000
+		: plant.type === "bunny" ? 5000 
+		: plant.type === "human" ? 20000
+		: 100000;
+	}
+
+	function getEnergyStatus(plant, world) {
+		const energy = getPlantEnergy(plant, world.now);
+		const maxEnergy = getMaxEnergy(plant);
+		const percent = energy / maxEnergy;
+		if (percent < .1) {
+			return "VERYLOW";
+		}
+		if (percent < .3) {
+			return "LOW";
+		}
+		if (percent < .7) {
+			return "MEDIUM";
+		}
+		if (percent < 1) {
+			return "HIGH";
+		}
+		return "MAX";
+	}
+
+	function getSpreadChanceStatus(plant, world) {
+		const percent = getSpreadChance(plant, world);
+		if (percent < .1) {
+			return "VERYLOW";
+		}
+		if (percent < .3) {
+			return "LOW";
+		}
+		if (percent < .7) {
+			return "MEDIUM";
+		}
+		if (percent < .9) {
+			return "HIGH";
+		}
+		return "MAX";
+	}
+
+	function processAI(lesson, plant, world) {
+		let theSubject = null;
+		for (let i = 0; i < lesson.length; i++) {
+			const { action, value, hasSubject, subject } = lesson[i];
+			switch(action) {
+				case "on energy":
+					if (getEnergyStatus(plant, world) !== value) {
+						return false;
+					}
+					break;
+				case "on spread chance":
+					if (getSpreadChanceStatus(plant, world) !== value) {
+						return false;
+					}
+					break;
+				case "on growth":
+					if (Math.floor(100 * plant.growthFactor) < value) {
+						return false;
+					}
+					break;
+				case "on age":
+					const age = Math.round((world.now - plant.firstBorn) / 10000);
+					switch(value) {
+						case "BABY":
+							if (age >= 5) {
+								return false;
+							}
+							break;
+						case "YOUNG":
+							if (age < 5 || age >= 25) {
+								return false;
+							}
+							break;
+						case "ADULT":
+							if (age < 25 || percent >= 65) {
+								return false;
+							}
+							break;
+						case "OLD":
+							if (percent < 65 || percent >= 100) {
+								return false;
+							}
+							break;
+						case "MAX":
+							if (percent === 100) {
+								return false;
+							}
+							break;
+					}				
+					break;
+				case "on random chance":
+					if (Math.random() > value / 100) {
+						return false;
+					}
+					break;
+				case "on surrounding":
+					if (value === "NOTHING") {
+						if (aroundAny(plant.x, plant.y, 400, plant)) {
+							return false;
+						}
+					} else {
+						let found = aroundAny(plant.x, plant.y, 300, plant, value);
+						if (found) {
+							theSubject = found;
+						} else {
+							return false;
+						}
+					}
+					break;
+				case "perform":
+					{
+						switch(value) {
+							case "die":
+								plant.dead = true;
+								break;
+							case "spread":
+								spreadPlant(plant, world, false);
+								break;
+							case "evolve":
+								evolvePlant(plant, world, false);
+								break;
+							case "wait":
+								break;
+							case "feed with":
+								feedPlant(plant, world, false, subject);
+								break;
+							case "explore":
+								explore(plant, world);
+								break;
+							case "run away":
+								if (theSubject) {
+									goto(plant,
+										world,
+										(plant.x * 1.3 - theSubject.x * .3)  + 10 *(Math.random()-.5),
+										(plant.y * 1.3 - theSubject.y * .3)  + 10 *(Math.random()-.5),
+										false);									
+								}
+								break;
+							case "approach":
+								if (theSubject) {
+									goto(plant,
+										world,
+										(plant.x * .1 + theSubject.x * .9),
+										(plant.y * .1 + theSubject.y * .9),
+										true);									
+								}
+								break;
+						}
+
+					}
+					break;
+			}
+		}
+		return true;
+	}
+	function canSpread(plant, world) {
+		if (plant.type === "plant") {
+			return getPlantStage(plant, world.now) >= 5;
+		}
+		if (plant.type === "bunny") {
+			if (!aroundBunny(plant.x, plant.y, 300, plant)) {
+				return false;
+			}
+			const age = Math.floor((world.now - plant.firstBorn) / 10000);
+			return age > 2;
+		}
+		if (plant.type === "human") {
+			if (!aroundHuman(plant.x, plant.y, 300, plant)) {
+				return false;
+			}
+			const age = Math.floor((world.now - plant.firstBorn) / 10000);
+			return age >= 18;			
+		}
+	}
+
+	function canEvolve(plant, world) {
+		if (CHEAT) {
+			 return true;
+		}
+		if (plant.type === "plant") {
+			return getPlantEnergy(plant, world.now) >= getMaxEnergy(plant);
+		}
+		if (plant.type === "bunny") {
+			const age = Math.floor((world.now - plant.firstBorn) / 10000);
+			return getPlantEnergy(plant, world.now) >= getMaxEnergy(plant) && aroundBunny(plant) && age >= 10;
+		}
+		return false;
+	}
+
+	function canImprove(plant, world) {
+		return true;
+	}
+
+	const IMPROVE_CHANCE = .4;
+
+	function getPlantMenu(plant, world) {
+		const menu = [];
+		if (plant.dead) {
+			menu.push("- Exit");			
+		} else if (plant.type === "plant") {
+			const stage = getPlantStage(plant, world.now);
+			const energy = getPlantEnergy(plant, world.now);
+			if (stage >= 1) {
+				menu.push("- Rename")
+			}
+			if (stage >= 3 && !world.registry.minigod.pickedUpPlant) {
+				menu.push("- Pick up");
+			}
+			if (canSpread(plant, world)) {
+				menu.push("- Spread");
+			}
+			if (canImprove(plant, world)) {
+				menu.push("- Improve")
+			}
+			if (canEvolve(plant, world)) {
+				menu.push("- Evolve");
+			}
+			menu.push("- Teach");
+			menu.push("- Kill")
+			menu.push("- Exit");
+		} else if (plant.type === "bunny") {
+			menu.push("- Rename")
+			menu.push("- Pick up");
+			menu.push("- Explore");
+			if (canSpread(plant, world)) {
+				menu.push("- Spread");
+			}
+			if (canEvolve(plant, world)) {
+				menu.push("- Evolve");
+			}
+			menu.push("- Feed with plants");
+			menu.push("- Teach");
+			menu.push("- Kill")
+			menu.push("- Exit");
+		} else if (plant.type === "human") {
+			menu.push("- Rename")
+			menu.push("- Pick up");
+			menu.push("- Explore");
+			if (canSpread(plant, world)) {
+				menu.push("- Spread");
+			}
+			if (canEvolve(plant, world)) {
+				menu.push("- Evolve");
+			}
+			menu.push("- Feed with plants");
+			menu.push("- Teach");
+			menu.push("- Kill")
+			menu.push("- Exit");
+		}
+		return menu;
+	}
+
+	function getPlantTeachMenu(plant, world) {
+		if (customMenu) {
+			return customMenu;
+		}
+		const menu = [];
+		if (plant.type === "plant") {
+			menu.push("- On Energy ...");
+			menu.push("- On Spread chance ...");
+			menu.push("- On Growth ...");
+			menu.push("- On Age ...");
+			menu.push("- On Random Chance ...");
+			menu.push("- On Surrounding ...");
+			menu.push("- CHECK current AI");
+			menu.push("- UNLEARN AI");
+			menu.push("- Exit");
+		} else if (plant.type === "bunny") {
+			menu.push("- On Energy ...");
+			menu.push("- On Spread chance ...");
+			menu.push("- On Age ...");
+			menu.push("- On Random Chance ...");
+			menu.push("- On Surrounding ...");
+			menu.push("- CHECK current AI");
+			menu.push("- UNLEARN AI");
+			menu.push("- Exit");			
+		} else if (plant.type === "human") {
+			menu.push("- On Energy ...");
+			menu.push("- On Spread chance ...");
+			menu.push("- On Age ...");
+			menu.push("- On Random Chance ...");
+			menu.push("- On Surrounding ...");
+			menu.push("- CHECK current AI");
+			menu.push("- UNLEARN AI");
+			menu.push("- Exit");			
+		}
+		return menu;
+	}
+
+	function getPlantStats(plant, world) {
+		if (plant.type==="plant") {
+			if (plant.dead) {
+				return "DEAD.";
+			}
+			const energy = getPlantEnergy(plant, world.now);
+			const rate = plant.growthFactor;
+			const age = Math.floor((world.now - plant.firstBorn) / 10000);
+			return `age: ${age}. energy: ${energy} (${getEnergyStatus(plant, world)}). growth: ${Math.floor(100 * plant.growthFactor)}`;
+		} else {
+			if (plant.dead) {
+				return "DEAD.";
+			}
+			const energy = getPlantEnergy(plant, world.now);
+			const age = Math.floor((world.now - plant.firstBorn) / 10000);
+			return `age: ${age}. energy: ${energy} (${getEnergyStatus(plant, world)})`;			
+		}
+	}
+
+	function calculateGrowthOptions(plant) {
+		const newPlants = [
+			{
+				name: plant.name || null,
+				position: "right",
+				x: plant.x + 8,
+				y: plant.y + (Math.random() - .5) * 3,
+				growthFactor: (plant.growthFactor + (Math.random()-.5) * .1),
+				baseSpreadChance: plant.baseSpreadChance + (Math.random()-.5) * .1,
+				baseEvolveChance: plant.baseEvolveChance + (Math.random()-.5) * .1,
+				possible: !plant.right,
+			},
+			{
+				name: plant.name || null,
+				position: "left",
+				x: plant.x - 8,
+				y: plant.y + (Math.random() - .5) * 3,
+				growthFactor: (plant.growthFactor + (Math.random()-.5) * .1),
+				baseSpreadChance: plant.baseSpreadChance + (Math.random()-.5) * .1,
+				baseEvolveChance: plant.baseEvolveChance + (Math.random()-.5) * .1,
+				possible: !plant.left,
+			},
+			{
+				name: plant.name || null,
+				position: "bottom",
+				x: plant.x + (Math.random() - .5) * 3,
+				y: plant.y + 8,
+				growthFactor: (plant.growthFactor + (Math.random()-.5) * .1),
+				baseSpreadChance: plant.baseSpreadChance + (Math.random()-.5) * .1,
+				baseEvolveChance: plant.baseEvolveChance + (Math.random()-.5) * .1,
+				possible: !plant.bottom,
+			},
+			{
+				name: plant.name || null,
+				position: "top",
+				x: plant.x + (Math.random() - .5) * 3,
+				y: plant.y - 8,
+				growthFactor: (plant.growthFactor + (Math.random()-.5) * .1),
+				baseSpreadChance: plant.baseSpreadChance + (Math.random()-.5) * .1,
+				baseEvolveChance: plant.baseEvolveChance + (Math.random()-.5) * .1,
+				possible: !plant.top,
+			},
+		];
+
+		// newPlants.forEach(newPlant => {
+		// 	newPlant.possible = newPlant.possible && onTop(newPlant.x, newPlant.y) === BOTTOM_GROUND;
+		// });
+		return newPlants.filter(({possible}) => possible);
+	}
+	const TOOMANY_PLANTS = 20;
+
+	function extraInfo(action, plant, world) {
+		switch(action) {
+			case "- Evolve": {
+				const chance = plant.baseEvolveChance;
+				return " (" + Math.min(90, Math.floor(chance * 100)) + "% chance)";
+			}
+			break;
+			case "- Spread": {
+				const { growthOptions } = plant;
+				const chance = getSpreadChance(plant, world);
+				return " (" + Math.min(90, Math.floor(chance * 100)) + "% chance)";
+			}
+			case "- Improve": {
+				return ` (${Math.floor(IMPROVE_CHANCE*100 * Math.min(1, getPlantEnergy(plant, world.now) / 500))}% chance)`;				
+			}
+			case "- Feed with plants": {
+				const count = countSurroundPlants(plant, 100);
+				return " (" + count + " available)"
+			}
+			break;
+			// case "- Pickup":
+			// 	break;
+		}		
+		return "";
+	}
+
+	function antiPosition(position) {
+		switch(position) {
+			case "left":
+				return "right";
+				break;
+			case "right":
+				return "left";
+				break;
+			case "top":
+				return "bottom";
+				break;
+			case "bottom":
+				return "top";
+				break;
+		}
+	}
+
+	let pendingLesson = [
+	];
+
+	function getName(plant, world) {
+		const name = plant.name || (plant.type==="plant" ? getPlantStageName(getPlantStage(plant, world.now)) : plant.type);
+		return name;
+	}
+
+	function performAction(plant, action, world) {
+		const name = getName(plant, world);
+
+		if (action.match(/^- On Energy (\w+) \.\.\.$/)) {
+			const energy = action.match(/^- On Energy (\w+) \.\.\.$/)[1];
+			pendingLesson.push({
+				action: "on energy",
+				value: energy,
+			});
+			customMenu = [
+				"AND",
+				"THEN",
+				"- Exit",
+			];
+			plantToTeach = plant;
+			return;
+		}
+		if (action.match(/^- On Spread chance (\w+) \.\.\.$/)) {
+			const value = action.match(/^- On Spread chance (\w+) \.\.\.$/)[1];
+			pendingLesson.push({
+				action: "on spread chance",
+				value,
+			});
+			customMenu = [
+				"AND",
+				"THEN",
+				"- Exit",
+			];
+			plantToTeach = plant;
+			return;
+		}
+		if (action.match(/^- On Growth (\d+) \.\.\.$/)) {
+			const value = parseInt(action.match(/^- On Growth (\d+) \.\.\.$/)[1]);
+			pendingLesson.push({
+				action: "on growth",
+				value,
+			});
+			customMenu = [
+				"AND",
+				"THEN",
+				"- Exit",
+			];
+			plantToTeach = plant;
+			return;			
+		}
+		if (action.match(/^- On Age (\w+) \.\.\.$/)) {
+			const value = parseInt(action.match(/^- On Age (\w+) \.\.\.$/)[1]);
+			pendingLesson.push({
+				action: "on age",
+				value,
+			});
+			customMenu = [
+				"AND",
+				"THEN",
+				"- Exit",
+			];
+			plantToTeach = plant;
+			return;			
+		}
+		if (action.match(/^- On Random Chance (\d+)% \.\.\.$/)) {
+			const value = parseInt(action.match(/^- On Random Chance (\d+)% \.\.\.$/)[1]);
+			pendingLesson.push({
+				action: "on random chance",
+				value,
+			});
+			customMenu = [
+				"AND",
+				"THEN",
+				"- Exit",
+			];
+			plantToTeach = plant;
+			return;
+		}
+		if (action.indexOf("- On Surrounding ") === 0 && action !== "- On Surrounding ...") {
+			pendingLesson.push({
+				action: "on surrounding",
+				value : action.split("- On Surrounding ")[1].split(" ...")[0],
+				hasSubject: true,
+			});
+			customMenu = [
+				"AND",
+				"THEN",
+				"- Exit",
+			];
+			plantToTeach = plant;
+			return;			
+		}
+		if (action.indexOf("- THEN Feed with ") === 0 && action !== "- THEN Feed with ...") {
+			const subject = action.split("- THEN Feed with ")[1].split(" ...")[0];
+
+			pendingLesson.push({
+				action: "perform",
+				value: "feed with",
+				subject,
+			});
+			plant.ai.push(pendingLesson);
+			globalMessage = {
+				time: world.now,
+				message: name + " 👉 " + pendingLesson.map(({action, value, subject}) => {
+					return `${action} ${value}${subject?subject:""}`;
+				}).join(" ➕ ")
+			};
+			pendingLesson = [];
+			return;			
+		}
+
+
+		switch(action) {
+			case "- Spread":
+				spreadPlant(plant, world, true);
+				break;
+			case "- Improve":
+				improvePlant(plant, world, true);
+				break;
+			case "- Evolve":
+				evolvePlant(plant, world, true);							
+				break;
+			case "- Kill":
+				plant.dead = true;
+				break;
+			case "- Teach":
+				teachPlant(plant);
+				break;
+			case "- Feed with plants":
+				feedPlant(plant, world, true);
+				break;
+			case "- Explore":
+				explore(plant, world);
+				break;
+			case "- Pick up":
+				world.registry.minigod.pickedUpPlant = plant;
+				plant.freezeTime = world.now;
+				pickupSound.play();
+				break;
+			case "- On Energy ...":
+				customMenu = [
+					"- On Energy VERYLOW ...",
+					"- On Energy LOW ...",
+					"- On Energy MEDIUM ...",
+					"- On Energy HIGH ...",
+					"- On Energy MAX ...",
+					"- Exit",
+				];
+				plantToTeach = plant;
+				break;
+			case "- On Spread chance ...":
+				customMenu = [
+					"- On Spread chance VERYLOW ...",
+					"- On Spread chance LOW ...",
+					"- On Spread chance MEDIUM ...",
+					"- On Spread chance HIGH ...",
+					"- On Spread chance MAX ...",
+					"- Exit",
+				];
+				plantToTeach = plant;
+				break;
+			case "- On Growth ...":
+				customMenu = [
+					"- On Growth 10 ...",
+					"- On Growth 20 ...",
+					"- On Growth 30 ...",
+					"- On Growth 40 ...",
+					"- On Growth 50 ...",
+					"- On Growth 60 ...",
+					"- Exit",
+				];
+				plantToTeach = plant;
+				break;
+			case "- On Age ...":
+				customMenu = [
+					"- On Age BABY ...",
+					"- On Age YOUNG ...",
+					"- On Age ADULT ...",
+					"- On Age OLD ...",
+					"- On Age MAX ...",
+					"- Exit",
+				];
+				plantToTeach = plant;
+				break;
+			case "- On Random Chance ...":
+				customMenu = [
+					"- On Random Chance 5% ...",
+					"- On Random Chance 10% ...",
+					"- On Random Chance 25% ...",
+					"- On Random Chance 50% ...",
+					"- On Random Chance 75% ...",
+					"- On Random Chance 90% ...",
+					"- Exit",
+				];
+				plantToTeach = plant;
+				break;
+			case "- On Surrounding ...":
+				{
+					const names = {};
+					world.registry.plant.data.plants.forEach(plant => {
+						const name = getName(plant, world);
+						names[name] = true;
+					});
+					world.registry.bunny.data.bunnies.forEach(plant => {
+						const name = getName(plant, world);
+						names[name] = true;
+					});
+					world.registry.human.data.humans.forEach(plant => {
+						const name = getName(plant, world);
+						names[name] = true;
+					});
+					const nn = [];
+					for (let n in names) {
+						nn.push(n);
+					}
+					customMenu = ["- On Surrounding NOTHING ..."].concat(nn.map(name => {
+						return `- On Surrounding ${name} ...`;
+					}).concat(['- Exit']));
+					plantToTeach = plant;
+				}
+				break;
+			case "- THEN Feed with ...": {
+					const names = {};
+					world.registry.plant.data.plants.forEach(plant => {
+						const name = getName(plant, world);
+						names[name] = true;
+					});
+					world.registry.bunny.data.bunnies.forEach(plant => {
+						const name = getName(plant, world);
+						names[name] = true;
+					});
+					world.registry.human.data.humans.forEach(plant => {
+						const name = getName(plant, world);
+						names[name] = true;
+					});
+
+
+					const nn = [];
+					for (let n in names) {
+						nn.push(n);
+					}
+					customMenu = nn.map(name => {
+						return `- THEN Feed with ${name}`;
+					}).concat(['- Exit']);
+					plantToTeach = plant;
+				}
+				break;				
+			case "AND":
+				customMenu = null;
+				plantToTeach = plant;
+				break;
+			case "THEN":
+				if (plant.type === "plant") {
+					customMenu = [
+						"- THEN Spread",
+						"- THEN Evolve",
+						"- THEN Wait",
+						"- THEN Die",
+						"- Exit",
+					];
+				} else {
+					const hasSubject = pendingLesson.filter(({hasSubject}) => hasSubject).length > 0;
+					customMenu = [
+						"- THEN Explore",
+						"- THEN Feed with ...",
+						"- THEN Spread",
+						hasSubject ? "- THEN Approach" : null,
+						hasSubject ? "- THEN Run Away" : null,
+						"- THEN Wait",
+						"- THEN Die",
+						"- Exit",
+					].filter(a => a);
+				}
+				plantToTeach = plant;
+				break;
+			case "- THEN Approach":
+				pendingLesson.push({
+					action: "perform",
+					value: "approach",
+				});
+				plant.ai.push(pendingLesson);
+				globalMessage = {
+					time: world.now,
+					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+						return `${action} ${value}`;
+					}).join(" ➕ ")
+				};
+				pendingLesson = [];
+				break;
+			case "- THEN Run Away":
+				pendingLesson.push({
+					action: "perform",
+					value: "run away",
+				});
+				plant.ai.push(pendingLesson);
+				globalMessage = {
+					time: world.now,
+					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+						return `${action} ${value}`;
+					}).join(" ➕ ")
+				};
+				pendingLesson = [];
+				break;
+			case "- THEN Spread":
+				pendingLesson.push({
+					action: "perform",
+					value: "spread",
+				});
+				plant.ai.push(pendingLesson);
+				globalMessage = {
+					time: world.now,
+					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+						return `${action} ${value}`;
+					}).join(" ➕ ")
+				};
+				pendingLesson = [];
+				break;
+			case "- THEN Evolve":
+				pendingLesson.push({
+					action: "perform",
+					value: "evolve",
+				});
+				plant.ai.push(pendingLesson);
+				globalMessage = {
+					time: world.now,
+					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+						return `${action} ${value}`;
+					}).join(" ➕ ")
+				};
+				pendingLesson = [];
+				break;
+			case "- THEN Explore":
+				pendingLesson.push({
+					action: "perform",
+					value: "explore",
+				});
+				plant.ai.push(pendingLesson);
+				globalMessage = {
+					time: world.now,
+					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+						return `${action} ${value}`;
+					}).join(" ➕ ")
+				};
+				pendingLesson = [];
+				break;
+			// case "- THEN Feed with ...":
+			// 	pendingLesson.push({
+			// 		action: "perform",
+			// 		value: "feed with plants",
+			// 	});
+			// 	plant.ai.push(pendingLesson);
+			// 	globalMessage = {
+			// 		time: world.now,
+			// 		message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+			// 			return `${action} ${value}`;
+			// 		}).join(" | ")
+			// 	};
+			// 	pendingLesson = [];
+			// 	break;
+			case "- THEN Die":
+				pendingLesson.push({
+					action: "perform",
+					value: "die",
+				});
+				plant.ai.push(pendingLesson);
+				globalMessage = {
+					time: world.now,
+					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+						return `${action} ${value}`;
+					}).join(" ➕ ")
+				};
+				pendingLesson = [];
+				break;
+			case "- THEN Wait":
+				pendingLesson.push({
+					action: "perform",
+					value: "wait",
+				});
+				plant.ai.push(pendingLesson);
+				globalMessage = {
+					time: world.now,
+					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+						return `${action} ${value}`;
+					}).join(" ➕ ")
+				};
+				pendingLesson = [];
+				break;
+			case "- Rename":
+				const name2 = prompt("Enter a name");
+				if (name2) {
+					plant.name = name2;
+				}
+				break;
+			case "- CHECK current AI":
+				globalMessage = {
+					time: world.now,
+					message: name + " AI\n\n" + plant.ai.map(lesson => {
+						return lesson.map(({action, value}) => `${action} ${value}`).join(" ➕ ");
+					}).join("\n"),
+				};
+				break;
+			case "- UNLEARN AI":
+				plant.ai = [];
+				break;
+		}
+	}
+
+	let customMenu = null;
+
+
+
+
+	let globalMessage = null;
+
+
+	function evaluate(prop, sprite, world) {
+		return prop && prop.constructor === Function ? prop(sprite, world) : prop;
+	}
+
+	function improvePlant(plant, world, showMessage) {
+		if (!canImprove(plant, world)) {
+			return;
+		}
+		const chance = CHEAT ? 1 : IMPROVE_CHANCE * Math.min(1, getPlantEnergy(plant, world.now) / 500);
+		if (Math.random() < chance) {
+			plant.born = world.now;
+			plant.growthFactor += .1;
+			plant.baseEvolveChance += .1;
+			plant.baseSpreadChance += .1;
+
+			if (showMessage) {
+				globalMessage = {
+					message: `Improvement of ${name} succeeded.\n${getPlantStats(plant, world)}`,
+					time: world.now,
+				};
+			}
+
+		} else {
+			plant.dead = true;
+
+			if (plant[plant.position]) {
+				const prePlant = plant[plant.position];
+				delete prePlant[antiPosition(plant.position)];
+			}
+
+			if (showMessage) {
+				globalMessage = {
+					message: `Improvement of ${name} failed.${plant.dead ? " It died.":""}`,
+					time: world.now,
+				};
+			}
+		}		
+	}
+
+	function evolvePlant(plant, world, showMessage) {
+		if (!canEvolve(plant, world)) {
+			return;
+		}
+		if (plant.type==="plant") {
+			const chance = CHEAT ? 1 : Math.min(.9, plant.baseEvolveChance);
+			if (Math.random() < chance) {
+				plant.dead = true;
+
+				const bunny = {
+					type: "bunny",
+	//				energy: 0,
+					energyExpiration: world.now + BUNNY_ENERGY_TIME / 2,
+					firstBorn: world.now,
+					born: world.now,
+					name: plant.name,
+					x: plant.x,
+					y: plant.y,
+					growthFactor: Math.random() / (difficulty + 1) / 10,
+					baseSpreadChance: Math.random() * 3 / (difficulty + 1),
+					baseEvolveChance: plant.baseEvolveChance + .2 * (Math.random()-.5),
+				};
+	//			bunny.energy = getMaxEnergy(bunny) / 2;
+
+
+				world.registry.bunny.data.bunnies.push(bunny);
+				if (showMessage) {
+					globalMessage = {
+						message: `Evolution of ${name} succeeded.`,
+						time: world.now,
+					};
+				}
+
+				levelupSound.play();
+			} else {
+				plant.dead = true;
+
+				if (plant[plant.position]) {
+					const prePlant = plant[plant.position];
+					delete prePlant[antiPosition(plant.position)];
+				}
+
+				if (showMessage) {
+					globalMessage = {
+						message: `Evolution of ${name} failed.${plant.dead ? " It died.":""}`,
+						time: world.now,
+					};
+				}
+			}
+		} else if (plant.type === "bunny") {
+			const chance =  CHEAT ? 1 : Math.min(.9, plant.baseEvolveChance);
+			if (Math.random() < chance) {
+				plant.dead = true;
+
+				const human = {
+					type: "human",
+	//				energy: 0,
+					energyExpiration: world.now + HUMAN_ENERGY_TIME / 2,
+					firstBorn: world.now,
+					born: world.now,
+					name: plant.name,
+					x: plant.x,
+					y: plant.y,
+					growthFactor: Math.random() / (difficulty + 1) / 10,
+					baseSpreadChance: Math.random() * 1 / (difficulty + 1),
+					baseEvolveChance: plant.baseEvolveChance,
+				};
+
+
+				world.registry.human.data.humans.push(human);
+				if (showMessage) {
+					globalMessage = {
+						message: `Evolution of ${name} succeeded.`,
+						time: world.now,
+					};
+				}
+
+				levelupSound.play();
+			} else {
+				plant.dead = true;
+
+				if (showMessage) {
+					globalMessage = {
+						message: `Evolution of ${name} failed.${plant.dead ? " It died.":""}`,
+						time: world.now,
+					};
+				}
+			}
+		}
+	}
+
+	function getSpreadChance(plant, world) {
+		if (plant.type === "plant") {
+			const newPlants = plant.growthOptions || (plant.growthOptions = calculateGrowthOptions(plant));
+			const newPlant = newPlants.length ? newPlants[Math.floor(newPlants.length * Math.random())] : null;
+
+			const chance = Math.min(.9, !newPlant ? 0 : !newPlant.possible ? 0 : getPlantEnergy(plant, world.now) / getMaxEnergy(plant) * plant.baseSpreadChance) * Math.min(1, TOOMANY_PLANTS / countSurroundPlants(plant));
+			return chance;
+		} else if (plant.type === "bunny") {
+			const percent = getPlantEnergy(plant, world.now) / getMaxEnergy(plant);
+			const chance = Math.min(.9, percent * percent * plant.baseSpreadChance);
+			return chance;			
+		}
+	}
+
+	function spreadPlant(plant, world, showMessage) {
+		if (!canSpread(plant, world)) {
+			return;
+		}
+		if (plant.type === "plant") {
+			const chance = getSpreadChance(plant, world);
+
+			if (Math.random() < chance) {
+				const newPlants = plant.growthOptions || (plant.growthOptions = calculateGrowthOptions(plant));
+				const newPlant = newPlants.length ? newPlants[Math.floor(newPlants.length * Math.random())] : null;
+				newPlant.type = "plant";
+				newPlant.firstBorn = world.now;
+				newPlant.born = world.now;
+				newPlant.ai = [... (plant.ai || [])];
+				plant.born = world.now;
+				plant[newPlant.position] = newPlant;
+				newPlant[antiPosition(newPlant.position)] = plant;
+				world.registry.plant.data.plants.push(newPlant);
+				if (showMessage) {
+					globalMessage = {
+						message: `Spread of ${getName(plant, world)} succeeded.`,
+						time: world.now,
+					};
+				}
+			} else {
+				plant.dead = true;
+
+				if (plant[plant.position]) {
+					const prePlant = plant[plant.position];
+					delete prePlant[antiPosition(plant.position)];
+				}
+
+				if (showMessage) {
+					globalMessage = {
+						message: `Spread of ${getName(plant, world)} failed.${plant.dead ? " It died.":""}`,
+						time: world.now,
+					};
+				}
+			}		
+		} else if (plant.type === "bunny") {
+			const chance = getSpreadChance(plant, world);
+
+			if (Math.random() < chance) {
+				const newBunny = {
+					name : plant.name,
+					type: "bunny",
+					firstBorn: world.now,
+					born: world.now,
+					ai: [... (plant.ai || [])],
+					energyExpiration: world.now + BUNNY_ENERGY_TIME / 2,					
+					x: plant.x + (Math.random()-.5) * 40,
+					y: plant.y + (Math.random()-.5) * 40,
+					baseSpreadChance: plant.baseSpreadChance + (Math.random() -.5),
+				};
+				plant.born = world.now;
+				world.registry.bunny.data.bunnies.push(newBunny);
+				if (showMessage) {
+					globalMessage = {
+						message: `Spread of ${name} succeeded.`,
+						time: world.now,
+					};
+				}
+			} else {
+				plant.dead = true;
+
+				if (plant[plant.position]) {
+					const prePlant = plant[plant.position];
+					delete prePlant[antiPosition(plant.position)];
+				}
+
+				if (showMessage) {
+					globalMessage = {
+						message: `Spread of ${name} failed.${plant.dead ? " It died.":""}`,
+						time: world.now,
+					};
+				}
+			}	
+		}
+	}
+
+
+
+	function loop(t) {
+		if (!world.data) {
+			world.data = {};
+			world.init(world);
+			world.sprites.forEach(sprite => {
+				if (!sprite.data) {
+					sprite.data = {};
+					if (sprite.init) {
+						sprite.init(sprite, world);
+					}
+					if (sprite.name) {
+						world.registry[sprite.name] = sprite;
+					}
+				}
+			});
+		}
+
+		world.now = t;
+		world.refresh(world, ctx, subCtx);
+		world.sprites.forEach(sprite => {
+			if (sprite.refresh) {
+				const hidden = evaluate(sprite.hidden, sprite, world);
+				if (!hidden) {
+					sprite.refresh(sprite, world, ctx, subCtx);
+				}
+			}
+		});
+
+
+		requestAnimationFrame(loop);
+	}
+
+	let gameStarted = false;
+	function startGame() {
+		if (!gameStarted) {
+			gameStarted = true;
+			requestAnimationFrame(loop);
+			document.removeEventListener("keyup", startGame);
+			const audio = new Audio("sounds/song.mp3");
+			audio.volume = .5;
+			audio.loop = true;
+			audio.play();
+			clearInterval(interval);
+			document.getElementById("bg").style.display = "none";
+			ctx.shadowBlur = 0;
+		}
+	}
+
+	let count = 0;
+	let interval = setInterval(() => {
+		count++;
+		const ctx = document.getElementById("canvas").getContext("2d");
+		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+		if (count % 10 <= 3) {
+			return;
+		}
+		ctx.fillStyle = "#FFFFFF";
+		ctx.shadowBlur = 10;
+		ctx.shadowColor = "black";
+		ctx.font = "60px Georgia";
+		ctx.fillText("Press space to continue", 100,500)
+	}, 100);
+
+
+	document.addEventListener("keyup", startGame);
+
+</script>
+</body>

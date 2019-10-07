@@ -34,9 +34,9 @@ gameConfig.scenes.push(
 											game.playSound(SOUNDS.YUPA);
 											dialog.speaking = true;
 
-											game.showTip("I been in few paralol universe. I cant rememba every face!", game => {
+											game.showTip("I been in few paralol universe. I canot rememba evry face!", game => {
 												game.showTip("I should find something to help him rememba me.");
-											}, null, { x: 1, y: 15, speed: 60, talker:"yupa" });
+											}, null, { x: 1, y: 15, speed: 80, talker:"yupa" });
 										});
 									}
 								}

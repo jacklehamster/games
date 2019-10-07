@@ -27,7 +27,7 @@ gameConfig.scenes.push(
 					{
 						options: [
 							{
-								msg: "Say Hello",
+								msg: game => game.data.seen.badguards ? "Hey" : game.data.seen["writing"] ? "Hello again" : "Hello",
 								onSelect: (game, dialog) => {
 									game.playSound(SOUNDS.HELLO);
 									dialog.guardSpeaking = true;

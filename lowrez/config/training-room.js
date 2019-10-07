@@ -53,7 +53,6 @@ gameConfig.scenes.push(
 				blocking: true,
 				onEvent: (game, {foe, foeLife, foeBlockChance, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin, xp, belowTheBelt, dummyBattle}) => {
 					const {data, now} = game;
-					game.canPunch = false;
 					game.chest = null;
 					if (!data.battle) {
 						data.battle = {
@@ -92,7 +91,7 @@ gameConfig.scenes.push(
 				attackSpeed: 2500,
 				riposteChance: .7,
 				attackPeriod: 100,
-				foeDamage: 10,
+				foeDamage: 6,
 				foeDefense: 12,
 				xp: 3,
 				belowTheBelt: true,
@@ -100,7 +99,6 @@ gameConfig.scenes.push(
 				chest: true,
 				onEvent: (game, {foe, foeLife, foeBlockChance, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin, xp, belowTheBelt}) => {
 					const {data, now} = game;
-					game.canPunch = false;
 					game.playTheme(SOUNDS.BATTLE_THEME, {volume:.8});
 					if (!data.battle) {
 						data.battle = {
