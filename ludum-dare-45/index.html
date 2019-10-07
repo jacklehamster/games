@@ -1,5 +1,5 @@
 <head>
-
+<link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
 
 
 <style>
@@ -17,7 +17,9 @@
 		height: 100%;
   		overflow: hidden;	
   		background-color: #ccaa88;	
+  		font-family: 'Roboto', sans-serif;
 	}
+
 </style>
 </head>
 <body>
@@ -945,7 +947,7 @@
 						const name = getName(plant, world);
 
 						ctx.fillStyle = "#000000aa";
-						ctx.font = "20px Arial";
+						ctx.font = "20px Roboto";
 						const msg = `${name}\n\n`
 							+ (pendingLesson.length ? " 👉 " + pendingLesson.map(({action, value}) => {
 								return `${action} ${value}`;
@@ -977,7 +979,7 @@
 						const plant = world.registry.minigod.pickedUpPlant;
 						const name = plant.name || getPlantStageName(getPlantStage(plant, world.now));
 						ctx.fillStyle = "#00000033";
-						ctx.font = "20px Arial";
+						ctx.font = "20px Roboto";
 						const UISize = 50;
 						ctx.fillRect(10, ctx.canvas.height - UISize, ctx.canvas.width - 20, UISize);
 						ctx.fillStyle = "#FFFFFF";
@@ -989,7 +991,7 @@
 					if (!self.examine && globalMessage && world.now - globalMessage.time < 5000) {
 						const lines = globalMessage.message.split("\n");
 						ctx.fillStyle = "#00000033";
-						ctx.font = "20px Arial";
+						ctx.font = "20px Roboto";
 						const UISize = 20 + lines.length * 20;
 						ctx.fillRect(10, ctx.canvas.height - UISize, ctx.canvas.width - 20, UISize);
 						ctx.fillStyle = "#FFFFFF";
@@ -1008,7 +1010,7 @@
 					const name = plant.name || (plant.type==="plant" ? getPlantStageName(getPlantStage(plant, world.now)) : plant.type);
 					if (world.registry.minigod.examine) {
 						ctx.fillStyle = "#000000aa";
-						ctx.font = "20px Arial";
+						ctx.font = "20px Roboto";
 
 						const msg = `${name}\n${getPlantStats(plant, world)}\n\n`
 							+ getPlantMenu(plant, world).join("\n");
@@ -1035,7 +1037,7 @@
 
 					} else {
 						ctx.fillStyle = "#00000033";
-						ctx.font = "20px Arial";
+						ctx.font = "20px Roboto";
 						const UISize = 50;
 						ctx.fillRect(10, ctx.canvas.height - UISize, ctx.canvas.width - 20, UISize);
 						ctx.fillStyle = "#FFFFFF";
@@ -1059,10 +1061,10 @@
 					ctx.shadowBlur = 10;
 					ctx.shadowColor = "black";
 
-					ctx.font = "25px Arial";
+					ctx.font = "25px Roboto";
 					ctx.fillText("MINIGOD", 675, 25);
 
-					ctx.font = "16px Arial";
+					ctx.font = "16px Roboto";
 					ctx.fillText(`DUG: ${digCount/100} km²`, 660, 60);
 
 
