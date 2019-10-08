@@ -19,6 +19,13 @@ gameConfig.scenes.push(
 						[20,21,22,23],	//	NE
 					],
 				};
+				game.sceneData.yupa = {
+					pos: { x: 64/2, y: 12, },
+					visible: false,
+					speed: 1/6,
+					dist: 20,
+					moving: false,
+				};
 			},
 			onSceneRefresh: game => {
 				const { pos, goal, speed } = game.sceneData.hitman;
@@ -28,9 +35,28 @@ gameConfig.scenes.push(
 					const dist = Math.sqrt(dx*dx + dy*dy);
 					pos.x += dx * Math.min(Math.abs(pos.x - goal.x), speed / dist);
 					pos.y += dy * Math.min(Math.abs(pos.y - goal.y), speed / dist);
+					if (pos.y >= 80 && !game.waitCursor) {
+						game.waitCursor = true;
+					}
 				} else {
 					pos.x = goal.x;
 					pos.y = goal.y;
+					if (pos.y >= 120 && !game.fade) {
+						game.fadeToScene("landscape");
+					}
+				}
+				const { yupa, hitman } = game.sceneData;
+				if (hitman && yupa) {
+					const dx = hitman.pos.x - yupa.pos.x;
+					const dy = hitman.pos.y - yupa.pos.y;
+					const dist = Math.sqrt(dx*dx + dy*dy);
+					if (dist > yupa.dist) {
+						yupa.pos.x += dx / dist * yupa.speed;
+						yupa.pos.y += dy / dist * yupa.speed;
+						yupa.moving = true;
+					} else {
+						yupa.moving = false;
+					}
 				}
 			},
 			arrowGrid: [
@@ -46,15 +72,20 @@ gameConfig.scenes.push(
 					onClick: game => {
 						const { pos, goal, visible } = game.sceneData.hitman;
 						if (game.mouseDown && visible) {
-							goal.x = Math.round(game.mouse.x);
-							goal.y = Math.round(game.mouse.y);
+							if (game.mouse.y > 55) {
+								goal.x = Math.round(game.mouse.x);
+								goal.y = 120;
+							} else {
+								goal.x = Math.round(game.mouse.x);
+								goal.y = Math.round(game.mouse.y);
+							}
 						}
 					},
 				},
 				{
 					onScene: game => {
 						game.waitCursor = true;
-						game.playTheme(SOUNDS.FUTURE_SONG_THEME);
+						game.playTheme(SOUNDS.FUTURE_SONG_THEME, {volume: .7});
 						const frames = [
 							[ 0, 20 ],
 							[ 1, 8, game => {
@@ -108,9 +139,16 @@ gameConfig.scenes.push(
 					},
 				},
 				{
+					src: ASSETS.YUPA_WALK, size:[16, 32], col: 3, row: 2,
+					offsetX: ({sceneData}) => Math.round(sceneData.yupa.pos.x - 8),
+					offsetY: ({sceneData}) => Math.round(sceneData.yupa.pos.y - 32),
+					index: game => game.sceneData.yupa.moving ? Math.floor(game.now/100) % 4 : 0,
+					hidden: game => !game.sceneData.hitman.visible,
+				},
+				{
+					src: ASSETS.HITMAN_WALK, size:[16,32], col: 6, row: 6,
 					offsetX: ({sceneData}) => sceneData.hitman.pos.x - 8,
 					offsetY: ({sceneData}) => sceneData.hitman.pos.y - 32,
-					src: ASSETS.HITMAN_WALK, size:[16,32], col: 6, row: 6,
 					index: game => {
 						const { pos, goal, anim } = game.sceneData.hitman;
 						const dx = pos.x > goal.x ? -1 : pos.x < goal.x ? 1 : 0;

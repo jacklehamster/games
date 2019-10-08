@@ -1,7 +1,7 @@
 <head>
 <link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
-
-
+<script src="lib/newgroundsio.min.js"></script>
+<script src="ng.js"></script>
 <style>
 	canvas {  
 	  width: 800px;
@@ -20,6 +20,12 @@
   		font-family: 'Roboto', sans-serif;
 	}
 
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
 </style>
 </head>
 <body>
@@ -38,9 +44,29 @@
 
 
 <canvas id="canvas" style="position: absolute; width: 800; height: 600" width=800 height=600></canvas>
-<img id="bg" src="assets/startgame.png">
+<img class="center" id="bg" src="assets/startgame.png">
 <script src="generated/assets.js"></script>
 <script>
+
+	const CHEAT = false;//true;//false;
+	const difficulty = 1;
+	const gamespeed = 10;//5 * (2 / difficulty);
+	const frontResolution = 1;
+	const resolution = 5;
+//	document.getElementById("canvas").style.width = 1024;
+//	document.getElementById("canvas").style.height = 800;
+	const ctx = document.getElementById("canvas").getContext("2d");
+
+	function initSize() {
+		ctx.canvas.style.width = document.body.offsetWidth;
+		ctx.canvas.style.height = document.body.offsetHeight;
+		ctx.canvas.width = ctx.canvas.offsetWidth / frontResolution;
+		ctx.canvas.height = ctx.canvas.offsetHeight / frontResolution;
+	}
+
+	window.addEventListener("resize", initSize);
+	initSize();
+
 	let digCount = 0;
 	const lazerSound = new Audio("sounds/lazer.mp3");
 	lazerSound.volume = .3;
@@ -52,15 +78,6 @@
 	levelupSound.volume = .7;
 	const pickupSound = new Audio("sounds/pickup.mp3");
 	pickupSound.volume = .5;
-
-	const CHEAT = false;//true;//false;
-	const difficulty = 1;
-	const gamespeed = 10;//5 * (2 / difficulty);
-	const frontResolution = 1;
-	const resolution = 5;
-	const ctx = document.getElementById("canvas").getContext("2d");
-	ctx.canvas.width = ctx.canvas.offsetWidth / frontResolution;
-	ctx.canvas.height = ctx.canvas.offsetHeight / frontResolution;
 
 	const subCanvases = [
 		document.getElementById("subcanvas"),
@@ -335,8 +352,6 @@
 	}
 
 
-
-
 	const world = {
 		now: 0,
 		registry: {},
@@ -347,7 +362,7 @@
 			world.y = 0;
 
 			globalMessage = {
-				message: `WELCOME MINIGOD\n\nThis planet looks pretty empty, but dig a bit and we might be able to find some plants.\nGrow them, spread them, evolve them.\n\nARROWS to move. SPACE to dig. TAB to leave spaceship.`,
+				message: `WELCOME MINIGOD\n\nThis planet looks pretty empty, but dig a bit and we might be able to find some plants.\nGrow them, spread them, evolve them.\n\nARROWS to move. SPACE to dig. TAB to leave spaceship.\nH for HELP.`,
 				time: world.now + 10000,
 			};
 		},
@@ -770,6 +785,7 @@
 								self.menuSelection = "- Exit";
 								if (!plantToTeach) {
 									pendingLesson = [];
+									self.importingAI = null;
 								}
 							} else {
 								globalMessage = null;
@@ -948,11 +964,17 @@
 
 						ctx.fillStyle = "#000000aa";
 						ctx.font = "20px Roboto";
-						const msg = `${name}\n\n`
-							+ (pendingLesson.length ? " 👉 " + pendingLesson.map(({action, value}) => {
-								return `${action} ${value}`;
-							}).join(" ➕ ") + "\n" : "")
-							+ getPlantTeachMenu(plant, world).join("\n");
+						const msg = world.registry.minigod.importingAI ?
+							"AI [" + world.registry.minigod.importingAI.name + "]:\n\n" +
+							world.registry.minigod.importingAI.ai.map(lesson => {
+								return lesson.map(({action, value}) => `${action} ${value}`).join(" + ");
+							}).join("\n") + "\n\n" + getPlantTeachMenu(plant, world).join("\n")
+							:`${name}\n\n`
+								+ (pendingLesson.length 
+									? " >> " + pendingLesson.map(({action, value}) => `${action} ${value}`)
+										.join(" + ") + "\n" 
+									: "")
+								+ getPlantTeachMenu(plant, world).join("\n");
 						const lines = msg.split("\n");
 						const UISize = lines.length * 20 + 20;
 						ctx.fillRect(10, ctx.canvas.height - UISize, ctx.canvas.width - 20, UISize);
@@ -1051,21 +1073,25 @@
 			},
 			{
 				refresh: (self, world, ctx, subCtx) => {
+					const changeWidth = ctx.canvas.width - 800;
+					const changeHeight = ctx.canvas.width - 800;
+
+
 					ctx.fillStyle = "#00000022";
-					ctx.fillRect(650, 0, 150, 450);
-					ctx.fillRect(655, 35, 140, 410);
+					ctx.fillRect(650 + changeWidth, 0, 150, 470);
+					ctx.fillRect(655 + changeWidth, 35, 140, 410);
 					ctx.fillStyle = "#88880088";
-					ctx.fillRect(660, 245, 130, 200);
+					ctx.fillRect(660 + changeWidth, 245, 130, 200);
 
 					ctx.fillStyle = "#FFFFFF";
 					ctx.shadowBlur = 10;
 					ctx.shadowColor = "black";
 
 					ctx.font = "25px Roboto";
-					ctx.fillText("MINIGOD", 675, 25);
+					ctx.fillText("MINIGOD", 675 + changeWidth, 25);
 
 					ctx.font = "16px Roboto";
-					ctx.fillText(`DUG: ${digCount/100} km²`, 660, 60);
+					ctx.fillText(`DUG: ${digCount/100} km2`, 660 + changeWidth, 60);
 
 
 					const names = { };
@@ -1083,7 +1109,7 @@
 					});
 					let count = 0;
 					for (let n in names) {
-						ctx.fillText(`${n.toUpperCase()}: ${names[n]}`, 660, 100 + count*20);
+						ctx.fillText(`${n.toUpperCase()}: ${names[n]}`, 660 + changeWidth, 100 + count*20);
 						count++;
 					}
 					ctx.shadowBlur = 0;
@@ -1098,27 +1124,59 @@
 									message: `Congratulations. You achieved:\n\n${achievement}` 
 									+ (index === ACHIEVEMENTS.length-1 ? "\n\nThis is the final achievement.": ""),
 								};
+								if (window.unlock) {
+									unlock(achievement);
+								}
 							}
 							ctx.fillStyle = "#FFFF77";
-							ctx.fillText(achievement, 670, 270 + index*20);
+							ctx.fillText(achievement, 670 + changeWidth, 270 + index*20);
 						} else {
 							ctx.fillStyle = "#cccc55";
-							ctx.fillText("????????????", 670, 270 + index*20);
+							ctx.fillText("??????????????", 670 + changeWidth, 270 + index*20);
 						}
 					});
 
-
+					ctx.fillStyle = "#cccccc";
+					ctx.font = "12px Roboto";
+					ctx.fillText("[H] for help", 695 + changeWidth, 462);
 
 				},
-			}
+			},
+			{
+				id: "help",
+				hidden: (self, world) => world.help !== 1,
+				refresh: (self, world, ctx, subCtx) => {
+					let {id} = self;
+					const { img, width, height } = files[id];
+					ctx.drawImage(img, 0, 0, width, height, 0, 0, ctx.canvas.width, ctx.canvas.height);
+				},
+				onKey: (self, world, keyCode) => {
+					if (keyCode === 27 || world.help === 2) {
+						world.help = 0;
+					} else if (world.help === 1) {
+						world.help = 2;
+					} else if (keyCode === 72) {
+						world.help = 1;
+					}
+				},
+			},
+			{
+				id: "help2",
+				hidden: (self, world) => world.help !== 2,
+				refresh: (self, world, ctx, subCtx) => {
+					let {id} = self;
+					const { img, width, height } = files[id];
+					ctx.drawImage(img, 0, 0, width, height, 0, 0, ctx.canvas.width, ctx.canvas.height);
+				},
+			},
 		],
 	};
 
 	const ACHIEVED = {};
 
 	const ACHIEVEMENTS = [
-		["DUG 10 km²",() => digCount/100 >= 10],
-		["DUG 100 km²",() => digCount/100 >= 100],
+		["DUG 10 km2",() => digCount/100 >= 10],
+		["DUG 100 km2",() => digCount/100 >= 100],
 		["FIRST PLANT",() => world.registry.plant.data.plants.length > 0],
 		["100 PLANTS",() => world.registry.plant.data.plants.length >= 100],
 		["FIRST BUNNY",() => world.registry.bunny.data.bunnies.length > 0],
@@ -1248,17 +1306,17 @@
 							}
 							break;
 						case "ADULT":
-							if (age < 25 || percent >= 65) {
+							if (age < 25 || age >= 65) {
 								return false;
 							}
 							break;
 						case "OLD":
-							if (percent < 65 || percent >= 100) {
+							if (age < 65 || age >= 100) {
 								return false;
 							}
 							break;
 						case "MAX":
-							if (percent === 100) {
+							if (age === 100) {
 								return false;
 							}
 							break;
@@ -1439,6 +1497,8 @@
 			menu.push("- On Random Chance ...");
 			menu.push("- On Surrounding ...");
 			menu.push("- CHECK current AI");
+			menu.push("- EXPORT AI");
+			menu.push("- IMPORT AI [...]");
 			menu.push("- UNLEARN AI");
 			menu.push("- Exit");
 		} else if (plant.type === "bunny") {
@@ -1448,6 +1508,8 @@
 			menu.push("- On Random Chance ...");
 			menu.push("- On Surrounding ...");
 			menu.push("- CHECK current AI");
+			menu.push("- EXPORT AI");
+			menu.push("- IMPORT AI [...]");
 			menu.push("- UNLEARN AI");
 			menu.push("- Exit");			
 		} else if (plant.type === "human") {
@@ -1457,6 +1519,8 @@
 			menu.push("- On Random Chance ...");
 			menu.push("- On Surrounding ...");
 			menu.push("- CHECK current AI");
+			menu.push("- EXPORT AI");
+			menu.push("- IMPORT AI [...]");
 			menu.push("- UNLEARN AI");
 			menu.push("- Exit");			
 		}
@@ -1630,7 +1694,7 @@
 			return;			
 		}
 		if (action.match(/^- On Age (\w+) \.\.\.$/)) {
-			const value = parseInt(action.match(/^- On Age (\w+) \.\.\.$/)[1]);
+			const value = (action.match(/^- On Age (\w+) \.\.\.$/)[1]);
 			pendingLesson.push({
 				action: "on age",
 				value,
@@ -1682,12 +1746,39 @@
 			plant.ai.push(pendingLesson);
 			globalMessage = {
 				time: world.now,
-				message: name + " 👉 " + pendingLesson.map(({action, value, subject}) => {
+				message: name + " >> " + pendingLesson.map(({action, value, subject}) => {
 					return `${action} ${value}${subject?subject:""}`;
-				}).join(" ➕ ")
+				}).join(" + ")
 			};
 			pendingLesson = [];
 			return;			
+		}
+		if (action.indexOf("- IMPORT AI [") === 0 && action !== "- IMPORT AI [...]") {
+			const ais = JSON.parse(localStorage.getItem("ai") || "{}");
+			for (let ai in ais) {
+				const menuName = `- IMPORT AI [${ai}]`;
+				if (menuName === action) {
+					world.registry.minigod.importingAI = {ai: ais[ai], name: ai};
+					customMenu = [
+						`- CONFIRM IMPORT`,
+						plant.ai && plant.ai.length ? `- CONFIRM IMPORT AND COMBINE WITH CURRENT AI` : null,
+						"- Back",
+						"- Exit",
+					].filter(a => a);
+					plantToTeach = plant;
+//					plant.ai = ais[ai];
+
+					// plant.ai.map(lesson => {
+					// 	return lesson.map(({action, value}) => `${action} ${value}`).join(" + ");
+					// }).join("\n")					
+					// globalMessage = {
+					// 	time: world.now,
+					// 	message: `${name} has learned AI: ${ai}`,
+					// }
+					return;
+				}
+			}
+			return;
 		}
 
 
@@ -1862,9 +1953,9 @@
 				plant.ai.push(pendingLesson);
 				globalMessage = {
 					time: world.now,
-					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+					message: name + " >> " + pendingLesson.map(({action, value}) => {
 						return `${action} ${value}`;
-					}).join(" ➕ ")
+					}).join(" + ")
 				};
 				pendingLesson = [];
 				break;
@@ -1876,9 +1967,9 @@
 				plant.ai.push(pendingLesson);
 				globalMessage = {
 					time: world.now,
-					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+					message: name + " >> " + pendingLesson.map(({action, value}) => {
 						return `${action} ${value}`;
-					}).join(" ➕ ")
+					}).join(" + ")
 				};
 				pendingLesson = [];
 				break;
@@ -1890,9 +1981,9 @@
 				plant.ai.push(pendingLesson);
 				globalMessage = {
 					time: world.now,
-					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+					message: name + " >> " + pendingLesson.map(({action, value}) => {
 						return `${action} ${value}`;
-					}).join(" ➕ ")
+					}).join(" + ")
 				};
 				pendingLesson = [];
 				break;
@@ -1904,9 +1995,9 @@
 				plant.ai.push(pendingLesson);
 				globalMessage = {
 					time: world.now,
-					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+					message: name + " >> " + pendingLesson.map(({action, value}) => {
 						return `${action} ${value}`;
-					}).join(" ➕ ")
+					}).join(" + ")
 				};
 				pendingLesson = [];
 				break;
@@ -1918,9 +2009,9 @@
 				plant.ai.push(pendingLesson);
 				globalMessage = {
 					time: world.now,
-					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+					message: name + " >> " + pendingLesson.map(({action, value}) => {
 						return `${action} ${value}`;
-					}).join(" ➕ ")
+					}).join(" + ")
 				};
 				pendingLesson = [];
 				break;
@@ -1932,7 +2023,7 @@
 			// 	plant.ai.push(pendingLesson);
 			// 	globalMessage = {
 			// 		time: world.now,
-			// 		message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+			// 		message: name + " >> " + pendingLesson.map(({action, value}) => {
 			// 			return `${action} ${value}`;
 			// 		}).join(" | ")
 			// 	};
@@ -1946,9 +2037,9 @@
 				plant.ai.push(pendingLesson);
 				globalMessage = {
 					time: world.now,
-					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+					message: name + " >> " + pendingLesson.map(({action, value}) => {
 						return `${action} ${value}`;
-					}).join(" ➕ ")
+					}).join(" + ")
 				};
 				pendingLesson = [];
 				break;
@@ -1960,9 +2051,9 @@
 				plant.ai.push(pendingLesson);
 				globalMessage = {
 					time: world.now,
-					message: name + " 👉 " + pendingLesson.map(({action, value}) => {
+					message: name + " >> " + pendingLesson.map(({action, value}) => {
 						return `${action} ${value}`;
-					}).join(" ➕ ")
+					}).join(" + ")
 				};
 				pendingLesson = [];
 				break;
@@ -1976,13 +2067,82 @@
 				globalMessage = {
 					time: world.now,
 					message: name + " AI\n\n" + plant.ai.map(lesson => {
-						return lesson.map(({action, value}) => `${action} ${value}`).join(" ➕ ");
+						return lesson.map(({action, value}) => `${action} ${value}`).join(" + ");
 					}).join("\n"),
 				};
 				break;
 			case "- UNLEARN AI":
 				plant.ai = [];
+				globalMessage = {
+					time: world.now,
+					message: name + " AI has been unlearned",
+				};
 				break;
+			case "- EXPORT AI":
+				{
+					const ais = JSON.parse(localStorage.getItem("ai") || "{}");
+					const aiName = prompt("Enter a name of this AI");
+					if (aiName) {
+						if (!plant.ai.length) {
+							delete ais[aiName];
+						} else {
+							ais[aiName] = plant.ai;
+						}
+						localStorage.setItem("ai", JSON.stringify(ais));
+						globalMessage = {
+							time: world.now,
+							message: `AI has been exported as ${aiName}.`,
+						};
+					}
+				}
+				break;
+			case "- Back":
+				{
+					if (world.registry.minigod.importingAI) {
+						world.registry.minigod.importingAI = null;
+						const ais = JSON.parse(localStorage.getItem("ai") || "{}");
+						const menu = [];
+						for (let ai in ais) {
+							menu.push(`- IMPORT AI [${ai}]`);
+						}
+						menu.push("- Exit");
+						customMenu = menu;
+						plantToTeach = plant;
+					}
+				}
+				break;
+			case "- IMPORT AI [...]":
+				{
+					const ais = JSON.parse(localStorage.getItem("ai") || "{}");
+					const menu = [];
+					for (let ai in ais) {
+						menu.push(`- IMPORT AI [${ai}]`);
+					}
+					menu.push("- Exit");
+					customMenu = menu;
+					plantToTeach = plant;
+				}
+				break;
+			case "- CONFIRM IMPORT":
+				{
+					plant.ai = world.registry.minigod.importingAI.ai;
+					globalMessage = {
+						time: world.now,
+						message: `${name} has learned AI: ${world.registry.minigod.importingAI.name}`,
+					}
+					world.registry.minigod.importingAI = null;
+					break;
+				}
+			case "- CONFIRM IMPORT AND COMBINE WITH CURRENT AI":
+				{
+					plant.ai = plant.ai.concat(world.registry.minigod.importingAI.ai);
+					globalMessage = {
+						time: world.now,
+						message: `${name} has learned and combined with its AI: ${world.registry.minigod.importingAI.name}`,
+					}
+					world.registry.minigod.importingAI = null;
+					break;					
+				}
 		}
 	}
 
@@ -2280,7 +2440,7 @@
 		ctx.shadowBlur = 10;
 		ctx.shadowColor = "black";
 		ctx.font = "60px Georgia";
-		ctx.fillText("Press space to continue", 100,500)
+		ctx.fillText("Press space to continue", (ctx.canvas.width - 600)/2,ctx.canvas.height * 2 / 3)
 	}, 100);
 
 

@@ -22,7 +22,7 @@ gameConfig.scenes.push(
 				{
 					onScene: game => {
 						game.hideCursor = true;
-						game.playTheme(SOUNDS.FUTURE_SONG_THEME);
+						game.playTheme(SOUNDS.FUTURE_SONG_THEME, {volume: .8});
 						const frames = [
 							[ 0, 20 ],
 							[ 0, 8 ],

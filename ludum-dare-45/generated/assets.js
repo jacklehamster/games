@@ -11,7 +11,7 @@ const files = {
         "path": "assets/alien.png",
         "extension": "png",
         "filename": "alien.png",
-        "filesize": 17787,
+        "filesize": 4945,
         "width": 384,
         "height": 384
     },
@@ -19,15 +19,31 @@ const files = {
         "path": "assets/bunny.png",
         "extension": "png",
         "filename": "bunny.png",
-        "filesize": 2598,
+        "filesize": 570,
         "width": 192,
         "height": 192
+    },
+    "help": {
+        "path": "assets/help.png",
+        "extension": "png",
+        "filename": "help.png",
+        "filesize": 76095,
+        "width": 801,
+        "height": 600
+    },
+    "help2": {
+        "path": "assets/help2.png",
+        "extension": "png",
+        "filename": "help2.png",
+        "filesize": 126214,
+        "width": 800,
+        "height": 601
     },
     "human": {
         "path": "assets/human.png",
         "extension": "png",
         "filename": "human.png",
-        "filesize": 2574,
+        "filesize": 605,
         "width": 192,
         "height": 192
     },
@@ -35,7 +51,7 @@ const files = {
         "path": "assets/plant.png",
         "extension": "png",
         "filename": "plant.png",
-        "filesize": 2289,
+        "filesize": 313,
         "width": 192,
         "height": 256
     },
@@ -43,7 +59,7 @@ const files = {
         "path": "assets/startgame.png",
         "extension": "png",
         "filename": "startgame.png",
-        "filesize": 35835,
+        "filesize": 12573,
         "width": 800,
         "height": 600
     }

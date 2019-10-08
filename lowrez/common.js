@@ -176,6 +176,7 @@ const ASSETS = {
 	GRAB_ROPE: "assets/grab-rope.png",
 	HITMAN_WALK: "assets/hitman-walk.png",
 	HITMAN_BEARD_WALK: "assets/hitman-beard-walk.png",
+	YUPA_WALK: "assets/yupa-walk.png",
 	YUPA_GRAB_PHOTO: "assets/yupa-grab-photo.png",
 	YUPA_DANCE: "assets/yupa-dance.png",
 	GRAB_YUPA_BOTTLE: "assets/grab-yupa-bottle.png",
@@ -211,6 +212,8 @@ const ASSETS = {
 	OUTSIDE: "assets/outside.png",
 	OUTSIDE_CARNAGE: "assets/outside-carnage.png",
 	OUTSIDE_BG: "assets/outside-bg.png",
+	LANDSCAPE: "assets/landscape.png",
+	SPACESHIP: "assets/spaceship.png",
 };
 
 const SOUNDS = {

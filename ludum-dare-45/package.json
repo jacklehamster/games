@@ -1,0 +1,30 @@
+{
+  "name": "minigod",
+  "version": "1.0.0",
+  "description": "https://ldjam.com/events/ludum-dare/45/minigod",
+  "main": "main.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jacklehamster/games/tree/master/ludum-dare-45"
+  },
+  "keywords": [
+    "minigod",
+    "ludumdare",
+    "ld45",
+    "javascript",
+    "game"
+  ],
+  "author": "jacklehamster",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^6.0.11",
+    "electron-packager": "^14.0.6"
+  }
+}

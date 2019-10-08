@@ -2360,7 +2360,7 @@ const Game = (() => {
 		}
 
 		displayImage(ctx, sprite) {
-			const {src, index, side, col, row, size, hidden, offsetX, offsetY, alpha, custom, ending, isText, globalCompositeOperation } = sprite;			
+			const {src, scale, index, side, col, row, size, hidden, offsetX, offsetY, alpha, custom, ending, isText, globalCompositeOperation } = sprite;			
 			if (this.evaluate(hidden, sprite)) {
 				return;
 			}
@@ -2391,6 +2391,7 @@ const Game = (() => {
 			}
 
 			const [ imgWidth, imgHeight ] = size || [64,64];
+			const spriteScale = this.evaluate(scale, sprite) || 1;
 			let frameIndex = this.evaluate(index, sprite) || 0;
 			let dstX = this.evaluate(offsetX, sprite)||0;
 			let dstY = this.evaluate(offsetY, sprite)||0;
@@ -2413,6 +2414,8 @@ const Game = (() => {
 					dstX += dstW;
 					break;
 			}
+			dstW *= spriteScale;
+			dstH *= spriteScale;
 
 			const alphaColor = this.evaluate(alpha, sprite);
 			if (alphaColor) {

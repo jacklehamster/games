@@ -453,6 +453,7 @@ gameConfig.scenes.push(
 					return true;
 				},
 				onClick: game => {
+					game.waitCursor = true;
 					game.fadeToScene("outside-carnage", null, 2000);					
 				},
 			},
@@ -507,7 +508,9 @@ gameConfig.scenes.push(
 					return "There are several guards outside! Thankfully, they didn't notice me.";
 				},
 				onClick: game => {
-					game.fadeToScene("outside", null, 2000);					
+					if (!game.battle) {
+						game.fadeToScene("outside", null, 2000);
+					}
 				},
 			},
 			{
@@ -670,11 +673,11 @@ gameConfig.scenes.push(
 		],
 		... makeOnSceneBattle(),
 		onSceneRefresh: game => {
-			if (!game.getSituation("lab").shotTank) {
+			if (!game.getSituation("lab").shotTank || game.waitCursor) {
 				return;
 			}
 			const frame = Math.floor((game.now - game.sceneTime) / 100);
-			if (game.situation.monsterLetOut || frame < 100 && game.situation.monsterSide !== "right-left" || game.sceneData.labMonsterBattle) {
+			if (game.situation.monsterLetOut || frame < 130 && game.situation.monsterSide !== "right-left" || game.sceneData.labMonsterBattle) {
 				return;
 			}
 
