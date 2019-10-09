@@ -462,13 +462,14 @@
 					const displayData = { id:self.id};
 					const selected = minigod.selectedPlant;
 					self.data.plants.forEach(plant => {
-						const { x, y, born, firstBorn } = plant;
+						const { x, y, born, firstBorn, id } = plant;
 
 						const age = Math.floor((world.now - firstBorn) / 10000);
 						if (age > 100) {
 							plant.dead = true;
 							return;
 						}
+						displayData.id = getImageId(plant);// id || self.id;
 
 						if (world.registry.minigod.pickedUpPlant === plant) {
 							displayData.offsetX = (x - world.x) * resolution - 32;
@@ -509,13 +510,14 @@
 					const displayData = { id:self.id};
 					const selected = minigod.selectedPlant;
 					self.data.bunnies.forEach(bunny => {
-						const { x, y, born, firstBorn, goal } = bunny;
+						const { x, y, born, firstBorn, goal, id } = bunny;
 
 						const age = Math.floor((world.now - firstBorn) / 10000);
 						if (age > 100 || getPlantEnergy(bunny, world.now) <= 0) {
 							bunny.dead = true;
 							return;
 						}
+						displayData.id = getImageId(bunny);//id || self.id;
 
 						displayData.frame = Math.floor((world.now - bunny.firstBorn)/100) % 4;
 						if (bunny.hasEaten && world.now - bunny.hasEaten < 1000) {
@@ -588,13 +590,14 @@
 					const displayData = { id:self.id};
 					const selected = minigod.selectedPlant;
 					self.data.humans.forEach(human => {
-						const { x, y, born, firstBorn, goal } = human;
+						const { x, y, born, firstBorn, goal, id } = human;
 
 						const age = Math.floor((world.now - firstBorn) / 10000);
 						if (age > 100 || getPlantEnergy(human, world.now) <= 0) {
 							human.dead = true;
 							return;
 						}
+						displayData.id = getImageId(human);//id || self.id;
 
 						displayData.frame = goal ? Math.floor((world.now - human.firstBorn)/100) % 4 : 0;
 						if (human.hasEaten && world.now - human.hasEaten < 1000) {
@@ -1151,8 +1154,10 @@
 					ctx.drawImage(img, 0, 0, width, height, 0, 0, ctx.canvas.width, ctx.canvas.height);
 				},
 				onKey: (self, world, keyCode) => {
-					if (keyCode === 27 || world.help === 2) {
+					if (keyCode === 27 || world.help === 3) {
 						world.help = 0;
+					} else if (world.help === 2) {
+						world.help = 3;
 					} else if (world.help === 1) {
 						world.help = 2;
 					} else if (keyCode === 72) {
@@ -1169,6 +1174,15 @@
 					ctx.drawImage(img, 0, 0, width, height, 0, 0, ctx.canvas.width, ctx.canvas.height);
 				},
 			},
+			{
+				id: "help3",
+				hidden: (self, world) => world.help !== 3,
+				refresh: (self, world, ctx, subCtx) => {
+					let {id} = self;
+					const { img, width, height } = files[id];
+					ctx.drawImage(img, 0, 0, width, height, 0, 0, ctx.canvas.width, ctx.canvas.height);
+				},
+			}
 		],
 	};
 
@@ -1185,6 +1199,10 @@
 		["100 HUMANS",() => world.registry.human.data.humans.length >= 100],
 		["1000 HUMANS",() => world.registry.human.data.humans.length >= 1000],
 	];
+
+	function getImageId(plant) {
+		return plant.id || plant.type;
+	}
 
 	function plantChance(world) {
 		return .01 / (world.registry.plant.data.plants.length + 1);
@@ -1392,16 +1410,16 @@
 			return getPlantStage(plant, world.now) >= 5;
 		}
 		if (plant.type === "bunny") {
-			if (!aroundBunny(plant.x, plant.y, 300, plant)) {
-				return false;
-			}
+			// if (!aroundBunny(plant.x, plant.y, 300, plant)) {
+			// 	return false;
+			// }
 			const age = Math.floor((world.now - plant.firstBorn) / 10000);
 			return age > 2;
 		}
 		if (plant.type === "human") {
-			if (!aroundHuman(plant.x, plant.y, 300, plant)) {
-				return false;
-			}
+			// if (!aroundHuman(plant.x, plant.y, 300, plant)) {
+			// 	return false;
+			// }
 			const age = Math.floor((world.now - plant.firstBorn) / 10000);
 			return age >= 18;			
 		}
@@ -1449,6 +1467,7 @@
 			if (canEvolve(plant, world)) {
 				menu.push("- Evolve");
 			}
+			menu.push("- Mutate");
 			menu.push("- Teach");
 			menu.push("- Kill")
 			menu.push("- Exit");
@@ -1463,6 +1482,7 @@
 				menu.push("- Evolve");
 			}
 			menu.push("- Feed with plants");
+			menu.push("- Mutate");
 			menu.push("- Teach");
 			menu.push("- Kill")
 			menu.push("- Exit");
@@ -1477,6 +1497,7 @@
 				menu.push("- Evolve");
 			}
 			menu.push("- Feed with plants");
+			menu.push("- Mutate");
 			menu.push("- Teach");
 			menu.push("- Kill")
 			menu.push("- Exit");
@@ -1485,6 +1506,9 @@
 	}
 
 	function getPlantTeachMenu(plant, world) {
+		if (!plant) {
+			return;
+		}
 		if (customMenu) {
 			return customMenu;
 		}
@@ -1797,6 +1821,29 @@
 				break;
 			case "- Teach":
 				teachPlant(plant);
+				break;
+			case "- Mutate":
+				{
+					const newId = Math.random()+"";
+					const imageId = getImageId(plant);
+					const asset = { ... files[imageId] };
+					files[newId] = asset;
+					asset.img = document.createElement("canvas");
+					asset.img.width = files[imageId].width;
+					asset.img.height = files[imageId].height;
+					asset.img.getContext("2d").drawImage(files[imageId].img, 0, 0);
+					const imgData = asset.img.getContext("2d").getImageData(0, 0, asset.img.width, asset.img.height);
+					const colChange1 = Math.floor(Math.random() * 256);
+					const colChange2 = Math.floor(Math.random() * 256);
+					const colChange3 = Math.floor(Math.random() * 256);
+					for (let i = 0; i < imgData.data.length; i+= 4) {
+						imgData.data[i] = (imgData.data[i] + colChange1 + 256) % 256;;
+						imgData.data[i+1] = (imgData.data[i+1] + colChange2 + 256) % 256;;
+						imgData.data[i+2] = (imgData.data[i+2] + colChange3 + 256) % 256;;
+					}
+					asset.img.getContext("2d").putImageData(imgData, 0, 0);
+					plant.id = newId;
+				}
 				break;
 			case "- Feed with plants":
 				feedPlant(plant, world, true);
@@ -2257,7 +2304,7 @@
 					x: plant.x,
 					y: plant.y,
 					growthFactor: Math.random() / (difficulty + 1) / 10,
-					baseSpreadChance: Math.random() * 1 / (difficulty + 1),
+					baseSpreadChance: Math.random() * 2 / (difficulty + 1),
 					baseEvolveChance: plant.baseEvolveChance,
 				};
 
@@ -2309,6 +2356,7 @@
 				const newPlants = plant.growthOptions || (plant.growthOptions = calculateGrowthOptions(plant));
 				const newPlant = newPlants.length ? newPlants[Math.floor(newPlants.length * Math.random())] : null;
 				newPlant.type = "plant";
+				newPlant.id = plant.id || null;
 				newPlant.firstBorn = world.now;
 				newPlant.born = world.now;
 				newPlant.ai = [... (plant.ai || [])];
@@ -2375,6 +2423,39 @@
 					};
 				}
 			}	
+		} else if (plant.type === "human") {
+			const chance = getSpreadChance(plant, world);
+
+			if (Math.random() < chance) {
+				const newBunny = {
+					name : plant.name,
+					type: "human",
+					firstBorn: world.now,
+					born: world.now,
+					ai: [... (plant.ai || [])],
+					energyExpiration: world.now + HUMAN_ENERGY_TIME / 2,					
+					x: plant.x + (Math.random()-.5) * 40,
+					y: plant.y + (Math.random()-.5) * 40,
+					baseSpreadChance: plant.baseSpreadChance + (Math.random() -.5),
+				};
+				plant.born = world.now;
+				world.registry.human.data.humans.push(newBunny);
+				if (showMessage) {
+					globalMessage = {
+						message: `Spread of ${name} succeeded.`,
+						time: world.now,
+					};
+				}
+			} else {
+				plant.dead = true;
+
+				if (showMessage) {
+					globalMessage = {
+						message: `Spread of ${name} failed.${plant.dead ? " It died.":""}`,
+						time: world.now,
+					};
+				}
+			}				
 		}
 	}
 

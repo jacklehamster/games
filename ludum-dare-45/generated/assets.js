@@ -39,6 +39,14 @@ const files = {
         "width": 800,
         "height": 601
     },
+    "help3": {
+        "path": "assets/help3.png",
+        "extension": "png",
+        "filename": "help3.png",
+        "filesize": 108268,
+        "width": 800,
+        "height": 600
+    },
     "human": {
         "path": "assets/human.png",
         "extension": "png",
