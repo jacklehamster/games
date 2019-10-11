@@ -1569,10 +1569,11 @@ const Game = (() => {
 				} else {
 					const tipReady = this.hoverSprite && this.evaluate(this.hoverSprite.tip);
 					const canClick = this.hoverSprite && this.hoverSprite.onClick && !this.evaluate(this.hoverSprite.preventClick);
+					const noHighlight = this.hoverSprite && this.evaluate(this.hoverSprite.noHighlight);
 					const canCombine = this.hoverSprite && this.useItem && (this.hoverSprite.name || this.hoverSprite.combine || this.hoverSprite.combineMessage);
 					const canOpen = this.map && this.arrow === DOOR && this.matchCell(this.map,this.pos.x,this.pos.y,0,1,this.orientation,"12345",[]) && !this.doorOpening;
 
-					const highLight = !this.data.gameOver && (!this.arrow || this.arrow === DOOR || this.chest) && (tipReady || canClick || canCombine || canOpen) && !this.bagOpening;
+					const highLight = !this.data.gameOver && (!this.arrow || this.arrow === DOOR || this.chest) && (tipReady || canClick || canCombine || canOpen) && !this.bagOpening && !noHighlight;
 					ctx.strokeStyle = "#00000055";
 					ctx.lineWidth = 1;
 
@@ -1722,7 +1723,7 @@ const Game = (() => {
 
 		playTheme(song, options) {
 			const {volume} = options || {};
-			if(this.data.theme) {
+			if(this.data.theme && this.data.theme.song !== song) {
 				this.stopSound(this.data.theme.song);
 			}
 			if (song) {

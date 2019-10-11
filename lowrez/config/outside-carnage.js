@@ -69,9 +69,13 @@ gameConfig.scenes.push(
 			sprites: [
 				{
 					src: ASSETS.OUTSIDE_BG,
+					noHighlight: game => game.mouse.y < 55,
 					onClick: game => {
-						const { pos, goal, visible } = game.sceneData.hitman;
-						if (game.mouseDown && visible) {
+						const { pos, goal } = game.sceneData.hitman;
+						game.sceneData.frames.length = 0;
+						game.sceneData.hitman.visible = true;
+						game.sceneData.hitman.speed = 1/4;
+						if (game.mouseDown) {
 							if (game.mouse.y > 55) {
 								goal.x = Math.round(game.mouse.x);
 								goal.y = 120;

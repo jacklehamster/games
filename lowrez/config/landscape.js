@@ -25,6 +25,7 @@ gameConfig.scenes.push(
 				speed: 1/8,
 				dist: 10,
 				moving: false,
+				goal: null,
 			};
 		},
 		onSceneRefresh: game => {
@@ -35,27 +36,43 @@ gameConfig.scenes.push(
 				const dist = Math.sqrt(dx*dx + dy*dy);
 				pos.x += dx * Math.min(Math.abs(pos.x - goal.x), speed / dist);
 				pos.y += dy * Math.min(Math.abs(pos.y - goal.y), speed / dist);
-				if (pos.y >= 80 && !game.waitCursor) {
-					game.waitCursor = true;
-				}
 			} else {
 				pos.x = goal.x;
 				pos.y = goal.y;
-				if (pos.y >= 120 && !game.fade) {
-					game.fadeToScene("landscape");
-				}
 			}
 			const { yupa, hitman } = game.sceneData;
 			if (hitman && yupa) {
-				const dx = hitman.pos.x - yupa.pos.x;
-				const dy = hitman.pos.y - yupa.pos.y;
-				const dist = Math.sqrt(dx*dx + dy*dy);
-				if (dist > yupa.dist) {
-					yupa.pos.x += dx / dist * yupa.speed;
-					yupa.pos.y += dy / dist * yupa.speed;
-					yupa.moving = true;
+				if (yupa.goal) {
+					const dx = yupa.pos.x > yupa.goal.x ? -1 : yupa.pos.x < yupa.goal.x ? 1 : 0;
+					const dy = yupa.pos.y > yupa.goal.y ? -1 : yupa.pos.y < yupa.goal.y ? 1 : 0;
+					if (Math.abs(yupa.pos.x-yupa.goal.x) >= 1 || Math.abs(yupa.pos.y-yupa.goal.y) >= 1) {
+						const dist = Math.sqrt(dx*dx + dy*dy);
+						yupa.pos.x += dx * Math.min(Math.abs(yupa.pos.x - yupa.goal.x), speed / dist);
+						yupa.pos.y += dy * Math.min(Math.abs(yupa.pos.y - yupa.goal.y), speed / dist);
+					} else {
+						yupa.pos.x = yupa.goal.x;
+						yupa.pos.y = yupa.goal.y;
+					}
 				} else {
-					yupa.moving = false;
+					const dx = hitman.pos.x - yupa.pos.x;
+					const dy = hitman.pos.y - yupa.pos.y;
+					const dist = Math.sqrt(dx*dx + dy*dy);
+					if (dist > yupa.dist) {
+						yupa.pos.x += dx / dist * yupa.speed;
+						yupa.pos.y += dy / dist * yupa.speed;
+						yupa.moving = true;
+					} else {
+						yupa.moving = false;
+					}
+				}
+			}
+
+			if (game.sceneData.script && game.sceneData.script.length) {
+				while (game.sceneData.script.length && game.sceneData.script[0](game)) {
+					if (!game.sceneTime) {
+						break;
+					}
+					game.sceneData.script.shift();
 				}
 			}
 		},
@@ -69,16 +86,37 @@ gameConfig.scenes.push(
 		sprites: [
 			{
 				src: ASSETS.LANDSCAPE,
+				noHighlight: true,
 				onClick: game => {
 					const { pos, goal, visible } = game.sceneData.hitman;
 					if (game.mouseDown && visible) {
 						goal.x = Math.round(game.mouse.x);
 						goal.y = Math.max(45, Math.round(game.mouse.y));
+						game.sceneData.script = null;						
 					}
 				},
 			},
 			{
-				src: ASSETS.SPACESHIP,
+				src: ASSETS.SPACESHIP_STAIRS, col: 4, row: 4,
+				index: game => {
+					if (game.sceneData.ladderDown) {
+						return Math.min(5, Math.floor((game.now - game.sceneData.ladderDown) / 200));
+					}
+					if (game.sceneData.ladderUp) {
+						return Math.min(10, 5 + Math.floor((game.now - game.sceneData.ladderUp) / 200));						
+					}
+					if (game.sceneData.liftShip) {
+						return Math.min(14, 10 + Math.floor((game.now - game.sceneData.liftShip) / 100));	
+					}
+					return 0;
+				},
+				offsetY: game => {
+					if (game.sceneData.liftShip) {
+						const time = (game.now - game.sceneData.liftShip) / 500;
+						return - time * time;
+					}
+					return 0;
+				},
 			},
 			{
 				src: ASSETS.YUPA_WALK, size:[16, 32], col: 3, row: 2,
@@ -120,8 +158,94 @@ gameConfig.scenes.push(
 				},
 				hidden: game => !game.sceneData.hitman.visible,
 			},
+			{
+				src: ASSETS.SPACESHIP,
+				offsetY: game => {
+					if (game.sceneData.liftShip) {
+						const time = (game.now - game.sceneData.liftShip) / 500;
+						return - time * time;
+					}
+					return 0;
+				},
+				onClick: game => {
+					const { pos, goal, visible } = game.sceneData.hitman;
+					game.sceneData.script = [
+						game => {
+							game.sceneData.hitman.goal.x = 15;
+							game.sceneData.hitman.goal.y = 45;
+							return true;
+						},
+						game => {
+							const { pos, goal } = game.sceneData.hitman;
+							return pos.x===goal.x && pos.y===goal.y;
+						},
+						game => {
+							game.hideCursor = true;
+							game.sceneData.ladderDown = game.now;
+							return true;
+						},
+						game => {
+							return game.now - game.sceneData.ladderDown > 1000;
+						},
+						game => {
+							game.sceneData.yupa.goal = {};
+							game.sceneData.yupa.goal.x = 20;
+							game.sceneData.yupa.goal.y = 45;
+							return true;
+						},
+						game => {
+							const { pos, goal } = game.sceneData.yupa;
+							return pos.x===goal.x && pos.y===goal.y;
+						},
+						game => {
+							game.sceneData.showForegroundShip = true;
+							game.sceneData.yupa.goal.x = 23;
+							game.sceneData.yupa.goal.y = 30;
+							game.sceneData.hitman.goal.x = 23;
+							game.sceneData.hitman.goal.y = 45;
+							return true;
+						},
+						game => {
+							const { pos, goal } = game.sceneData.hitman;
+							return pos.x===goal.x && pos.y===goal.y;
+						},
+						game => {
+							game.sceneData.hitman.goal.x = 23;
+							game.sceneData.hitman.goal.y = 30;
+							return true;
+						},
+						game => {
+							const { pos, goal } = game.sceneData.hitman;
+							return pos.x===goal.x && pos.y===goal.y;
+						},
+						game => {
+							game.sceneData.hitman.visible = false;
+							game.sceneData.yupa.visible = false;
+							game.sceneData.ladderDown = 0;
+							game.sceneData.ladderUp = game.now;
+							game.sceneData.showForegroundShip = false;
+							return true;
+						},
+						game => {
+							return game.now - game.sceneData.ladderUp > 1000;
+						},
+						game => {
+							game.sceneData.liftShip = game.now;
+							game.sceneData.ladderUp = 0;
+							return true;
+						},
+						game => {
+							return game.now - game.sceneData.liftShip > 4000;
+						},
+						game => {
+							game.gotoScene("stars");
+							return true;
+						},
+					];
+				},
+			},
 			...standardMenu(),
-			...standardBag(),
+			...standardBag(),		
 		],
 	},
 );

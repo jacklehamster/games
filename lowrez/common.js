@@ -214,6 +214,8 @@ const ASSETS = {
 	OUTSIDE_BG: "assets/outside-bg.png",
 	LANDSCAPE: "assets/landscape.png",
 	SPACESHIP: "assets/spaceship.png",
+	SPACESHIP_STAIRS: "assets/spaceship-stairs.png",
+	HOTTUB: "assets/hottub.png",
 };
 
 const SOUNDS = {
@@ -250,6 +252,7 @@ const SOUNDS = {
 //	ISLAND: 'sounds/island.mp3',
 	HUM: 'sounds/hum.mp3',
 	GOGOL: 'sounds/gogol.mp3',
+	SOUP_CHOU_THEME: 'sounds/soup-chou.mp3',
 };
 
 const ALPHAS = (() => {

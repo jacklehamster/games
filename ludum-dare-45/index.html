@@ -169,6 +169,7 @@
 		const { img, width, height } = files[id];
 		const col = frame % (width/64);
 		const row = Math.floor(frame / (width/64)) % (height/64);
+		ctx.fillStyle = 'hsl('+ 360*Math.random() +',100%,50%)';
 		ctx.drawImage(img, col*64, row*64, 64, 64, offsetX, offsetY, 64, 64);
 	}
 
@@ -1426,15 +1427,15 @@
 	}
 
 	function canEvolve(plant, world) {
-		if (CHEAT) {
-			 return true;
-		}
+		// if (CHEAT) {
+		// 	 return true;
+		// }
 		if (plant.type === "plant") {
-			return getPlantEnergy(plant, world.now) >= getMaxEnergy(plant);
+			return getPlantEnergy(plant, world.now) >= getMaxEnergy(plant) - 2;
 		}
 		if (plant.type === "bunny") {
 			const age = Math.floor((world.now - plant.firstBorn) / 10000);
-			return getPlantEnergy(plant, world.now) >= getMaxEnergy(plant) && aroundBunny(plant) && age >= 10;
+			return getPlantEnergy(plant, world.now) >= getMaxEnergy(plant) - 2 && aroundBunny(plant) && age >= 10;
 		}
 		return false;
 	}
@@ -1464,9 +1465,9 @@
 			if (canImprove(plant, world)) {
 				menu.push("- Improve")
 			}
-			if (canEvolve(plant, world)) {
-				menu.push("- Evolve");
-			}
+//			if (canEvolve(plant, world)) {
+			menu.push("- Evolve");
+//			}
 			menu.push("- Mutate");
 			menu.push("- Teach");
 			menu.push("- Kill")
@@ -1478,9 +1479,12 @@
 			if (canSpread(plant, world)) {
 				menu.push("- Spread");
 			}
-			if (canEvolve(plant, world)) {
-				menu.push("- Evolve");
+			if (canImprove(plant, world)) {
+				menu.push("- Improve")
 			}
+			// if (canEvolve(plant, world)) {
+			menu.push("- Evolve");
+			// }
 			menu.push("- Feed with plants");
 			menu.push("- Mutate");
 			menu.push("- Teach");
@@ -1624,7 +1628,11 @@
 	function extraInfo(action, plant, world) {
 		switch(action) {
 			case "- Evolve": {
-				const chance = plant.baseEvolveChance;
+				if (!canEvolve(plant, world)) {
+					const extra = plant.type === "bunny" ? " and age 10" : "";
+					return ` (requires max energy${extra})`;
+				}
+				const chance = canEvolve(plant, world) ? plant.baseEvolveChance : 0;
 				return " (" + Math.min(90, Math.floor(chance * 100)) + "% chance)";
 			}
 			break;
@@ -2216,6 +2224,9 @@
 			plant.baseEvolveChance += .1;
 			plant.baseSpreadChance += .1;
 
+			plant.energyExpiration = Math.max(1, plant.growthFactor) * (world.now + getEnergyTime(plant) / 2);
+
+
 			if (showMessage) {
 				globalMessage = {
 					message: `Improvement of ${name} succeeded.\n${getPlantStats(plant, world)}`,
@@ -2242,6 +2253,13 @@
 
 	function evolvePlant(plant, world, showMessage) {
 		if (!canEvolve(plant, world)) {
+			if (showMessage) {
+				globalMessage = {
+					message: `${name} cannot evolve yet.}`,
+					time: world.now,
+				};
+			}
+
 			return;
 		}
 		if (plant.type==="plant") {
@@ -2262,6 +2280,7 @@
 					baseSpreadChance: Math.random() * 3 / (difficulty + 1),
 					baseEvolveChance: plant.baseEvolveChance + .2 * (Math.random()-.5),
 				};
+				bunny.energyExpiration = Math.max(1, bunny.growthFactor) * (world.now + BUNNY_ENERGY_TIME / 2);
 	//			bunny.energy = getMaxEnergy(bunny) / 2;
 
 
@@ -2401,6 +2420,8 @@
 					baseSpreadChance: plant.baseSpreadChance + (Math.random() -.5),
 				};
 				plant.born = world.now;
+				plant.energyExpiration = Math.max(1, plant.growthFactor) * (world.now + BUNNY_ENERGY_TIME / 2);
+			
 				world.registry.bunny.data.bunnies.push(newBunny);
 				if (showMessage) {
 					globalMessage = {
@@ -2438,6 +2459,8 @@
 					y: plant.y + (Math.random()-.5) * 40,
 					baseSpreadChance: plant.baseSpreadChance + (Math.random() -.5),
 				};
+				human.energyExpiration = Math.max(1, human.growthFactor) * (world.now + HUMAN_ENERGY_TIME / 2);
+
 				plant.born = world.now;
 				world.registry.human.data.humans.push(newBunny);
 				if (showMessage) {
