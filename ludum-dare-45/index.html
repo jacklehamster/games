@@ -1435,7 +1435,7 @@
 		}
 		if (plant.type === "bunny") {
 			const age = Math.floor((world.now - plant.firstBorn) / 10000);
-			return getPlantEnergy(plant, world.now) >= getMaxEnergy(plant) - 2 && aroundBunny(plant) && age >= 10;
+			return (getEnergyStatus(plant, world) === "HIGH" || getEnergyStatus(plant, world) === "MAX") && age >= 10;
 		}
 		return false;
 	}
@@ -1630,7 +1630,8 @@
 			case "- Evolve": {
 				if (!canEvolve(plant, world)) {
 					const extra = plant.type === "bunny" ? " and age 10" : "";
-					return ` (requires max energy${extra})`;
+					const energy = plant.type === "bunny" ? "high" : "max";
+					return ` (requires ${energy} energy${extra})`;
 				}
 				const chance = canEvolve(plant, world) ? plant.baseEvolveChance : 0;
 				return " (" + Math.min(90, Math.floor(chance * 100)) + "% chance)";
