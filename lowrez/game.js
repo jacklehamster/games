@@ -2063,7 +2063,7 @@ const Game = (() => {
 
 		refreshSprites() {			
 			this.sprites.forEach(sprite => {
-				if (sprite.onRefresh) {
+				if (sprite.onRefresh && this.sceneTime) {
 					if (this.evaluate(sprite.hidden, sprite)) {
 						return;
 					}
@@ -2097,9 +2097,9 @@ const Game = (() => {
 			this.refreshActions();
 			this.checkMouseHover();
 			this.checkUseItem();
-			this.refreshSprites();
 
 			if (this.sceneTime) {
+				this.refreshSprites();
 				this.displaySprites();
 				this.displayFade(this);
 
@@ -2277,7 +2277,7 @@ const Game = (() => {
 			}
 			const { index, conversation, time } = this.dialog;
 			const frame = Math.min(3, Math.floor((this.now - time) / 80));
-			if (this.bagOpening || this.useItem || this.pendingTip && !this.pendingTip.removeLock) {
+			if (this.bagOpening || this.useItem || this.pendingTip && !this.pendingTip.removeLock || this.dialog.paused) {
 				this.dialog.hovered = null;
 				return;
 			}
