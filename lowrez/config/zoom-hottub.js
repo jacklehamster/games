@@ -83,6 +83,10 @@ gameConfig.scenes.push(
 						},
 						({now, sceneTime, sceneData}) => {
 							sceneData.frame = Math.min(13, Math.floor((now - game.sceneData.scriptTime)/100));
+							if (sceneData.frame >= 4 && !sceneData.alexaTurned) {
+								game.playSound(SOUNDS.DIVING);
+								sceneData.alexaTurned = game.now;
+							}
 							return sceneData.frame >= 13;
 						},
 						game => {
@@ -95,11 +99,15 @@ gameConfig.scenes.push(
 							return !pendingTip;
 						},
 						({now, sceneTime, sceneData}) => {
-							sceneData.frame = 15 + Math.floor((now - sceneData.scriptTime)/100);
+							sceneData.frame = 15 + Math.floor((now - sceneData.scriptTime)/300);
 							if (sceneData.frame > 19) {
 								sceneData.frame = 18 + (sceneData.frame) % 2;
 							}							
-							return now - sceneData.scriptTime > 4000;
+							return now - sceneData.scriptTime > 3000;
+						},
+						({now, sceneTime, sceneData}) => {
+							sceneData.frame = 18 + Math.floor((now - sceneData.scriptTime)/100) % 2;
+							return now - sceneData.scriptTime > 1000;
 						},
 						({now, sceneTime, sceneData}) => {
 							sceneData.frame = 20 + Math.floor((now - sceneData.scriptTime)/100) % 3;
@@ -111,7 +119,11 @@ gameConfig.scenes.push(
 						},
 						({now, sceneTime, sceneData}) => {
 							sceneData.frame = 23 + Math.floor((now - sceneData.scriptTime)/100) % 2;
-							return now - sceneData.scriptTime > 5000;
+							return now - sceneData.scriptTime > 2000;
+						},
+						({now, sceneTime, sceneData}) => {
+							sceneData.frame = 23;
+							return now - sceneData.scriptTime > 500;
 						},
 						({now}) => {
 							sceneData.frame = 25
