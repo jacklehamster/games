@@ -1681,6 +1681,9 @@
 	];
 
 	function getName(plant, world) {
+		if (!plant) {
+			return "";
+		}
 		const name = plant.name || (plant.type==="plant" ? getPlantStageName(getPlantStage(plant, world.now)) : plant.type);
 		return name;
 	}
