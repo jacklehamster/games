@@ -15,23 +15,10 @@ gameConfig.scenes.push(
 			game.delayAction(game => game.hideCursor = false, 10000);
 		},
 		onSceneRefresh: game => {
-			// const { sceneData, now, sceneTime } = game;
-			// sceneData.stars.forEach(star => {
-			// 	star.x *= 1.01;
-			// 	star.y *= 1.01;
-			// 	star.size *= 1.01;
-			// 	if (star.size > 1) {
-			// 		star.size = 1;
-			// 	}
-			// 	if (Math.abs(star.x) > 32 || Math.abs(star.y) > 32) {
-			// 		star.x = (Math.random() - .5) * 64;
-			// 		star.y = (Math.random() - .5) * 64;
-			// 		star.size = .2;
-			// 	}
-			// });
-			// if (now - sceneTime > 5000 && now - sceneTime < 10000) {
-			// 	game.playTheme(SOUNDS.SOUP_CHOU_THEME, {volume: .7 - .4 * Math.min(1, (now - (sceneTime + 5000)) / 5000) });
-			// }
+			const { sceneData, now, sceneTime } = game;
+			if (now - sceneTime > 5000 && now - sceneTime < 10000) {
+				game.playTheme(SOUNDS.SOUP_CHOU_THEME, {volume: .7 - .4 * Math.min(1, (now - (sceneTime + 5000)) / 5000) });
+			}
 		},
 		startTalk: (game, talker, msg, onDone, removeLock) => {
 			let x, y;
@@ -158,7 +145,7 @@ gameConfig.scenes.push(
 											}
 											game.waitCursor = true;
 											game.currentScene.startTalk(game, "human", "Yupa, let's go get a drink. What do you think?", game => {
-												game.currentScene.startTalk(game, "yupa", "Am good man but halp yorself with Alectra", game => {
+												game.currentScene.startTalk(game, "yupa", "Im good man but halp yorself with Alectra", game => {
 													game.currentScene.startTalk(game, "human", "Alright, don't mind if I do.", game => {
 														game.currentScene.startTalk(game, "human", "ALECTRA!", null, true);
 														game.dialog.index = 1;
@@ -187,6 +174,7 @@ gameConfig.scenes.push(
 											game.waitCursor = true;
 											game.currentScene.startTalk(game, "human", "Alectra, bring me a nice cold beer!", game => {
 												game.currentScene.startTalk(game, "alexa", "Okay.", game => {
+													game.situation.drink = "beer";
 													game.sceneData.alexaRotate = game.now;
 													game.playSound(SOUNDS.DIVING);
 													game.waitCursor = false;
@@ -200,6 +188,7 @@ gameConfig.scenes.push(
 											game.waitCursor = true;
 											game.currentScene.startTalk(game, "human", "I want some sparkling cidah! Gimme some!", game => {
 												game.currentScene.startTalk(game, "alexa", "Okay.", game => {
+													game.situation.drink = "sparkling";
 													game.sceneData.alexaRotate = game.now;
 													game.playSound(SOUNDS.DIVING);
 													game.waitCursor = false;
@@ -213,6 +202,7 @@ gameConfig.scenes.push(
 											game.waitCursor = true;
 											game.currentScene.startTalk(game, "human", ["Do you know Ramune?", "I love that drink, bring me Ramune!"], game => {
 												game.currentScene.startTalk(game, "alexa", "Okay.", game => {
+													game.situation.drink = "Ramune";
 													game.sceneData.alexaRotate = game.now;
 													game.playSound(SOUNDS.DIVING);
 													game.waitCursor = false;

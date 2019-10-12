@@ -220,6 +220,7 @@ const ASSETS = {
 	HUMAN_HOTTUB: "assets/human-hottub.png",
 	YUPA_HOTTUB: "assets/yupa-hottub.png",
 	HOTTUP_CLOSE_UP: "assets/hottub-close-up.png",
+	HOTTUB_WATER_WAVE: "assets/hottub-water-wave.png",
 };
 
 const SOUNDS = {

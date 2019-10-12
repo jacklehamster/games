@@ -492,7 +492,7 @@
 					if (rando) {
 						for(let i = 0; i < rando.ai.length; i++) {
 							if (processAI(rando.ai[i], rando, world)) {
-								break;
+//								break;
 							}
 						}
 					}
@@ -574,7 +574,7 @@
 					if (rando) {
 						for(let i = 0; i < rando.ai.length; i++) {
 							if (processAI(rando.ai[i], rando, world)) {
-								break;
+//								break;
 							}
 						}
 					}
@@ -971,11 +971,11 @@
 						const msg = world.registry.minigod.importingAI ?
 							"AI [" + world.registry.minigod.importingAI.name + "]:\n\n" +
 							world.registry.minigod.importingAI.ai.map(lesson => {
-								return lesson.map(({action, value}) => `${action} ${value}`).join(" + ");
+								return lesson.map(({action, value, subject}) => `${action} ${value} ${subject||""}`).join(" + ");
 							}).join("\n") + "\n\n" + getPlantTeachMenu(plant, world).join("\n")
 							:`${name}\n\n`
 								+ (pendingLesson.length 
-									? " >> " + pendingLesson.map(({action, value}) => `${action} ${value}`)
+									? " >> " + pendingLesson.map(({action, value, subject}) => `${action} ${value} ${subject||""}`)
 										.join(" + ") + "\n" 
 									: "")
 								+ getPlantTeachMenu(plant, world).join("\n");
@@ -1234,7 +1234,7 @@
 
 			if (showMessage) {
 				globalMessage = {
-					message: `Fed ${name} with ${getName(plant, world)}.\n${getPlantStats(plant, world)}`,
+					message: `Fed ${getName(plant, world)} with ${getName(plant, world)}.\n${getPlantStats(plant, world)}`,
 					time: world.now,
 				};
 			}
@@ -1348,11 +1348,11 @@
 					break;
 				case "on surrounding":
 					if (value === "NOTHING") {
-						if (aroundAny(plant.x, plant.y, 400, plant)) {
+						if (aroundAny(plant.x, plant.y, 100, plant)) {
 							return false;
 						}
 					} else {
-						let found = aroundAny(plant.x, plant.y, 300, plant, value);
+						let found = aroundAny(plant.x, plant.y, 100, plant, value);
 						if (found) {
 							theSubject = found;
 						} else {
@@ -1638,6 +1638,10 @@
 			}
 			break;
 			case "- Spread": {
+				if (!canSpread(plant, world)) {
+					const extra = plant.type === "plant" ? "plant stage" : plant.type === "bunny" ? "age 2" : "age 18";
+					return ` (requires ${extra})`;					
+				}
 				const { growthOptions } = plant;
 				const chance = getSpreadChance(plant, world);
 				return " (" + Math.min(90, Math.floor(chance * 100)) + "% chance)";
@@ -2123,7 +2127,7 @@
 				globalMessage = {
 					time: world.now,
 					message: name + " AI\n\n" + plant.ai.map(lesson => {
-						return lesson.map(({action, value}) => `${action} ${value}`).join(" + ");
+						return lesson.map(({action, value, subject}) => `${action} ${value} ${subject||""}`).join(" + ");
 					}).join("\n"),
 				};
 				break;
@@ -2184,7 +2188,7 @@
 					plant.ai = world.registry.minigod.importingAI.ai;
 					globalMessage = {
 						time: world.now,
-						message: `${name} has learned AI: ${world.registry.minigod.importingAI.name}`,
+						message: `${getName(plant, world)} has learned AI: ${world.registry.minigod.importingAI.name}`,
 					}
 					world.registry.minigod.importingAI = null;
 					break;
@@ -2194,7 +2198,7 @@
 					plant.ai = plant.ai.concat(world.registry.minigod.importingAI.ai);
 					globalMessage = {
 						time: world.now,
-						message: `${name} has learned and combined with its AI: ${world.registry.minigod.importingAI.name}`,
+						message: `${getName(plant, world)} has learned and combined with its AI: ${world.registry.minigod.importingAI.name}`,
 					}
 					world.registry.minigod.importingAI = null;
 					break;					
@@ -2230,7 +2234,7 @@
 
 			if (showMessage) {
 				globalMessage = {
-					message: `Improvement of ${name} succeeded.\n${getPlantStats(plant, world)}`,
+					message: `Improvement of ${getName(plant, world)} succeeded.\n${getPlantStats(plant, world)}`,
 					time: world.now,
 				};
 			}
@@ -2245,7 +2249,7 @@
 
 			if (showMessage) {
 				globalMessage = {
-					message: `Improvement of ${name} failed.${plant.dead ? " It died.":""}`,
+					message: `Improvement of ${getName(plant, world)} failed.${plant.dead ? " It died.":""}`,
 					time: world.now,
 				};
 			}
@@ -2256,7 +2260,7 @@
 		if (!canEvolve(plant, world)) {
 			if (showMessage) {
 				globalMessage = {
-					message: `${name} cannot evolve yet.}`,
+					message: `${getName(plant, world)} cannot evolve yet.`,
 					time: world.now,
 				};
 			}
@@ -2288,7 +2292,7 @@
 				world.registry.bunny.data.bunnies.push(bunny);
 				if (showMessage) {
 					globalMessage = {
-						message: `Evolution of ${name} succeeded.`,
+						message: `Evolution of ${getName(plant, world)} succeeded.`,
 						time: world.now,
 					};
 				}
@@ -2304,7 +2308,7 @@
 
 				if (showMessage) {
 					globalMessage = {
-						message: `Evolution of ${name} failed.${plant.dead ? " It died.":""}`,
+						message: `Evolution of ${getName(plant, world)} failed.${plant.dead ? " It died.":""}`,
 						time: world.now,
 					};
 				}
@@ -2332,7 +2336,7 @@
 				world.registry.human.data.humans.push(human);
 				if (showMessage) {
 					globalMessage = {
-						message: `Evolution of ${name} succeeded.`,
+						message: `Evolution of ${getName(plant, world)} succeeded.`,
 						time: world.now,
 					};
 				}
@@ -2343,7 +2347,7 @@
 
 				if (showMessage) {
 					globalMessage = {
-						message: `Evolution of ${name} failed.${plant.dead ? " It died.":""}`,
+						message: `Evolution of ${getName(plant, world)} failed.${plant.dead ? " It died.":""}`,
 						time: world.now,
 					};
 				}
@@ -2359,6 +2363,10 @@
 			const chance = Math.min(.9, !newPlant ? 0 : !newPlant.possible ? 0 : getPlantEnergy(plant, world.now) / getMaxEnergy(plant) * plant.baseSpreadChance) * Math.min(1, TOOMANY_PLANTS / countSurroundPlants(plant));
 			return chance;
 		} else if (plant.type === "bunny") {
+			const percent = getPlantEnergy(plant, world.now) / getMaxEnergy(plant);
+			const chance = Math.min(.9, percent * percent * plant.baseSpreadChance);
+			return chance;			
+		} else if (plant.type === "human") {
 			const percent = getPlantEnergy(plant, world.now) / getMaxEnergy(plant);
 			const chance = Math.min(.9, percent * percent * plant.baseSpreadChance);
 			return chance;			
@@ -2412,13 +2420,16 @@
 				const newBunny = {
 					name : plant.name,
 					type: "bunny",
+					id: plant.id || null,
 					firstBorn: world.now,
 					born: world.now,
 					ai: [... (plant.ai || [])],
 					energyExpiration: world.now + BUNNY_ENERGY_TIME / 2,					
-					x: plant.x + (Math.random()-.5) * 40,
-					y: plant.y + (Math.random()-.5) * 40,
-					baseSpreadChance: plant.baseSpreadChance + (Math.random() -.5),
+					x: plant.x + (Math.random()-.5) * 10,
+					y: plant.y + (Math.random()-.5) * 10,
+					baseSpreadChance: plant.baseSpreadChance + (Math.random() -.5) * .1,
+					growthFactor: plant.growthFactor,
+					baseEvolveChance: Math.random() * (1.5 / difficulty),
 				};
 				plant.born = world.now;
 				plant.energyExpiration = Math.max(1, plant.growthFactor) * (world.now + BUNNY_ENERGY_TIME / 2);
@@ -2426,7 +2437,7 @@
 				world.registry.bunny.data.bunnies.push(newBunny);
 				if (showMessage) {
 					globalMessage = {
-						message: `Spread of ${name} succeeded.`,
+						message: `Spread of ${getName(plant, world)} succeeded.`,
 						time: world.now,
 					};
 				}
@@ -2440,7 +2451,7 @@
 
 				if (showMessage) {
 					globalMessage = {
-						message: `Spread of ${name} failed.${plant.dead ? " It died.":""}`,
+						message: `Spread of ${getName(plant, world)} failed.${plant.dead ? " It died.":""}`,
 						time: world.now,
 					};
 				}
@@ -2452,13 +2463,16 @@
 				const newBunny = {
 					name : plant.name,
 					type: "human",
+					id: plant.id || null,
 					firstBorn: world.now,
 					born: world.now,
 					ai: [... (plant.ai || [])],
 					energyExpiration: world.now + HUMAN_ENERGY_TIME / 2,					
-					x: plant.x + (Math.random()-.5) * 40,
-					y: plant.y + (Math.random()-.5) * 40,
-					baseSpreadChance: plant.baseSpreadChance + (Math.random() -.5),
+					x: plant.x + (Math.random()-.5) * 10,
+					y: plant.y + (Math.random()-.5) * 10,
+					baseSpreadChance: plant.baseSpreadChance + (Math.random() -.5) * .1,
+					growthFactor: plant.growthFactor,
+					baseEvolveChance: Math.random() * (1.5 / difficulty),
 				};
 				human.energyExpiration = Math.max(1, human.growthFactor) * (world.now + HUMAN_ENERGY_TIME / 2);
 
@@ -2466,7 +2480,7 @@
 				world.registry.human.data.humans.push(newBunny);
 				if (showMessage) {
 					globalMessage = {
-						message: `Spread of ${name} succeeded.`,
+						message: `Spread of ${getName(plant, world)} succeeded.`,
 						time: world.now,
 					};
 				}
@@ -2475,7 +2489,7 @@
 
 				if (showMessage) {
 					globalMessage = {
-						message: `Spread of ${name} failed.${plant.dead ? " It died.":""}`,
+						message: `Spread of ${getName(plant, world)} failed.${plant.dead ? " It died.":""}`,
 						time: world.now,
 					};
 				}

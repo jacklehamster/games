@@ -3,45 +3,6 @@ gameConfig.scenes.push(
 		name: "zoom-hottub",
 		onScene: game => {
 			game.hideCursor = true;
-			
-			game.sceneData.frames = [
-				{ time: 5000 },
-				
-			];
-
-
-			game.sceneData.frames = [
-				[ 0, 20 ],
-				[ 1, 8, game => {
-					game.sceneData.hitman.visible = false;
-					game.waitCursor = false;
-				} ],
-				[ 2, 8 ],
-				[ 3, 1 ],
-				[ 4, 8 ],
-				[ 5, 5, game => {
-					game.sceneData.hitman.visible = true;
-					game.sceneData.hitman.speed = 1/4;
-				} ],
-			];
-			for (let i = 1; i < frames.length; i++) {
-				frames[i][1] += frames[i-1][1];
-			}			
-		},
-		onSceneRefresh: game => {
-			if (game.sceneData.frames) {
-				const frame = Math.floor((game.now - game.sceneTime) / 100);
-				for (let index = 0; index < game.sceneData.frames.length; index++) {
-					if (frame < game.sceneData.frames[index][1]) {
-						if (game.sceneData.frames[index][2] && !game.sceneData.frames[index][3]) {
-							const fun = game.sceneData.frames[index][2];
-							fun(game);
-							game.sceneData.frames[index][3] = true;
-						}
-						break;
-					}
-				}
-			}
 		},
 		sprites: [
 			{
@@ -81,8 +42,103 @@ gameConfig.scenes.push(
 				},
 			},
 			{
-				src: ASSETS.HOTTUP_CLOSE_UP, col: 4, row: 4,
+				src: ASSETS.HOTTUP_CLOSE_UP, col: 5, row: 6,
+				index: ({sceneData, pendingTip, now}) => {
+					if (pendingTip) {
+						if (pendingTip.talker === "human") {
+							return Math.floor(now / 100) % 2 + 13;
+						}
+						if (pendingTip.talker === "alexa") {
+							return (Math.floor(now / 100) % 2) * 2 + 13;						
+						}
+						if (pendingTip.talker === "human2") {
+							return (Math.floor(now / 100) % 3) + 20;
+						}
+					}
+					return sceneData.frame;
+				},		
+				startTalk: (game, talker, msg, onDone, removeLock) => {
+					let x, y;
+					if (talker === "human" || talker === "human2") {
+						x = 5;
+						y = 60;
+						game.playSound(SOUNDS.HUM);
+					} else if (talker === "yupa") {
+						x = 3;
+						y = 23;
+						game.playSound(SOUNDS.YUPA);
+					} else if (talker === "alexa") {
+						x = 12;
+						y = 20;				
+						game.playSound(SOUNDS.OKAY);
+					}
+					game.showTip(msg, onDone, talker === "yupa" ? 180 : 100, { x, y, talker, removeLock });
+				},
+				init: (game, sprite) => {
+					const { sceneData } = game;
+					sceneData.script = [
+						({now, sceneTime, sceneData}) => {
+							sceneData.frame = Math.floor((now - sceneTime)/100)  % 2;
+							return now - sceneTime >= 500;
+						},
+						({now, sceneTime, sceneData}) => {
+							sceneData.frame = Math.min(13, Math.floor((now - game.sceneData.scriptTime)/100));
+							return sceneData.frame >= 13;
+						},
+						game => {
+							sprite.startTalk(game, "human", `Thanks Alectra! I love ${game.getSituation("stars").drink||"it"}!`, game => {
+								sprite.startTalk(game, "alexa", "Okay");
+							});
+							return true;
+						},			
+						({pendingTip}) => {
+							return !pendingTip;
+						},
+						({now, sceneTime, sceneData}) => {
+							sceneData.frame = 15 + Math.floor((now - sceneData.scriptTime)/100);
+							if (sceneData.frame > 19) {
+								sceneData.frame = 18 + (sceneData.frame) % 2;
+							}							
+							return now - sceneData.scriptTime > 4000;
+						},
+						({now, sceneTime, sceneData}) => {
+							sceneData.frame = 20 + Math.floor((now - sceneData.scriptTime)/100) % 3;
+							sprite.startTalk(game, "human2", "How come they make these so hard to open?");
+							return true;
+						},
+						({pendingTip}) => {
+							return !pendingTip;
+						},
+						({now, sceneTime, sceneData}) => {
+							sceneData.frame = 23 + Math.floor((now - sceneData.scriptTime)/100) % 2;
+							return now - sceneData.scriptTime > 5000;
+						},
+						({now}) => {
+							sceneData.frame = 25
+							return now - sceneData.sceneData > 1000;
+						},
+						game => {
+							console.log("Look at hand");
+						},
+					];
+				},
+				onRefresh: game => {
+					const { script } = game.sceneData;
+					if (script && script.length) {
+						while (script.length && script[0](game)) {
+							if (!game.sceneTime) {
+								break;
+							}
+							script.shift();
+							game.sceneData.scriptTime = game.now;
+						}
+					}
+				},
 			},
+			{
+				src: ASSETS.HOTTUB_WATER_WAVE, col: 1, row: 2,
+				index: ({now}) => Math.floor(now / 1000)% 2,
+			}
 		],
 	},
 );
