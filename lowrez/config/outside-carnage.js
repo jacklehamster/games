@@ -2,6 +2,7 @@ gameConfig.scenes.push(
 		{
 			name: "outside-carnage",
 			onScene: game => {
+				game.playTheme(SOUNDS.FUTURE_SONG_THEME, {volume: .8});
 				game.sceneData.hitman = {
 					pos: { x: 64/2, y: 12, },
 					goal: { x: 64/2, y: 32, },

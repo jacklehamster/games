@@ -416,27 +416,38 @@ gameConfig.scenes.push(
 							"And we kidnap baby hitler. Hahaha! So funney!",
 						], game => {
 							game.showTip([
-								"So you rememba me! That's wonderful",
-								"Will you come with me? Let's escape from this prison together",
+								"So you rememba me! That's great!",
+								"Do you know what happened to the baby?",
 							], game => {
 								game.playSound(SOUNDS.YUPA);
 								game.showTip([
-									`Sure ma man ${game.data.name}!`,
-									`I be rite behind ya.`,
+									`I dun remembah which planet we left him on.`,
 								], game => {
-									game.dialog = null;
-									game.waitCursor = false;
-									game.sceneData.zoomYupa = 0;
-									game.data.yupa = {
-										rotation: game.rotation,
-										joined: game.now,
-										position: -12,
-									};
-									game.showTip("Yupa has joined me! Now I don't feel lonely anymore.", null, null, {removeLock:true});
+									game.showTip([
+										"I need to look for him.",
+										"Will you come with me? Let's escape from this prison together",
+										"and look for Baby Hitler.",
+									], game => {
+										game.playSound(SOUNDS.YUPA);
+										game.showTip([
+											`Sure my man ${game.data.name}!`,
+											`I be rite behind ya.`,
+										], game => {
+											game.dialog = null;
+											game.waitCursor = false;
+											game.sceneData.zoomYupa = 0;
+											game.data.yupa = {
+												rotation: game.rotation,
+												joined: game.now,
+												position: -12,
+											};
+											game.showTip("Yupa has joined me! Now I don't feel lonely anymore.", null, null, {removeLock:true});
+										}, null, { x: 1, y: 15, speed: 80, talker:"yupa"});
+									});
 								}, null, { x: 1, y: 15, speed: 80, talker:"yupa"});
 							});
-						}, null, { x: 1, y: 15, speed: 60, talker: "yupa"});
-					}					
+						}, null, { x: 1, y: 15, speed: 80, talker:"yupa"});	
+					}			
 				},
 			},
 			makeYupa(),

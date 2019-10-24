@@ -159,7 +159,7 @@ gameConfig.scenes.push(
 				hidden: game => !game.sceneData.hitman.visible,
 			},
 			{
-				src: ASSETS.SPACESHIP,
+				src: ASSETS.SPACESHIP, col: 1, row: 2,
 				offsetY: game => {
 					if (game.sceneData.liftShip) {
 						const time = (game.now - game.sceneData.liftShip) / 500;
@@ -230,6 +230,7 @@ gameConfig.scenes.push(
 							return game.now - game.sceneData.ladderUp > 1000;
 						},
 						game => {
+							game.playSound(SOUNDS.DIVING);
 							game.sceneData.liftShip = game.now;
 							game.sceneData.ladderUp = 0;
 							return true;

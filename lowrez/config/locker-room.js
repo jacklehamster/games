@@ -52,7 +52,7 @@ gameConfig.scenes.push(
 				name: "access card",
 				src: ASSETS.ACCESS_CARD,
 				hidden: (game, {name}) => game.rotation !== 0 || !game.situation.midLockerOpen || game.data.pickedUp[name],
-				onClick: (game, {name}) => game.pickUp({item:name, image:ASSETS.GRAB_ACCESS_CARD, message:"An access card!"}),
+				onClick: (game, {name}) => game.pickUp({item:name, image:ASSETS.GRAB_ACCESS_CARD, message:"Looks like some kind of access card!"}),
 			},
 			{
 				src: ASSETS.LOCKER_DOOR,

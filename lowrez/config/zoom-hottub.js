@@ -42,7 +42,7 @@ gameConfig.scenes.push(
 				},
 			},
 			{
-				src: ASSETS.HOTTUP_CLOSE_UP, col: 5, row: 6,
+				src: ASSETS.HOTTUP_CLOSE_UP, col: 6, row: 7,
 				index: ({sceneData, pendingTip, now}) => {
 					if (pendingTip) {
 						if (pendingTip.talker === "human") {
@@ -71,8 +71,9 @@ gameConfig.scenes.push(
 						x = 12;
 						y = 20;				
 						game.playSound(SOUNDS.OKAY);
+						msg = msg.split("").map(a => " ").join("");
 					}
-					game.showTip(msg, onDone, talker === "yupa" ? 180 : 100, { x, y, talker, removeLock });
+					game.showTip(msg, onDone, talker === "yupa" ? 140 : 100, { x, y, talker, removeLock });
 				},
 				init: (game, sprite) => {
 					const { sceneData } = game;
@@ -84,7 +85,7 @@ gameConfig.scenes.push(
 						({now, sceneTime, sceneData}) => {
 							sceneData.frame = Math.min(13, Math.floor((now - game.sceneData.scriptTime)/100));
 							if (sceneData.frame >= 4 && !sceneData.alexaTurned) {
-								game.playSound(SOUNDS.DIVING);
+								game.playSound(SOUNDS.DIVING, {volume: .3});
 								sceneData.alexaTurned = game.now;
 							}
 							return sceneData.frame >= 13;
@@ -127,10 +128,11 @@ gameConfig.scenes.push(
 						},
 						({now}) => {
 							sceneData.frame = 25
-							return now - sceneData.sceneData > 1000;
+							return now - sceneData.scriptTime > 1000;
 						},
 						game => {
-							console.log("Look at hand");
+							game.gotoScene("i-have-no-hand");
+							return true;
 						},
 					];
 				},

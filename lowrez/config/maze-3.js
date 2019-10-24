@@ -3,6 +3,7 @@ gameConfig.scenes.push(
 		name: "maze-3",
 		onScene: game => {
 			game.save();
+			game.data.slimePresent = game.now;
 		},
 		arrowGrid: [
 			[null, null,  MENU, null, null ],
@@ -78,6 +79,9 @@ gameConfig.scenes.push(
 				xp: 7,
 				belowTheBelt: true,				
 				onEvent: (game, {foe, foeLife, foeBlockChance, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin, xp, belowTheBelt}) => {
+					if (!game.data.slimePresent) {
+						return;
+					}
 					const {data, now} = game;
 					game.chest = null;
 					game.playTheme(SOUNDS.BATTLE_THEME, {volume:.8});
@@ -109,9 +113,12 @@ gameConfig.scenes.push(
 					}
 					return true;
 				},
-				onWin: game => game.findChest(game.now + 2000, {
-					item:"coin", image:ASSETS.GRAB_COIN, 
-				}),
+				onWin: game => {
+					game.data.slimePresent = 0;
+					game.findChest(game.now + 2000, {
+						item:"coin", image:ASSETS.GRAB_COIN,
+					});
+				},
 			},
 		},
 	},

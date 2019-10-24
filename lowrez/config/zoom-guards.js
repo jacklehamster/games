@@ -20,65 +20,68 @@ gameConfig.scenes.push(
 			}
 		},
 		onScene: game => {
-			game.startDialog({
-				time: game.now,
-				index: 0,
-				conversation: [
-					{
-						options: [
-							{
-								msg: game => game.data.seen.badguards ? "Hey" : game.data.seen["writing"] ? "Hello again" : "Hello",
-								onSelect: (game, dialog) => {
-									game.playSound(SOUNDS.HELLO);
-									dialog.guardSpeaking = true;
-									game.waitCursor = true;
-									game.showTip("...", () => {
-										dialog.guardSpeaking = false;
-										game.waitCursor = false;
-									});
-									dialog.index = 1;
-								}
-							},
-							{ msg: "LEAVE", onSelect: game => game.gotoScene("jail-cell")},
-						],
-					},
-					{
-						options: [
-							{
-								msg: "Let me out?", 
-								onSelect: (game, dialog) => {
-									game.playSound(SOUNDS.HAHAHA);
-									dialog.guardSpeaking = true;
-									game.waitCursor = true;
-									game.showTip("... seems like he's laughing at me ...", () => {
-										dialog.guardSpeaking = false;
-										game.waitCursor = false;
-									});
-								}
-							},
-							{
-								hidden: game => !game.data.seen.writing,
-								msg: "It's my birthday", 
-								onSelect: (game, dialog) => {
-									if (game.data.seen.badguards) {
-										game.showTip("Let's just keep that to myself");
-									} else if (DEMO) {
-										game.gotoScene("temp-end");
-									} else {
-										game.playSound(SOUNDS.BIRTHDAY);
+			game.delayAction(game => {
+				game.startDialog({
+					time: game.now,
+					index: 0,
+					conversation: [
+						{
+							options: [
+								{
+									msg: game => game.data.seen.badguards ? "Hey" : game.data.seen["writing"] && game.data.saidHelloToGuard ? "Hello again" : "Hello",
+									onSelect: (game, dialog) => {
+										game.playSound(SOUNDS.HELLO);
 										dialog.guardSpeaking = true;
 										game.waitCursor = true;
-										game.showTip("... did he\nunderstand? ...", game => {
-											game.gotoScene("bring-cake");
+										game.showTip("...", () => {
+											dialog.guardSpeaking = false;
+											game.waitCursor = false;
+										});
+										dialog.index = 1;
+										game.data.saidHelloToGuard = game.now;
+									}
+								},
+								{ msg: "LEAVE", onSelect: game => game.gotoScene("jail-cell")},
+							],
+						},
+						{
+							options: [
+								{
+									msg: "Let me out?", 
+									onSelect: (game, dialog) => {
+										game.playSound(SOUNDS.HAHAHA);
+										dialog.guardSpeaking = true;
+										game.waitCursor = true;
+										game.showTip("... seems like he's laughing at me ...", () => {
+											dialog.guardSpeaking = false;
+											game.waitCursor = false;
 										});
 									}
-								}
-							},
-							{ msg: "LEAVE", onSelect: game => game.gotoScene("jail-cell")},
-						],
-					},
-				],
-			});
+								},
+								{
+									hidden: game => !game.data.seen.writing,
+									msg: "It's my birthday", 
+									onSelect: (game, dialog) => {
+										if (game.data.seen.badguards) {
+											game.showTip("Let's just keep that to myself");
+										} else if (DEMO) {
+											game.gotoScene("temp-end");
+										} else {
+											game.playSound(SOUNDS.BIRTHDAY);
+											dialog.guardSpeaking = true;
+											game.waitCursor = true;
+											game.showTip("... did he\nunderstand? ...", game => {
+												game.gotoScene("bring-cake");
+											});
+										}
+									}
+								},
+								{ msg: "LEAVE", onSelect: game => game.gotoScene("jail-cell")},
+							],
+						},
+					],
+				});
+			}, 50);
 		},
 		sprites: [
 			{
@@ -100,7 +103,7 @@ gameConfig.scenes.push(
 			{
 				src: ASSETS.SPEECH_OUT,
 				hidden: game => game.bagOpening || game.useItem || game.pendingTip,
-				index: game => Math.min(3, Math.floor((game.now - game.sceneTime) / 80)),
+				index: game => Math.min(3, Math.floor((game.now - game.sceneTime) / 50)),
 			},
 			{
 				bag: true,

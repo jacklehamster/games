@@ -2,10 +2,10 @@ gameConfig.scenes.push(
 		{
 			name: "lock-zoom",
 			onScene: game => {
-				game.save();
-				game.showTip(!game.getSituation("zoom-arcade").gotHighScore 
-					? "The combination seems to be in alien symbols."
-					: "Where have I seen those?...", null, null, {removeLock: true})
+				// game.save();
+				// game.showTip(!game.getSituation("zoom-arcade").gotHighScore 
+				// 	? "The combination seems to be in alien symbols."
+				// 	: "Where have I seen those?...", null, null, {removeLock: true})
 				game.startDialog({
 					time: game.now,
 					index: 0,

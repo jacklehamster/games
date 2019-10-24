@@ -34,8 +34,9 @@ gameConfig.scenes.push(
 				x = 12;
 				y = 20;				
 				game.playSound(SOUNDS.OKAY);
+				msg = msg.split("").map(a => " ").join("");
 			}
-			game.showTip(msg, onDone, talker === "yupa" ? 180 : 100, { x, y, talker, removeLock });
+			game.showTip(msg, onDone, talker === "yupa" ? 140 : 100, { x, y, talker, removeLock });
 		},
 		sprites: [
 			{
@@ -145,14 +146,14 @@ gameConfig.scenes.push(
 											}
 											game.waitCursor = true;
 											game.currentScene.startTalk(game, "human", "Yupa, let's go get a drink. What do you think?", game => {
-												game.currentScene.startTalk(game, "yupa", "Im good man but halp yorself with Alectra", game => {
+												game.currentScene.startTalk(game, "yupa", "Im good but halp yorself wif Alectra", game => {
 													game.currentScene.startTalk(game, "human", "Alright, don't mind if I do.", game => {
 														game.currentScene.startTalk(game, "human", "ALECTRA!", null, true);
 														game.dialog.index = 1;
 														game.dialog.paused = game.now;
 														game.delayAction(game => {
 															game.calledAlexa = game.now;
-															game.playSound(SOUNDS.DIVING);
+															game.playSound(SOUNDS.DIVING, {volume:.5});
 														}, 1500);
 														game.delayAction(game => {
 															game.currentScene.startTalk(game, "alexa", "Okay.", game => {
@@ -176,7 +177,7 @@ gameConfig.scenes.push(
 												game.currentScene.startTalk(game, "alexa", "Okay.", game => {
 													game.situation.drink = "beer";
 													game.sceneData.alexaRotate = game.now;
-													game.playSound(SOUNDS.DIVING);
+													game.playSound(SOUNDS.DIVING, {volume:.5});
 													game.waitCursor = false;
 													game.dialog = null;
 												});
@@ -186,11 +187,11 @@ gameConfig.scenes.push(
 									{
 										msg: "Bring me cider!", onSelect: (game, dialog) => {
 											game.waitCursor = true;
-											game.currentScene.startTalk(game, "human", "I want some sparkling cidah! Gimme some!", game => {
+											game.currentScene.startTalk(game, "human", "I want some sparklin' cidah! Gimme some!", game => {
 												game.currentScene.startTalk(game, "alexa", "Okay.", game => {
-													game.situation.drink = "sparkling";
+													game.situation.drink = "sparklin' cidah";
 													game.sceneData.alexaRotate = game.now;
-													game.playSound(SOUNDS.DIVING);
+													game.playSound(SOUNDS.DIVING, {volume:.5});
 													game.waitCursor = false;
 													game.dialog = null;
 												});
@@ -204,7 +205,7 @@ gameConfig.scenes.push(
 												game.currentScene.startTalk(game, "alexa", "Okay.", game => {
 													game.situation.drink = "Ramune";
 													game.sceneData.alexaRotate = game.now;
-													game.playSound(SOUNDS.DIVING);
+													game.playSound(SOUNDS.DIVING, {volume:.5});
 													game.waitCursor = false;
 													game.dialog = null;
 												});
@@ -238,7 +239,7 @@ gameConfig.scenes.push(
 				},
 				offsetY: (game, sprite) => {
 					const progress = Math.max(0, Math.min(1, 1 - (game.now - game.calledAlexa) / 3000));
-					return -30 * progress * progress;
+					return Math.round(-30 * progress * progress);
 				},
 				hidden: game => !game.calledAlexa,
 				noHighlight: game => !game.sceneData.alexaRotate,

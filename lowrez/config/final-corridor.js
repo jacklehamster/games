@@ -15,7 +15,7 @@ gameConfig.scenes.push(
 		],
 		map: `
 			XXXXXXXXX
-			XL.C...EX
+			XL.C..8EX
 			XXXXXXXXX
 		`,
 		sprites: [
@@ -667,6 +667,7 @@ gameConfig.scenes.push(
 					return true;
 				},
 			},	
+			makeFoe('guard', ASSETS.GUARD_2),
 			...standardBattle(),
 			...standardMenu(),
 			...standardBag(),
@@ -765,6 +766,57 @@ gameConfig.scenes.push(
 				onEvent: (game, event) => {
 				},
 			},
+			'8': {
+				foe: "guard",
+				foeLife: 150,
+				foeBlockChance: .7,
+				attackSpeed: 5000,
+				riposteChance: .6,
+				attackPeriod: 100,
+				foeDamage: 9,
+				foeDefense: 10,
+				xp: 10,
+				belowTheBelt: false,
+				onEvent: (game, {foe, foeLife, foeBlockChance, foeDefense, attackSpeed, riposteChance, attackPeriod, foeDamage, onWin, xp, belowTheBelt}) => {
+					if (game.getSituation("lab").shotTank) {
+						return;
+					}
+					const {data, now} = game;
+					game.chest = null;
+					game.playTheme(SOUNDS.BATTLE_THEME, {volume:.8});
+					if (!data.battle) {
+						data.battle = {
+							time: now,
+							foe,
+							fist: LEFT,
+							attackSpeed,
+							playerHit: 0,
+							playerBlock: 0,
+							foeBlockChance,
+							playerLeftAttack: 0,
+							playerRightAttack: 0,
+							playerAttackLanded: 0,
+							playerAttackPeriod: 50,
+							foeLife,
+							foeMaxLife: foeLife,
+							foeBlock: 0,
+							foeDefense,
+							foeDefeated: 0,
+							attackPeriod,
+							riposteChance,
+							foeDamage,
+							onWin,
+							xp,
+							belowTheBelt,
+							theme: data.theme.song,
+						};
+					}
+					return true;
+				},
+				onWin: game => game.findChest(game.now + 2000, {
+					item:"bullet", image:ASSETS.GRAB_GUN, message: "I found one bullet for my gun.",
+				}),
+			},		
 		},
 	},
 );

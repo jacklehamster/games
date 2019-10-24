@@ -1,4 +1,6 @@
 const Game = (() => {
+	this.title = "Where in Space is Baby Hitler?";
+
 	const canvas = document.getElementById("canvas");
 	const ctx = canvas.getContext("2d");
 
@@ -260,7 +262,7 @@ const Game = (() => {
 				}				
 				if (this.dialog && this.dialog.hovered) {
 					if (this.dialog.hovered.onSelect) {
-						this.dialog.hovered.onSelect(this, this.dialog);
+						this.dialog.hovered.onSelect(this, this.dialog, this.dialog.conversation[this.dialog.index]);
 					}
 					return;
 				}
@@ -410,9 +412,10 @@ const Game = (() => {
 		gotoScene(index, entrance, restoreMapInfo) {
 			const {door} = entrance || {};
 			if (typeof(index) === "string") {
+				const sceneToGoTo = index;
 				index = this.config.scenes.map(({name}, idx) => name === index ? idx : -1).filter(index => index >= 0)[0];
 				if (typeof(index) === 'undefined') {
-					console.error(`${index}: unknown scene.`);
+					console.error(`${sceneToGoTo}: unknown scene.`);
 				}
 			}
 			this.sceneName = this.config.scenes[index].name;
@@ -482,8 +485,8 @@ const Game = (() => {
 		pause() {
 			this.paused = this.now;
 			this.resumed = 0;
-			if (this.data.theme && this.data.theme.song) {
-				this.stopSound(this.data.theme.song);
+			for (let s in SOUNDS) {
+				this.stopSound(SOUNDS[s]);
 			}
 		}
 
@@ -554,6 +557,7 @@ const Game = (() => {
 			this.tips = {};
 			this.pickedUp = null;
 			this.useItem = null;
+			this.useItemTime = 0;
 			this.pendingTip = null;
 			this.hideCursor = false;
 			this.waitCursor = false;
@@ -965,7 +969,6 @@ const Game = (() => {
 								this.clicking = true;
 								if (this.useItem && !sprite.bag && !sprite.menu) {
 									const { combine, combineMessage, name, onShot } = sprite;
-									console.log(this.useItem, this.gunFired);
 									if (this.useItem === "gun" && this.gunFired) {
 										this.data.shot[name] = this.now;
 										let handled = false;
@@ -1666,7 +1669,7 @@ const Game = (() => {
 			const frame = Math.floor((this.now - (time||0)) / speed);
 			const fullWrappedText = this.wordwrap(text, 12);
 			tip.progress = Math.min(1, frame / fullWrappedText.length);
-			const lines = fullWrappedText.substr(0, Math.min(text.length, frame)).split("\n").slice(-3);
+			const lines = fullWrappedText.substr(0, Math.min(text.length, frame)).split("\n").slice(-(tip.maxLines || 3));
 
 			tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 			lines.forEach((msg, row) => {
@@ -1701,10 +1704,9 @@ const Game = (() => {
 			for (let a in ASSETS) {
 				const src = ASSETS[a];
 				if (!imageStock[src]) {
-					this.prepareImage(src, () => {
-//						this.prepareAssets();
+					this.prepareImage(src, stock => {
+						stock.org = stock.img;
 					});
-//					return;
 				}
 			}
 		}
@@ -1714,9 +1716,7 @@ const Game = (() => {
 				const src = SOUNDS[a];
 				if (!soundStock[src]) {
 					this.prepareSound(src, () => {
-//						this.prepareSounds();
 					});
-//					return;
 				}
 			}
 		}
@@ -1738,7 +1738,7 @@ const Game = (() => {
 		playSound(src, options) {
 			const {loop, volume} = options || {};
 			if (soundStock[src]) {
-				const { audio } = soundStock[src];
+				const { audio, playing } = soundStock[src];
 				if (loop) {
 					audio.volume = volume || 1;
 					audio.loop = true;
@@ -1746,7 +1746,10 @@ const Game = (() => {
 						audio.play();
 					}
 				} else {
-					const soundBite = audio.cloneNode(true);
+					if (!playing) {
+						soundStock[src].playing = true;
+					}
+					const soundBite = playing ? audio.cloneNode(true) : audio;
 					soundBite.volume = volume || .5;
 					soundBite.loop = false;
 					if (!this.mute) {
@@ -1755,6 +1758,7 @@ const Game = (() => {
 				}
 			} else {
 				this.prepareSound(src, ({audio}) => {
+					soundStock[src] = audio;
 					audio.volume = volume || 1;
 					if (!this.mute) {
 						audio.play();
@@ -1778,6 +1782,9 @@ const Game = (() => {
 			if (!soundData) {
 				const stock = {}
 				const audio = new Audio(src);
+				audio.addEventListener("ended", () => {
+					stock.playing = false;
+				});
 				this.loadPending = true;
 				audio.addEventListener("loadeddata", () => {
 					stock.loaded = true;
@@ -1926,6 +1933,25 @@ const Game = (() => {
 					}
 				});
 				return;	
+			}
+
+			if (src.split("|").pop() === "shaved") {
+				this.prepareImage(src.split("|").slice(0,-1).join("|"), stock => {
+					const tempCanvas = document.createElement("canvas");
+					tempCanvas.width = stock.img.naturalWidth || stock.img.width;
+					tempCanvas.height = stock.img.naturalHeight || stock.img.height;
+					const tempCtx = tempCanvas.getContext("2d");
+					tempCtx.drawImage(stock.img, 0, 0);
+
+					imageStock[src] = {
+						loaded: true,
+						img: tempCanvas,
+					};
+					if (callback) {
+						callback(imageStock[src]);
+					}
+				});
+				return;
 			}
 
 			if (!spriteData) {
@@ -2093,10 +2119,14 @@ const Game = (() => {
 			}
 			this.data.time += dt;
 			this.handleSceneEvents();
-			this.refreshMove();
-			this.refreshActions();
-			this.checkMouseHover();
-			this.checkUseItem();
+			if (this.sceneTime) {
+				this.refreshMove();
+				this.refreshActions();
+			}
+			if (this.sceneTime) {
+				this.checkMouseHover();
+				this.checkUseItem();				
+			}
 
 			if (this.sceneTime) {
 				this.refreshSprites();
@@ -2224,12 +2254,13 @@ const Game = (() => {
 			}
 		}
 
-		displayTextLine(ctx, {msg, x, y, spacing}) {
+		displayTextLine(ctx, {msg, x, y, spacing, alpha}) {
 			const letterTemplate = {
 				src: ASSETS.ALPHABET, col:10, row:10, size:[5,6],
 				offsetX: 20, offsetY: 20,
 				index: game => Math.floor(game.now / 100) % 62,
 				isText: true,
+				alpha,
 			};				
 			letterTemplate.offsetY = y;
 			let spaceX = x;
@@ -2284,6 +2315,10 @@ const Game = (() => {
 
 			const dialogTime = this.now - this.dialog.time;
 			const dialogShift = Math.round((dialogTime < 50 ? (50 - dialogTime) / 50 : 0) * 4);
+
+			if (!conversation[index]) {
+				throw new Error(`Dialog index ${index} out of bound.`);
+			}
 
 			const {options} = conversation[index];
 			const filteredOptions = options.filter(({hidden}) => !hidden || !this.evaluate(hidden));
@@ -2463,6 +2498,7 @@ const Game = (() => {
 						const { item, image, col, row } = this.inventory[i];
 						if (this.isMouseHover({src:image, index:this.frameIndex-1, col, row}, 1, this.mouse)) {
 							this.useItem = item;
+							this.useItemTime = this.now;
 						}
 					}
 				}
@@ -2548,6 +2584,35 @@ const Game = (() => {
 			if (this.data.theme) {
 				this.playTheme(this.data.theme.song, {volume:this.data.theme.volume});
 			}
+			for (let id in this.imageStock) {
+				if (this.imageStock[id].org) {
+					this.imageStock[id].img = this.imageStock[id].org;
+				}
+			}
+			if (this.data.images) {
+				for (let src in this.data.images) {
+					this.replaceImage(src, this.data.images[src]);
+				}
+			}
+			if (!this.data.name) {
+				this.data.name = "Hitman";
+			}
+		}
+
+		replaceImage(id, src) {
+			const img = new Image();
+			img.addEventListener("load", e => {
+				const canvas = document.createElement("canvas");
+				canvas.width = img.naturalWidth;
+				canvas.height = img.naturalHeight;
+				canvas.getContext("2d").drawImage(img, 0, 0);
+
+				const stock = this.imageStock[id] = {
+					img: canvas,
+					loaded: true,
+				};
+			});
+			img.src = this.data.images[id];
 		}
 
 		setupStats() {
@@ -2615,7 +2680,7 @@ const Game = (() => {
 				this.battle.foeDefeated = this.now;
 				this.useItem = null;
 				this.playSound(SOUNDS.FOE_DEFEAT);
-				this.playTheme(SOUNDS.CHIN_TOK_THEME, {volume: .2});
+				this.playTheme(this.battle.theme || SOUNDS.CHIN_TOK_THEME, {volume:.2});
 				if (this.battle.onWin) {
 					this.data.stats.state = {
 						ate: 0,
@@ -2648,7 +2713,7 @@ const Game = (() => {
 			return Math.max(2, Math.ceil(Math.log(xp))) - 1;
 		}
 
-		findChest(found, { item, image, cleared }) {
+		findChest(found, { item, image, cleared, message }) {
 			this.chest = {
 				found,
 				opened: 0,
@@ -2656,6 +2721,7 @@ const Game = (() => {
 				item,
 				image,
 				cleared,
+				message,
 			};			
 		}
 

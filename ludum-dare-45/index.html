@@ -1,5 +1,6 @@
 <head>
 <link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
+<script src="lib/spark-md5.min.js"></script>
 <script src="lib/newgroundsio.min.js"></script>
 <script src="ng.js"></script>
 <style>
@@ -43,12 +44,50 @@
 
 
 
-<canvas id="canvas" style="position: absolute; width: 800; height: 600" width=800 height=600></canvas>
+<canvas id="canvas" style="position: absolute; width: 800; height: 600" width=800 height=600>
+</canvas>
 <img class="center" id="bg" src="assets/startgame.png">
+
+<div style="display:none">
+	<input type="file" id="file-input" accept=".g0d" />
+</div>
+
+
+<div id="time"></div>
+
+<script>
+function readSingleFile(e) {
+  var file = e.target.files[0];
+  if (!file) {
+  	document.getElementById('file-input').value = null;
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var contents = e.target.result;
+    displayContents(contents);
+    document.getElementById('file-input').value = null;
+  };
+  reader.readAsText(file);
+}
+
+function displayContents(contents) {
+	processLoad(JSON.parse(contents));
+}
+
+document.getElementById('file-input').addEventListener('change', readSingleFile, false);
+
+function loadGame() {
+	document.getElementById('file-input').click();
+}
+
+</script>
+
+
 <script src="generated/assets.js"></script>
 <script>
 
-	const CHEAT = false;//true;//false;
+	const CHEAT = false;
 	const difficulty = 1;
 	const gamespeed = 10;//5 * (2 / difficulty);
 	const frontResolution = 1;
@@ -114,9 +153,12 @@
 	document.getElementById("subcanvas-bot").px = 0;
 	document.getElementById("subcanvas-bot").py = +1;
 
+	const subCanvasWidth = Math.round(ctx.canvas.offsetWidth / resolution);
+	const subCanvasHeight = Math.round(ctx.canvas.offsetHeight / resolution);
+
 	subCanvases.forEach(canvas => {
-		canvas.width = ctx.canvas.offsetWidth / resolution;
-		canvas.height = ctx.canvas.offsetHeight / resolution;
+		canvas.width = subCanvasWidth;
+		canvas.height = subCanvasHeight;
 		canvas.x = canvas.px * canvas.width;
 		canvas.y = canvas.py * canvas.height;
 		canvas.style.width = ctx.canvas.style.width;
@@ -356,14 +398,14 @@
 	const world = {
 		now: 0,
 		registry: {},
-		size: [ctx.canvas.width / resolution, ctx.canvas.height / resolution],
+		size: [subCanvasWidth, subCanvasHeight],
 		x: 0, y: 0,
 		init: world => {
 			world.x = 0;
 			world.y = 0;
 
 			globalMessage = {
-				message: `WELCOME MINIGOD\n\nThis planet looks pretty empty, but dig a bit and we might be able to find some plants.\nGrow them, spread them, evolve them.\n\nARROWS to move. SPACE to dig. TAB to leave spaceship.\nH for HELP.`,
+				message: `WELCOME MINIGOD\n\nThis planet looks pretty empty, but dig a bit and we might be able to find some plants.\nGrow them, spread them, evolve them.\n\nARROWS to move. SPACE to dig. TAB to leave spaceship.\nH for HELP. S to SAVE. L to LOAD.`,
 				time: world.now + 10000,
 			};
 		},
@@ -1082,7 +1124,7 @@
 
 
 					ctx.fillStyle = "#00000022";
-					ctx.fillRect(650 + changeWidth, 0, 150, 470);
+					ctx.fillRect(650 + changeWidth, 0, 150, 500);
 					ctx.fillRect(655 + changeWidth, 35, 140, 410);
 					ctx.fillStyle = "#88880088";
 					ctx.fillRect(660 + changeWidth, 245, 130, 200);
@@ -1143,7 +1185,8 @@
 					ctx.fillStyle = "#cccccc";
 					ctx.font = "12px Roboto";
 					ctx.fillText("[H] for help", 695 + changeWidth, 462);
-
+					ctx.fillText("[S] to save", 695 + changeWidth, 477);
+					ctx.fillText("[L] to load", 695 + changeWidth, 492);
 				},
 			},
 			{
@@ -1163,6 +1206,14 @@
 						world.help = 2;
 					} else if (keyCode === 72) {
 						world.help = 1;
+					}
+
+					if (keyCode === 83) {	//	s
+						saveGame();
+					}
+
+					if (keyCode === 76) {	//	l
+						loadGame();
 					}
 				},
 			},
@@ -1840,9 +1891,11 @@
 				break;
 			case "- Mutate":
 				{
-					const newId = Math.random()+"";
+					const newId = SparkMD5.hash(Math.random()+"");
 					const imageId = getImageId(plant);
 					const asset = { ... files[imageId] };
+					asset.mutation = true;
+					asset.org = files[imageId].org || imageId;
 					files[newId] = asset;
 					asset.img = document.createElement("canvas");
 					asset.img.width = files[imageId].width;
@@ -1852,6 +1905,11 @@
 					const colChange1 = Math.floor(Math.random() * 256);
 					const colChange2 = Math.floor(Math.random() * 256);
 					const colChange3 = Math.floor(Math.random() * 256);
+					asset.colChange = [ ...(asset.colChange || [0, 0, 0]) ];
+					asset.colChange[0] =  (asset.colChange[0] + colChange1) % 256;
+					asset.colChange[1] =  (asset.colChange[1] + colChange2) % 256;
+					asset.colChange[2] =  (asset.colChange[2] + colChange3) % 256;
+
 					for (let i = 0; i < imgData.data.length; i+= 4) {
 						imgData.data[i] = (imgData.data[i] + colChange1 + 256) % 256;;
 						imgData.data[i+1] = (imgData.data[i+1] + colChange2 + 256) % 256;;
@@ -2501,7 +2559,7 @@
 	}
 
 
-
+	let timeShift = 0;
 	function loop(t) {
 		if (!world.data) {
 			world.data = {};
@@ -2519,7 +2577,7 @@
 			});
 		}
 
-		world.now = t;
+		world.now = t + timeShift;
 		world.refresh(world, ctx, subCtx);
 		world.sprites.forEach(sprite => {
 			if (sprite.refresh) {
@@ -2567,6 +2625,387 @@
 
 
 	document.addEventListener("keyup", startGame);
+
+	function serialize(imageData) {
+	  return {
+	  	width: imageData.width,
+	  	height: imageData.height,
+	  	data: String.fromCharCode.apply(null, new Uint16Array(imageData.data.buffer)),
+	  };
+	}
+
+	function deserialize(ctx, {width, height, data}) {
+	  const buf = new ArrayBuffer(data.length*2); // 2 bytes for each char
+	  const bufView = new Uint16Array(buf);
+	  for (let i=0, strLen=str.length; i < strLen; i++) {
+	    bufView[i] = str.charCodeAt(i);
+	  }
+	  return ctx.createImageData(width, height);
+	  return buf;
+	}
+
+	function save() {
+		const data = {
+			uniqueId: null,
+			date: new Date().toLocaleString(),
+		};
+		data.digCount = digCount;
+		data.images = [];
+		data.imageDatas = {};
+		const imageHash = {};
+		const canvas  = document.createElement("canvas");
+		canvas.width = subCanvasWidth; canvas.height = subCanvasHeight;
+		const ctx = canvas.getContext("2d");
+
+		//	Sub canvases
+		data.subCanvases = {};
+		subCanvases.forEach(({id, px, py}) => {
+			data.subCanvases[id] = [px, py];
+		});
+
+		//	Image data
+		Object.entries(imageDatas).forEach(([id, imageData]) => {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.putImageData(imageData, 0, 0);
+			const src = canvas.toDataURL();
+			const index = typeof(imageHash[src]) === "undefined" ? data.images.length : imageHash[src];
+			imageHash[src] = index;
+			if (index >= data.images.length) {
+				data.images.push(src);
+			}
+
+			data.imageDatas[id] = index;
+		});
+
+		//	mutations
+		const currentMutations = {};
+		data.mutations = {};
+		Object.entries(files)
+			.filter(([,{mutation}]) => mutation)
+			.forEach(([id, {org, colChange}]) => currentMutations[id] = {org, colChange});
+
+		//	world
+		data.world = {};
+		data.world.now = world.now;
+		data.world.x = world.x;
+		data.world.y = world.y;
+
+		//	minigod
+		data.minigod = {};
+		data.minigod.x = world.registry.minigod.x;
+		data.minigod.y = world.registry.minigod.y;
+
+		//	AIs
+		data.ais = [];
+
+		//	plants
+		const { plants } = world.registry.plant.data;
+		data.world.plants = [];
+		plants.forEach(({
+			x, y,
+			baseEvolveChance, baseSpreadChance,
+			born, firstBorn,
+			growthFactor,
+			top, bottom, left, right,
+			name, id,
+			ai,
+		}) => {
+			if (ai && data.ais.indexOf(ai) < 0) {
+				data.ais.push(ai);
+			}
+			const plantData = {
+				x, y,
+				baseEvolveChance, baseSpreadChance,
+				born, firstBorn,
+				growthFactor,
+			};
+			if (name) plantData.name = name;
+			if (id) plantData.id = id;
+			if (currentMutations[id]) {
+				data.mutations[id] = currentMutations[id];
+			}
+			if (ai) plantData.ai = data.ais.indexOf(ai);
+			if (top) plantData.top = plants.indexOf(top);
+			if (bottom) plantData.bottom = plants.indexOf(bottom);
+			if (left) plantData.left = plants.indexOf(left);
+			if (right) plantData.right = plants.indexOf(right);
+			data.world.plants.push(plantData);
+		});
+
+		//	bunnies	
+		const { bunnies } = world.registry.bunny.data;
+		data.world.bunnies = [];
+		bunnies.forEach(({
+			x, y,
+			baseEvolveChance, baseSpreadChance,
+			born, firstBorn,
+			growthFactor,
+			energyExpiration,
+			name, id,
+			ai,
+		}) => {
+			if (ai && data.ais.indexOf(ai) < 0) {
+				data.ais.push(ai);
+			}
+			const bunnyData = {
+				x, y,
+				baseEvolveChance, baseSpreadChance,
+				born, firstBorn,
+				growthFactor,
+				energyExpiration,
+			};
+			if (name) bunnyData.name = name;
+			if (id) bunnyData.id = id;
+			if (currentMutations[id]) {
+				data.mutations[id] = currentMutations[id];
+			}
+			if (ai) bunnyData.ai = data.ais.indexOf(ai);
+			data.world.bunnies.push(bunnyData);
+		});		
+
+		//	humans	
+		const { humans } = world.registry.human.data;
+		data.world.humans = [];
+		humans.forEach(({
+			x, y,
+			baseEvolveChance, baseSpreadChance,
+			born, firstBorn,
+			growthFactor,
+			energyExpiration,
+			name, id,
+			ai,
+		}) => {
+			if (ai && data.ais.indexOf(ai) < 0) {
+				data.ais.push(ai);
+			}
+			const humanData = {
+				x, y,
+				baseEvolveChance, baseSpreadChance,
+				born, firstBorn,
+				growthFactor,
+				energyExpiration,
+			};
+			if (name) humanData.name = name;
+			if (id) humanData.id = id;
+			if (currentMutations[id]) {
+				data.mutations[id] = currentMutations[id];
+			}
+			if (ai) humanData.ai = data.ais.indexOf(ai);
+			data.world.humans.push(humanData);
+		});				
+
+		data.ACHIEVED = ACHIEVED;
+
+		data.uniqueId = SparkMD5.hash(`${JSON.stringify(data)}/${data.world.now}`);
+		return data;
+	}
+
+
+	function download(data, filename, type) {
+	    var file = new Blob([data], {type});
+	    if (window.navigator.msSaveOrOpenBlob) // IE10+
+	        window.navigator.msSaveOrOpenBlob(file, filename);
+	    else { // Others
+	        var a = document.createElement("a"), url = URL.createObjectURL(file);
+	        console.log(url);
+	        a.href = url;
+	        a.download = filename;
+	        document.body.appendChild(a);
+	        a.click();
+	        setTimeout(function() {
+	            document.body.removeChild(a);
+	            window.URL.revokeObjectURL(url);  
+	        }, 0); 
+	    }
+	}
+
+	function saveGame() {
+		download(JSON.stringify(save(), null, " "),
+			"minigod-" + new Date().toLocaleString() + ".g0d",
+			"application/json");
+	}
+
+	function storeImageData(src) {
+		return new Promise(resolve => {
+			const image = new Image();
+			image.addEventListener("load", e => {
+				const canvas = document.createElement("canvas");
+				canvas.width = subCanvasWidth; canvas.height = subCanvasHeight;
+				const ctx = canvas.getContext("2d");
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				ctx.drawImage(image, 0, 0);
+				const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+				resolve(imageData);
+			});
+			image.src = src;
+		});
+	}
+
+
+	async function processLoad(data) {
+		const uniqueId = data.uniqueId;
+		data.uniqueId = null;
+		if (SparkMD5.hash(`${JSON.stringify(data)}/${data.world.now}`) !== uniqueId) {
+			data.world.plants = [];
+			data.world.bunnies = [];
+			data.world.humans = [];
+		}
+
+		digCount = data.digCount;
+
+		//	SubCanvases
+		for (let id in data.subCanvases) {
+			const [ px, py ] = data.subCanvases[id];
+			const subCanvas = document.getElementById(id);
+			subCanvas.px = px;
+			subCanvas.py = py;
+		}
+
+		//	Image data
+		const imageDataArray = [];
+		for (let i = 0; i < data.images.length; i++) {
+			imageDataArray[i] = await storeImageData(data.images[i]);
+		}
+		const [ width, height ] = world.size;
+		for (let id in imageDatas) {
+			delete imageDatas[id];
+		}
+		for (let id in data.imageDatas) {
+			imageDatas[id] = imageDataArray[data.imageDatas[id]];
+		}
+		updateCanvases({width, height});
+
+		//	mutations
+		for (let newId in data.mutations) {
+			const { org, colChange } = data.mutations[newId];
+			const imageId = org;
+			const asset = { ... files[imageId]};
+			asset.mutation = true;
+			asset.org = files[imageId].org || imageId;
+			files[newId] = asset;
+			asset.img = document.createElement("canvas");
+			asset.img.width = files[imageId].width;
+			asset.img.height = files[imageId].height;
+			asset.img.getContext("2d").drawImage(files[imageId].img, 0, 0);
+			const imgData = asset.img.getContext("2d").getImageData(0, 0, asset.img.width, asset.img.height);
+			const [ colChange1, colChange2, colChange3 ] = colChange;
+			asset.colChange = [ ...(asset.colChange || [0, 0, 0]) ];
+			asset.colChange[0] =  (asset.colChange[0] + colChange1) % 256;
+			asset.colChange[1] =  (asset.colChange[1] + colChange2) % 256;
+			asset.colChange[2] =  (asset.colChange[2] + colChange3) % 256;
+
+			for (let i = 0; i < imgData.data.length; i+= 4) {
+				imgData.data[i] = (imgData.data[i] + colChange1 + 256) % 256;;
+				imgData.data[i+1] = (imgData.data[i+1] + colChange2 + 256) % 256;;
+				imgData.data[i+2] = (imgData.data[i+2] + colChange3 + 256) % 256;;
+			}
+			asset.img.getContext("2d").putImageData(imgData, 0, 0);
+		}
+
+		//	world
+		timeShift = -world.now + data.world.now;
+		world.x = data.world.x;
+		world.y = data.world.y;
+
+		//	minigod
+		world.registry.minigod.x = data.minigod.x;
+		world.registry.minigod.y = data.minigod.y;
+
+		//	AIs (data.ais)
+
+		//	plants
+		world.registry.plant.data.plants = data.world.plants.map(plant => {return {};});
+		data.world.plants.forEach((plant, index) => {
+			const { x, y,
+				baseEvolveChance, baseSpreadChance,
+				born, firstBorn,
+				growthFactor,
+				name, id, ai, top, bottom, left, right,
+			} = plant;
+			const newPlant = world.registry.plant.data.plants[index];
+			newPlant.type = "plant";
+			newPlant.x = x;
+			newPlant.y = y;
+			newPlant.baseEvolveChance = baseEvolveChance;
+			newPlant.baseSpreadChance = baseSpreadChance;
+			newPlant.born = born;
+			newPlant.firstBorn = firstBorn;
+			newPlant.growthFactor = growthFactor;
+			newPlant.name = name || null;
+			newPlant.id = id || null;
+			if (typeof(ai) !== "undefined") {
+				newPlant.ai = typeof(ai) !== "undefined" ? data.ais[ai] : null;
+			}
+			if (typeof(top) !== "undefined") {
+				newPlant.top = world.registry.plant.data.plants[top];
+			}
+			if (typeof(bottom) !== "undefined") {
+				newPlant.bottom = world.registry.plant.data.plants[bottom];
+			}
+			if (typeof(left) !== "undefined") {
+				newPlant.left = world.registry.plant.data.plants[left];
+			}
+			if (typeof(right) !== "undefined") {
+				newPlant.right = world.registry.plant.data.plants[right];
+			}
+		});
+
+		//	bunnies	
+		world.registry.bunny.data.bunnies = data.world.bunnies.map(bunny => {return {};});
+		data.world.bunnies.forEach((bunny, index) => {
+			const { x, y,
+				baseEvolveChance, baseSpreadChance,
+				born, firstBorn,
+				growthFactor, energyExpiration,
+				name, id, ai,
+			} = bunny;
+			const newBunny = world.registry.bunny.data.bunnies[index];
+			newBunny.type = "bunny";
+			newBunny.x = x;
+			newBunny.y = y;
+			newBunny.baseEvolveChance = baseEvolveChance;
+			newBunny.baseSpreadChance = baseSpreadChance;
+			newBunny.born = born;
+			newBunny.firstBorn = firstBorn;
+			newBunny.growthFactor = growthFactor;
+			newBunny.energyExpiration = energyExpiration;
+			newBunny.name = name || null;
+			newBunny.id = id || null;
+			if (typeof(ai) !== "undefined") {
+				newBunny.ai = typeof(ai) !== "undefined" ? data.ais[ai] : null;
+			}
+		});
+
+		//	humans	
+		world.registry.human.data.humans = data.world.humans.map(human => {return {};});
+		data.world.humans.forEach((human, index) => {
+			const { x, y,
+				baseEvolveChance, baseSpreadChance,
+				born, firstBorn,
+				growthFactor, energyExpiration,
+				name, id, ai,
+			} = human;
+			const newHuman = world.registry.human.data.humans[index];
+			newHuman.type = "human";
+			newHuman.x = x;
+			newHuman.y = y;
+			newHuman.baseEvolveChance = baseEvolveChance;
+			newHuman.baseSpreadChance = baseSpreadChance;
+			newHuman.born = born;
+			newHuman.firstBorn = firstBorn;
+			newHuman.growthFactor = growthFactor;
+			newHuman.energyExpiration = energyExpiration;
+			newHuman.name = name || null;
+			newHuman.id = id || null;
+			if (typeof(ai) !== "undefined") {
+				newHuman.ai = typeof(ai) !== "undefined" ? data.ais[ai] : null;
+			}
+		});
+
+		for (let id in data.ACHIEVED) {
+			ACHIEVED[id] = data.ACHIEVED[id];
+		}
+	}
 
 </script>
 </body>

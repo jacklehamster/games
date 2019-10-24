@@ -612,6 +612,9 @@ function standardBag() {
 		{
 			name: "self",
 			src: ASSETS.EATER, col:2, row:2,
+			offsetX: ({now, useItemTime}) => {
+				return -20 * Math.sqrt(1 - Math.max(0, now - useItemTime) / 500);
+			},
 			index: (game, sprite) => game.hoverSprite === sprite ? Math.min(2, Math.floor((game.now - sprite.hoverTime) / 100)) : 0,
 			hidden: game => !consumable[game.useItem],
 			combine: (item, game) => {
@@ -637,7 +640,7 @@ function standardBag() {
 					return false;
 				}
 				if (dialog) {
-					return dialog.conversation[dialog.index].options.filter(({hidden})=>!hidden || !game.evaluate(hidden)).length > 2;
+					return dialog.conversation[dialog.index].options.filter(({hidden})=>!hidden || !game.evaluate(hidden)).length > 2 || dialog.paused;
 				}
 				if (arrow === "BAG") {
 					const door = game.frontDoor();
@@ -948,7 +951,7 @@ function makeYupa() {
 				case "empty bottle":
 					if (game.data.yupa.noMoreBottle) {
 						game.playSound(SOUNDS.YUPA);
-						game.showTip("I aint going in dat bottle anymore!", null, null, {talker: "yupa", removeLock:true});
+						game.showTip("I aint going in dat bottle anymore!", null, null, {talker: "yupa"});
 						game.useItem = null;
 					} else if (game.data.yupa.canTurnIntoGoo) {
 						game.startDialog({
@@ -974,11 +977,11 @@ function makeYupa() {
 																game.dialog = null;
 															}, onTipDone: game => {
 																game.playSound(SOUNDS.YUPA);
-																game.showTip(["Am not comftabe!", "Gemme outta here, naow!"], game => {
+																game.showTip(["Am not comfotabe!", "Gemme outta here, naow!"], game => {
 																	game.playSound(SOUNDS.HUM);
 																	game.showTip("You can still talk! Amazing!", null, null, {removeLock: true});
 																}, null, { x: 2, y: 22, speed: 80, talker:"yupa" });
-															}});
+														}});
 													}, null, { x: 2, y: 22, speed: 80, talker:"yupa" });
 												});
 											},
@@ -1368,7 +1371,7 @@ function makeFoe(foe, src) {
 		onShot: (game, sprite) => {
 			const {battle, data} = game;
 			if (!battle.invincible) {
-				game.damageFoe(100, {shot:true});
+				game.damageFoe(1000, {shot:true});
 			}
 		},
 		combine: (item, game) => {
@@ -1561,7 +1564,7 @@ function standardBattle() {
 				}
 				if (chest && !chest.opened) {
 					chest.opened = now;
-					game.playSound(SOUNDS.DRINK);
+					game.playSound(SOUNDS.DOOR);
 				}
 			},
 			index: game => {
@@ -1574,9 +1577,12 @@ function standardBattle() {
 					const frame = Math.floor((now - chest.opened) / 100);
 					if (frame > 4 && !chest.checked) {
 						chest.checked = now;
-						const { item, image } = chest;
-						game.pickUp({item, image, message:"", onPicked: game => {
+						const { item, image, message } = chest;
+						game.pickUp({item, image, message:message || "", onPicked: game => {
 							if (game.battle) {
+								if (!game.battle.chest) {
+									game.chest = null;
+								}
 								game.battle = null;
 							} else {
 								if (!situation.chestCleared) {
