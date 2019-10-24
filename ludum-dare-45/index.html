@@ -1187,6 +1187,8 @@ function loadGame() {
 					ctx.fillText("[H] for help", 695 + changeWidth, 462);
 					ctx.fillText("[S] to save", 695 + changeWidth, 477);
 					ctx.fillText("[L] to load", 695 + changeWidth, 492);
+
+					document.getElementById("time").innerText = (world.now/1000+"").toHHMMSS();
 				},
 			},
 			{
@@ -1237,6 +1239,19 @@ function loadGame() {
 			}
 		],
 	};
+
+
+	String.prototype.toHHMMSS = function () {
+	    var sec_num = parseInt(this, 10); // don't forget the second param
+	    var hours   = Math.floor(sec_num / 3600);
+	    var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+	    var seconds = sec_num - (hours * 3600) - (minutes * 60);
+
+	    if (hours   < 10) {hours   = "0"+hours;}
+	    if (minutes < 10) {minutes = "0"+minutes;}
+	    if (seconds < 10) {seconds = "0"+seconds;}
+	    return sec_num > 3600 ? hours+':'+minutes+':'+seconds : minutes+':'+seconds;
+	}	
 
 	const ACHIEVED = {};
 
@@ -2820,9 +2835,15 @@ function loadGame() {
 	}
 
 	function saveGame() {
+		const filename = "minigod-" + new Date().toLocaleString() + ".g0d";
 		download(JSON.stringify(save(), null, " "),
-			"minigod-" + new Date().toLocaleString() + ".g0d",
+			filename,
 			"application/json");
+
+		globalMessage = {
+			message: `Your game has been saved as ${filename}`,
+			time: world.now,
+		};
 	}
 
 	function storeImageData(src) {
@@ -3005,6 +3026,12 @@ function loadGame() {
 		for (let id in data.ACHIEVED) {
 			ACHIEVED[id] = data.ACHIEVED[id];
 		}
+
+		globalMessage = {
+			message: `Your game has been loaded.`,
+			time: world.now,
+		};
+
 	}
 
 </script>
