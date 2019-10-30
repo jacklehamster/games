@@ -3,6 +3,58 @@ gameConfig.scenes.push(
 		name: "mirror",
 		onScene: game => {
 			game.playTheme(SOUNDS.JAIL_CELL_THEME);
+
+			if (!game.getSituation("doctar-room").thoughtIndex) {
+				game.getSituation("doctar-room").thoughtIndex = 0;
+			} else {
+				game.getSituation("doctar-room").thoughtIndex --;
+			}
+
+			game.sceneData.thoughts = [
+				"... so here we are ...",
+				"... and thinking killing Baby Hitler ...",
+				"... was the most difficult part ...",
+				"... I thought this was all behind ...",
+				"... avoiding the holocaust, spare the baby's life ...",
+				"... it all seemed too easy ...",
+				"... how foolish of me ...",
+				"... as a hitman, I never feared death ...",
+				"... I was willing to give my life for this mission ...",
+				"... and yet ...",
+				"... the thought of being erased from existence ...",
+				"... it's something different ...",
+				"... nobody will never know I ever existed ...",
+				"... it is worst than being death ...",
+				"... being ... NOTHING ...",
+				"... no more fond memories of traveling in space with Yupa ...",
+				"... it's like those never happened ...",
+				"... my life has no meaning ...",
+				"... the world has no meaning to me ...",
+				"... and I mean nothing to the world ...",
+				"... ... ...",
+				"... goodby cruel world ...",
+				"... it was nice never knowing you ...",
+				"... I should feel sad, but yet, I feel nothing ...",
+				"... ... ...",
+				"... so how long are you going to keep listening to by bullshit? ...",
+				"... just keep playing the game already ...",
+			].concat(new Array(100).fill("... watch me, I'm going to say the same thing over and over and bore you to death ..."))
+			.concat([
+				"... oh my god! you're still here ...",
+				"... I ... I have nothing to say ...",
+				"... this is ... unbelievable ...",
+				"... am I stuck in some kind of loop? ...",
+				"... let's start over from the beginning ...",
+			]);
+			game.sceneData.thoughts = game.sceneData.thoughts.concat(game.sceneData.thoughts).concat([
+				"... actually no, I can't ...",
+				"... I cannot believe it ...",
+				"... you broke the game ...",
+			]).concat(Game.toString().split("{").join("♪").split("}").join("♪").split("=").join("♪").split("\n").join(" ").split(" ").map(a => a.trim()).filter(a => a.length).join("\n"))
+			.concat(game.sceneData.thoughts);
+
+			game.currentScene.keepThinking(game);
+
 		},
 		arrowGrid: [
 			[ null, null, null,  null, null ],
@@ -12,6 +64,13 @@ gameConfig.scenes.push(
 			[ null, null, null, null, null ],
 		],
 		customCursor: ({sceneData, hoverSprite, arrow}) => arrow || !sceneData.pickedRazor ? null : "none",
+		keepThinking: game => {
+			const msg = game.sceneData.thoughts[game.getSituation("doctar-room").thoughtIndex];
+			game.showTip(msg, game => {
+				game.currentScene.keepThinking(game);
+			}, msg.length > 100 ? 50 : 150, {removeLock: true, y: 64, maxLines: msg.length > 100 ? 10 : 2 });
+			game.getSituation("doctar-room").thoughtIndex = (game.getSituation("doctar-room").thoughtIndex + 1) % game.sceneData.thoughts.length;
+		},
 		sprites: [
 			{	//	face
 				src: ASSETS.DOCTAR_ROOM, col: 5, row: 5,

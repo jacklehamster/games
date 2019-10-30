@@ -126,8 +126,12 @@ gameConfig.scenes.push(
 				},
 				scale: game => game.sceneData.zoom / .7,
 				onReach: game => {
-					game.situation.hitman.visible = false;
-					game.fadeToScene("shop", {door:1});
+					if (game.data.seen.doctor) {
+						game.situation.hitman.visible = false;
+						game.fadeToScene("shop", {door:1});
+					} else {
+						game.showTip(["The door is locked.", "There's a sign but I can't read it."], null, null, {removeLock: true});
+					}
 				},
 			},
 			{
@@ -155,7 +159,14 @@ gameConfig.scenes.push(
 				scale: game => game.sceneData.zoom / .7,
 			},
 			{
+				src: ASSETS.SHOP_DOOR, size: [128, 64],
+				offsetX: game => Math.round(game.situation.shift),
+				scale: game => game.sceneData.zoom / .7,
+				hidden: game => game.data.seen.doctor,
+			},
+			{
 				src: ASSETS.PEDRO,
+				hidden: game => !game.data.seen.doctor,
 				offsetX: game => Math.round(game.situation.shift + 50),
 				scale: game => game.sceneData.zoom,
 				onClick: (game, sprite) => {
@@ -241,7 +252,7 @@ gameConfig.scenes.push(
 													"Alright ma friend",
 													"Here are the tickets.",
 												], game => {
-													game.pickUp({item: "tickets", image: ASSETS.GRAB_TICKETS, onPicked: game => {
+													game.pickUp({item: "ticket", count: 2, image: ASSETS.GRAB_TICKETS, onPicked: game => {
 														game.showTip([
 															"Come back and lemme know when ya want to go",
 															"Until then, let see more people wanna join.",
@@ -422,7 +433,7 @@ gameConfig.scenes.push(
 							null, 40, { talker:"pedro" });
 						});
 						return true;
-					} else if (item === "tickets") {
+					} else if (item === "ticket") {
 						game.useItem = null;
 						game.showTip([
 							"Alright, ma friend",

@@ -908,12 +908,13 @@ const Game = (() => {
 		}
 
 		showTip(message, onDone, speed, options) {
-			const { removeLock, x, y, talker } = options || {};
+			const { removeLock, x, y, talker, maxLines } = options || {};
 			if (Array.isArray(message)) {
 				let index = 0;
 
 				message = message.filter(a => a);
 				const tip = this.pendingTip = {
+					maxLines,
 					index,
 					text: message[index],
 					time: this.now + 200,
@@ -936,6 +937,7 @@ const Game = (() => {
 				};
 			} else {
 				this.pendingTip = {
+					maxLines,
 					text: message,
 					time: this.now + 200,
 					speed: (speed || 90) * TEXTSPEEDER,
@@ -1722,6 +1724,7 @@ const Game = (() => {
 		}
 
 		playTheme(song, options) {
+			console.log(song);
 			const {volume} = options || {};
 			if(this.data.theme && this.data.theme.song !== song) {
 				this.stopSound(this.data.theme.song);
@@ -2765,6 +2768,10 @@ const Game = (() => {
 			if (!game.battle || game.battle.foeDefeated) {
 				this.openMenu(this.now);
 			}
+		}
+
+		dumdum() {
+			const CHEATCODDE = "yupayupa";
 		}
 
 		getAnimation(dx, dy) {

@@ -9,7 +9,6 @@ gameConfig.scenes.push(
 			[ LEFT, null, s(5), null, RIGHT ],
 		],
 		onScene: game => {
-			game.save();
 			game.playTheme(SOUNDS.CHIN_TOK_THEME);
 		},
 		doors: {
@@ -34,8 +33,59 @@ gameConfig.scenes.push(
 				}
 			}
 		},
+		onSceneHoldItem: (game, item) => {
+			if (item === "gun") {
+				game.useItem = null;
+				game.waitCursor = true;
+				game.showTip("I don't want to hurt anyone.", () => {
+					game.waitCursor = false;
+				});
+			}
+
+		},
+		// onSceneShot: game => {
+		// 	console.log("HERE");
+		// },
 		sprites: [
 			...getRoomMaze("_RED_1"),
+			{	//	Shopkeepa
+				src: ASSETS.SHOP, col: 2, row: 3,
+				index: 1,
+				hidden: game => game.rotation !== 0,
+				onClick: game => {
+					game.gotoScene("shopkeepa");
+				},
+				combine: (item, game) => {
+					game.gotoScene("shopkeepa");
+					game.useItem = item;
+					return true;
+				},
+			},
+			{	//	Slot machine
+				src: ASSETS.SHOP, col: 2, row: 3,
+				index: 2,
+				hidden: game => game.rotation !== 0,
+				onClick: game => {
+					game.gotoScene("slots");
+				},
+			},
+			{	//	Yupa
+				src: ASSETS.SHOP,
+				index: 4,
+				hidden: game => game.rotation !== 0,
+				onClick: game => {
+					game.gotoScene("shopkeepa");
+				},
+				combine: (item, game) => {
+					game.gotoScene("shopkeepa");
+					game.useItem = item;
+					return true;
+				},
+			},
+			{
+				src: ASSETS.SHOP, col: 2, row: 3,
+				hidden: game => game.rotation !== 0,
+			},
 			...standardMenu(),
 			...standardBag(),
 		],

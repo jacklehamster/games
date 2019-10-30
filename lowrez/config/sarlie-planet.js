@@ -2,6 +2,7 @@ gameConfig.scenes.push(
 	{
 		name: "sarlie-planet",
 		onScene: game => {
+			game.save();
 			game.hideCursor = true;
 			game.sceneData.hitman = {
 				pos: { x: 23, y: 35, },

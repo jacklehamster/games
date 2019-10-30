@@ -151,8 +151,8 @@ gameConfig.scenes.push(
 									game.showTip("How long have you been in here?", () => {
 										game.playSound(SOUNDS.YUPA);
 										game.waitCursor = true;
-										game.showTip("Maybe around fifteen years. Dont know.", () => {
-											game.showTip("fifteen years?!!!", () => {
+										game.showTip("Fiew monts? Fiew years. Dunt know.", () => {
+											game.showTip("A few years?!!!", () => {
 												game.waitCursor = false;
 											});
 										}, null, { x: 1, y: 15, speed: 80, talker:"yupa" });

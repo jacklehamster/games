@@ -13,6 +13,15 @@ gameConfig.scenes.push(
 			const { sceneData } = game;
 			game.playTheme(SOUNDS.SOUP_CHOU_THEME, {volume: .7});
 			game.delayAction(game => game.hideCursor = false, 10000);
+
+			/** remove useless items */
+			delete game.inventory["access card"];
+			delete game.inventory["empty bottle"];
+			delete game.inventory["fruit?"];
+			delete game.inventory["key"];
+			delete game.inventory["lighter"];
+			delete game.inventory["water bottle"];
+
 		},
 		onSceneRefresh: game => {
 			const { sceneData, now, sceneTime } = game;
@@ -104,7 +113,7 @@ gameConfig.scenes.push(
 							{
 								options: [
 									{
-										cantSelect: game.sceneData.spoken1,
+										hidden: game.sceneData.spoken1,
 										msg: game => game.sceneData.spoken1 ? "" : "This is great!",
 										onSelect: (game) => {
 											game.waitCursor = true;
@@ -120,7 +129,7 @@ gameConfig.scenes.push(
 										},
 									},
 									{
-										cantSelect: game.sceneData.spoken2,
+										hidden: game.sceneData.spoken2,
 										msg: game => game.sceneData.spoken2 ? "" : "So, what now?",
 										onSelect: (game) => {
 											game.sceneData.spoken2 = game.now;
@@ -166,6 +175,8 @@ gameConfig.scenes.push(
 											});
 										},
 									},
+									{},
+									{},
 								],
 							},
 							{

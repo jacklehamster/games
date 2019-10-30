@@ -1397,6 +1397,8 @@ function makeOnSceneBattle() {
 			if (battle.foeDefeated) {
 				return;
 			}
+			const isCritical = game.data.stats.life / game.data.stats.maxLife < .1;
+
 			if (!battle.nextAttack) {
 				battle.nextAttack = Math.random() * battle.attackSpeed + now;
 			} else if (now >= battle.nextAttack && !battle.preventAttack) {
@@ -1409,12 +1411,14 @@ function makeOnSceneBattle() {
 					if (game.blocking() && !battle.playerLeftAttack && !battle.playerRightAttack && !battle.noBlock) {
 						game.playSound(SOUNDS.DUD);
 						battle.playerBlock = now;
-						game.damagePlayer(battle.foeDamage / 5, {blocked:true});
+						if (!isCritical) {
+							game.damagePlayer(battle.foeDamage / 5, {blocked:true});
+						}
 					} else {
 						game.playSound(SOUNDS.HIT);
 						battle.playerHit = now;
 						battle.playerLeftAttack = battle.playerRightAttack = 0;
-						game.damagePlayer(battle.foeDamage);
+						game.damagePlayer(isCritical ? battle.foeDamage / 2 : battle.foeDamage);
 					}
 					game.pendingTip = null;
 					battle.foeDidAttack = now;
@@ -1440,11 +1444,11 @@ function makeOnSceneBattle() {
 					battle.playerAttackLanded = now;
 					game.damageFoe(1000);
 				} else if (frame === 3 && !battle.playerAttackLanded && !battle.foeBlock) {
-					if ((now >= battle.nextAttack || Math.random()>=battle.foeBlockChance) && !battle.invincible) {
+					if ((now >= battle.nextAttack || Math.random() * (isCritical ? 2 : 1)>=battle.foeBlockChance) && !battle.invincible) {
 						battle.nextAttack = null;
 						game.playSound(SOUNDS.HIT);
 						battle.playerAttackLanded = now;
-						game.damageFoe(data.stats.damage);
+						game.damageFoe(isCritical ? data.stats.damage * 2 : data.stats.damage);
 					} else if (!battle.foeBlock) {
 						game.playSound(SOUNDS.DUD);
 						battle.foeBlock = now;

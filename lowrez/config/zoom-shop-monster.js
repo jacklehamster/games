@@ -204,6 +204,7 @@ gameConfig.scenes.push(
 									onSelect: (game, dialog) => {
 										const {item, name, cost, src, available, msg} = game.sceneData.itemToBuy;
 										if (cost <= game.countItem("coin")) {
+											game.removeFromInventory("coin", cost);
 											if (item === "tip") {
 												game.sceneData.showStats = 0;
 												dialog.index++;
@@ -215,7 +216,6 @@ gameConfig.scenes.push(
 												}
 												return;
 											} else {
-												game.removeFromInventory("coin", cost);
 												game.pickUp({item, image:src, onPicked: game => {
 													game.showTip("Nice doing business with you.", null, null, { x: 1, y: 15, speed: 60, talker:"monster", removeLock: true });
 												}});

@@ -244,6 +244,14 @@ const ASSETS = {
 	GRAB_TICKETS: "assets/grab-tickets.png",
 	EYES_OPEN: "assets/eyes-open.png",
 	OPERATION_ROOM: "assets/operation-room.png",
+	SHOP: "assets/shop.png",
+	SHOPKEEPA: "assets/shopkeepa.png",
+	YUPA_IN_SHOP: "assets/yupa-in-shop.png",
+	SLOTS: "assets/slots.png",
+	GRAB_WARP_DRIVE: "assets/grab-warp-drive.png",
+	THE_DATE: "assets/the-date.png",
+	MONSTER_PLANET: "assets/monster-planet.png",
+	SHOP_DOOR: "assets/shop-door.png",
 };
 
 const SOUNDS = {
@@ -284,6 +292,7 @@ const SOUNDS = {
 	YAP: 'sounds/yap.mp3',
 	HUHUH: 'sounds/huhuh.mp3',
 	SOFT_THEME: 'sounds/soft-song.mp3',
+	ANIMAL_CRY: 'sounds/animal-cry.mp3',
 };
 
 const ALPHAS = (() => {

@@ -290,7 +290,8 @@ gameConfig.scenes.push(
 							game.sceneData.timeline = 0;
 							sprite.startTalk(game, "human4", [
 								"Really doctor?",
-								"Tell me how! I'll do it.",
+								"Tell me, what do I have to do?",
+								"I'll do it.",
 							 ]);
 							return true;							
 						},
@@ -299,7 +300,7 @@ gameConfig.scenes.push(
 							sprite.startTalk(game, "doctarzoom",
 								[
 									"I believe",
-									"you already know what you have to do."
+									"you already know the answer to that question."
 								]);
 							return true;
 						},
@@ -311,7 +312,7 @@ gameConfig.scenes.push(
 								sprite.startTalk(game, "human4", [
 									"Oh no!",
 									"You mean I have to...",
-									"Let Baby Hitler become\nHITLER!",
+									"Let Baby Hitler become\nHITLER!    ",
 								 ], game => {
 								 	game.sceneData.canGoNextScene = game.now;
 								 });
@@ -369,7 +370,27 @@ gameConfig.scenes.push(
 			},
 			{
 				src: ASSETS.HITMAN_WALK, size: [16, 21],
-				alpha: .5,
+				alpha: game => {
+					const phase1_start = game.sceneData.timeline;
+					const phase1_duration = 1000;
+					const phase1_progress = Math.min(1, (game.now - phase1_start) / phase1_duration);
+					const phase2_start = phase1_start + phase1_duration;
+					const phase2_duration = 5000;
+					const phase2_progress = Math.min(1, (game.now - phase2_start) / phase2_duration);
+					const phase3_start = phase2_start + phase2_duration;
+					const phase3_duration = 4000;
+					const phase3_progress = Math.min(1, (game.now - phase3_start) / phase3_duration);
+					const phase4_start = phase3_start + phase3_duration;
+					const phase4_duration = 2000;
+					const phase4_progress = Math.min(1, (game.now - phase4_start) / phase4_duration);
+					const phase5_start = phase4_start + phase4_duration;
+					const phase5_duration = 1000;
+					const phase5_progress = Math.min(1, (game.now - phase5_start) / phase5_duration);
+					const phase6_start = phase5_start + phase5_duration;
+					const phase6_duration = 1000;
+					const phase6_progress = Math.min(1, (game.now - phase6_start) / phase6_duration);
+					return Math.max(.2, 1 - (game.now - phase4_start - 11000)/5000);
+				},
 				offsetX: 46, offsetY: 1,
 				hidden: game => {
 					const phase1_start = game.sceneData.timeline;
@@ -395,7 +416,27 @@ gameConfig.scenes.push(
 			},
 			{
 				src: ASSETS.HITMAN_BEARD_WALK, size: [16, 21],
-				alpha: .5,
+				alpha: game => {
+					const phase1_start = game.sceneData.timeline;
+					const phase1_duration = 1000;
+					const phase1_progress = Math.min(1, (game.now - phase1_start) / phase1_duration);
+					const phase2_start = phase1_start + phase1_duration;
+					const phase2_duration = 5000;
+					const phase2_progress = Math.min(1, (game.now - phase2_start) / phase2_duration);
+					const phase3_start = phase2_start + phase2_duration;
+					const phase3_duration = 4000;
+					const phase3_progress = Math.min(1, (game.now - phase3_start) / phase3_duration);
+					const phase4_start = phase3_start + phase3_duration;
+					const phase4_duration = 2000;
+					const phase4_progress = Math.min(1, (game.now - phase4_start) / phase4_duration);
+					const phase5_start = phase4_start + phase4_duration;
+					const phase5_duration = 1000;
+					const phase5_progress = Math.min(1, (game.now - phase5_start) / phase5_duration);
+					const phase6_start = phase5_start + phase5_duration;
+					const phase6_duration = 1000;
+					const phase6_progress = Math.min(1, (game.now - phase6_start) / phase6_duration);
+					return Math.max(.2, 1 - (game.now - phase4_start - 11000)/5000);
+				},
 				offsetX: 46, offsetY: 1,
 				hidden: game => {
 					const phase1_start = game.sceneData.timeline;

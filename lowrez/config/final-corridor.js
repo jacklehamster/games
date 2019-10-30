@@ -783,6 +783,7 @@ gameConfig.scenes.push(
 					}
 					const {data, now} = game;
 					game.chest = null;
+					const theme = data.theme.song;
 					game.playTheme(SOUNDS.BATTLE_THEME, {volume:.8});
 					if (!data.battle) {
 						data.battle = {
@@ -808,7 +809,7 @@ gameConfig.scenes.push(
 							onWin,
 							xp,
 							belowTheBelt,
-							theme: data.theme.song,
+							theme,
 						};
 					}
 					return true;
