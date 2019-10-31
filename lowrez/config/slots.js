@@ -111,7 +111,7 @@ gameConfig.scenes.push(
 					return 0;
 				},
 				onClick: game => {
-					game.showTip("It's a slot machine, just like the ones in Las Vegas!");
+					game.showTip("It's a slot machine, just like the ones in Vegas!");
 				},
 				combine: (item, game) => {
 					if (item === "coin") {

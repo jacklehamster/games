@@ -8,6 +8,7 @@ gameConfig.scenes.push(
 				index: 0,
 				findBabyHitler: game => {
 					game.sceneData.hitmanSurprised = 0;
+					game.sceneData.looking = 0;
 					game.currentScene.startTalk(game, "yupa", [
 						"Okay, ya dun seem sure",
 						"Are ya sure?",
@@ -113,10 +114,17 @@ gameConfig.scenes.push(
 								msg: "Forget the baby.",
 								onSelect: (game, dialog) => {
 									const { currentScene } = game;
+
 									currentScene.startTalk(game, "human", [
 										"Forget Baby Hitler.",
 									], game => {
 										game.sceneData.looking = game.now;
+										if (game.situation.forgetTheBaby) {
+											game.dialog.index = 4;											
+											return;
+										}
+
+
 										currentScene.startTalk(game, "human", [
 											"I can't let history repeat itself.",
 										], game => {
@@ -125,7 +133,7 @@ gameConfig.scenes.push(
 												game.sceneData.looking = 0;
 												currentScene.startTalk(game, "yupa", [
 													"But ya ganna disappear,",
-													"Wai would yo du dat?",
+													"Wayi would yo du dat?",
 												], game => {
 													dialog.index++;
 													dialog.paused = false;
@@ -150,7 +158,7 @@ gameConfig.scenes.push(
 								game.delayAction(game => {
 									currentScene.startTalk(game, "yupa", [
 										"I told ya",
-										"Humanz are weir."
+										"Humaz are wierd."
 									], game => {
 										currentScene.startTalk(game, "doctar", [
 											"You weren't kidding."
@@ -200,7 +208,7 @@ gameConfig.scenes.push(
 							dialog.paused = true;
 							currentScene.startTalk(game, "yupa", [
 								"No ya dum dum.",
-								"Im talkin abowt you!"
+								"Im talkin abowt YOU!"
 							], game => {
 								currentScene.startTalk(game, "human", [
 									"What?!?!",
@@ -218,8 +226,8 @@ gameConfig.scenes.push(
 											currentScene.startTalk(game, "yupa", [
 												`${game.data.name||"Hitman"},`,
 												`yo rememba wat ya did before?`,
-												`Ya travel back in tam, from the year ${new Date().getFullYear()} to 1889`,
-												"To kill da baby.",
+												`Ya travel back in tam, from da year ${new Date().getFullYear()} to 1889`,
+												"To kell da babi.",
 											], game => {
 												currentScene.startTalk(game, "human2", [
 													"Yes I know. And I did not kill him.",
@@ -252,9 +260,10 @@ gameConfig.scenes.push(
 																			currentScene.startTalk(game, "yupa", [
 																				"Chill itz okaaay",
 																				"My point, ya dun have take it so seriasly",
-																				"Just live, enjay life! Stay wid uz.",
-																				"Itz juzt a game aftar all!",
+																				"Just live, enjuy lafe! Stay wid us.",
+																				"Idz juzt a game aftar all!",
 																			], game => {
+																				game.situation.forgetTheBaby = game.now;
 																				game.sceneData.hitmanSurprised = game.now;
 																				game.dialog.paused = false;
 																				game.dialog.index++;
@@ -309,7 +318,7 @@ gameConfig.scenes.push(
 									currentScene.startTalk(game, "human2", [
 										"I really don't deserve to live, after what I've done.",
 										"Let me go, I choose to die,",
-										"I'll disappear from this world!",
+										"I'll dizupeer from dis world!",
 									], game => {
 										game.dialog.paused = game.now;
 										game.sceneData.hitmanSurprised = 0;
@@ -409,7 +418,7 @@ gameConfig.scenes.push(
 										"Hum.. so you guys actually forgot everything I said, right?",
 									], game => {
 										game.currentScene.startTalk(game, "yupa", [
-											"Wad wur we talkin abowt?"
+											"Wad wur we\ntokin abowt?"
 										], game => {
 											game.dialog.index = 0;
 										});
@@ -465,14 +474,14 @@ gameConfig.scenes.push(
 				game.playSound(SOUNDS.HUM);
 			} else if (talker === "yupa") {
 				x = 2;
-				y = 20;
+				y = 22;
 				game.playSound(SOUNDS.YUPA);
 			} else if (talker === "doctar") {
 				x = 5;
 				y = 21;				
 				game.playSound(SOUNDS.HUHUH);
 			}
-			game.showTip(msg, onDone, 80, { x, y, talker, removeLock });
+			game.showTip(msg, onDone, talker === "yupa" ? 100 : 80, { x, y, talker, removeLock });
 		},
 		sprites: [
 			{
@@ -532,7 +541,7 @@ gameConfig.scenes.push(
 			},
 			{
 				src: ASSETS.BEARD_SHAVED, col: 3, row: 3,
-				offsetY: -15,
+				offsetY: -16,
 				offsetX: -6.5,
 				scale: 1.2,
 				index: (game, sprite) => {

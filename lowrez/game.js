@@ -2031,6 +2031,10 @@ const Game = (() => {
 			return this.data.time;
 		}
 
+		set now(value) {
+			this.data.time = value;
+		}
+
 		get pos() {
 			return this.data.pos;
 		}
@@ -2065,11 +2069,11 @@ const Game = (() => {
 						sprite.onScene(this, sprite);
 					}
 					if (sprite.init) {
-						if (!this.situation.inited) {
-							this.situation.inited = {};
+						if (!this.sceneData.inited) {
+							this.sceneData.inited = {};
 						}
-						if (!this.situation.inited[index]) {
-							this.situation.inited[index] = this.now;
+						if (!this.sceneData.inited[index]) {
+							this.sceneData.inited[index] = this.now;
 							sprite.init(this, sprite);
 						}
 					}

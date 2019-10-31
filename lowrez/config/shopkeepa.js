@@ -26,7 +26,7 @@ gameConfig.scenes.push(
 				}
 			}
 		},
-		startTalk: (game, talker, msg, onDone, removeLock) => {
+		startTalk: (game, talker, msg, onDone, removeLock, speed) => {
 			let x, y;
 			if (talker === "human") {
 				x = 2;
@@ -41,7 +41,7 @@ gameConfig.scenes.push(
 				y = 55;
 				game.playSound(SOUNDS.YUPA);				
 			}
-			game.showTip(msg, onDone, 80, { x, y, talker, removeLock });
+			game.showTip(msg, onDone, speed || 80, { x, y, talker, removeLock });
 		},
 		onStartDialog: game => {
 			game.startDialog({
@@ -440,9 +440,9 @@ gameConfig.scenes.push(
 												], game => {
 													game.currentScene.startTalk(game, "shopkeepa", [
 														"I see... you'd like a make a deal!",
-														"Well, I guess you do now know, how much I value those tickets.",
+														"Well, I guess now you know how much I want that ticket.",
 														"But no matter, I'm ready to listen.",
-														"What would you like in exchange for a ticket?",
+														"What would you like in exchange?",
 													], game => {
 														game.dialog.index++;
 													});
@@ -520,29 +520,41 @@ gameConfig.scenes.push(
 							},
 							{
 								msg: "A date",
-								hidden: game => game.situation.askedForDate,
+								hidden: game => game.situation.askedForDate && !game.situation.canAskAgain,
 								onSelect: game => {
-									game.situation.askedForDate = game.now;
-									game.currentScene.startTalk(game, "human", [
-										"I'd like to ask you out on a date.",
-									], game => {
-										game.currentScene.startTalk(game, "shopkeepa", [
-											"What?",
+									if (game.situation.askedForDate) {
+										game.currentScene.startTalk(game, "human", [
+											"I'd like to ask you out on a date.",
 										], game => {
-											game.currentScene.startTalk(game, "human", [
-												"A date",
-												"On Earth,\nsometimes two people go out together",
-												"have a good time, get to know each other...",
+											game.currentScene.startTalk(game, "shopkeepa", [
+												"Again with the date?",
 											], game => {
-												game.currentScene.startTalk(game, "shopkeepa", [
-													"I know what a date is.",
-													"I'm just confused... Why?",
+												game.dialog.index++;
+											});
+										});
+									} else {
+										game.situation.askedForDate = game.now;
+										game.currentScene.startTalk(game, "human", [
+											"I'd like to ask you out on a date.",
+										], game => {
+											game.currentScene.startTalk(game, "shopkeepa", [
+												"What?",
+											], game => {
+												game.currentScene.startTalk(game, "human", [
+													"A date",
+													"On Earth,\nsometimes two people go out together",
+													"have a good time, get to know each other...",
 												], game => {
-													game.dialog.index++;
+													game.currentScene.startTalk(game, "shopkeepa", [
+														"I know what a date is.",
+														"I'm just confused... Why?",
+													], game => {
+														game.dialog.index++;
+													});
 												});
 											});
 										});
-									});
+									}
 								},
 							},
 							{
@@ -598,7 +610,9 @@ gameConfig.scenes.push(
 						options: [
 							{
 								msg: "The warpdrive",
+								hidden: game => !game.situation.askedWhereInSpace || game.situation.dateForWarpdrive,
 								onSelect: game => {
+									game.situation.dateForWarpdrive = game.now;
 									game.currentScene.startTalk(game, "human", [
 										"I just really need that warpdrive.",
 										"I thought maybe we could...",
@@ -680,44 +694,75 @@ gameConfig.scenes.push(
 										game.currentScene.startTalk(game, "shopkeepa", [
 											"Get out of here!",
 										], game => {
-											game.currentScene.startTalk(game, "human", [
-												"Hey I'm serious here!",
-												"I'm just thought, maybe it wouldn't be so bad...",
-												"Go to see Tammy Slow together, in concert...",
-											], game => {
+											game.delayAction(game => {
 												game.sceneData.shopkeepaSmiles = game.now;
-												game.delayAction(game => {
-													game.sceneData.yupaLookAtShopkeepa = game.now;
-												}, 200);
+											}, 5500);
+											game.delayAction(game => {
+												game.sceneData.yupaLookAtShopkeepa = game.now;
+											}, 6500);
+											game.currentScene.startTalk(game, "human", [
+												"Hey for real yo!",
+												"You keep raving about Tammy Slow, now I really wanna meet her.",
+												"Let's go to that concert together.",
+											], game => {
 												game.currentScene.startTalk(game, "shopkeepa2", [
 													"You're kidding me. You want to me to come with you to Ecsta City?",
 												], game => {
+													game.delayAction(game => {
+														game.sceneData.yupaLookAtShopkeepa = 0;
+													}, 300);
+													game.sceneData.shopkeepaSmiles = 0;
+													game.delayAction(game => {
+														game.sceneData.yupaLookAtShopkeepa = game.now;
+														game.delayAction(game => {
+															game.sceneData.yupaLookAtShopkeepa = 0;
+														}, 1000);
+													}, 5500);
+													game.delayAction(game => {
+														game.sceneData.shopkeepaLookAtYupa = game.now;
+														game.delayAction(game => {
+															game.sceneData.shopkeepaLookAtYupa = 0;
+														}, 1000);
+													}, 6000);
 													game.currentScene.startTalk(game, "human", [
 														"Like I said, I like you...",
 														"I think you're cute!",
 														"So I wanna spend time with you, get to know you better.",
 													], game => {
 														game.sceneData.yupaLookAtShopkeepa = 0;
+														game.sceneData.shopkeepaLookAtYupa = game.now;
 														game.currentScene.startTalk(game, "yupa", [
 															"Hey! Waida minute!",
 															"One of thoze tickets iz mine!",
 															"Ya cant just givewai ma ticket fo free!",
 														], game => {
+															game.delayAction(game => {
+																game.sceneData.shopkeepaLookAtYupa = 0;
+															}, 500);
 															game.currentScene.startTalk(game, "human", [
 																"You're right Yupa.",
-																"Thanks for your ticket. I'll pay you back later.",
+																"Thanks for your ticket. I'll owe you one.",
 															], game => {
 																game.currentScene.startTalk(game, "yupa", [
 																	"Scuw ya!",
 																], game => {
 																	game.currentScene.startTalk(game, "human", [
-																		"So what do you say, will you join me for this evening?",
+																		"So what do you say, will you join me this evening?",
 																	], game => {
-																		game.currentScene.startTalk(game, "shopkeepa2", [
-																			"Yes. Let's do this!",
-																		], game => {
-																			game.fadeToScene("the-date");
-																		});
+																		game.dialog.paused = true;
+																		game.delayAction(game => {
+																			game.sceneData.shopkeepaCuteSmile = game.now;
+																			game.delayAction(game => {
+																				game.currentScene.startTalk(game, "shopkeepa2", [
+																					"Okay",
+																				], game => {
+																					game.delayAction(game => {
+																						game.dialog = null;
+																						game.fadeToScene("the-date", null, 3000);
+																					}, 1000);
+																				}, null, 200);
+																			}, 2000);
+																		}, 4000);
 																	});
 																});
 															});
@@ -725,6 +770,26 @@ gameConfig.scenes.push(
 													});
 												});
 											});
+										});
+									});
+								},
+							},
+							{
+								msg: "Forget it!",
+								hidden: game => game.situation.forgetIt,
+								onSelect: game => {
+									game.situation.forgetIt = game.now;
+									game.currentScene.startTalk(game, "human", [
+										"Forget what I said",
+										"Didn't mean to scare you...",
+									], game => {
+										game.currentScene.startTalk(game, "shopkeepa2", [
+											"Oh no, it's ok!",
+											"I was just\nsurprised\nthat's all!",
+										], game => {
+											game.situation.canAskAgain = true;
+											game.sceneData.shopkeepaSmiles = 0;
+											game.dialog.index = 0;
 										});
 									});
 								},
@@ -779,6 +844,7 @@ gameConfig.scenes.push(
 						options: [
 							{
 								msg: "The warp drive",
+								hidden: game => game.situation.askedWhereInSpace,
 								onSelect: game => {
 									const { sceneData } = game;
 									game.waitCursor = true;
@@ -857,7 +923,7 @@ gameConfig.scenes.push(
 			if (game.useItem) {
 				game.currentScene.onStartDialog(game);
 			} else {
-				game.currentScene.startTalk(game, "shopkeepa", "Hey, you hot piece!", game => {
+				game.currentScene.startTalk(game, "shopkeepa", game.situation.askedForDate && !game.situation.canAskAgain ? "Hey!" : "Hello, handsome!", game => {
 					game.delayAction(game => {
 						game.currentScene.onStartDialog(game);
 					}, 50);
@@ -866,7 +932,7 @@ gameConfig.scenes.push(
 		},
 		sprites: [
 			{
-				src: ASSETS.SHOPKEEPA, col: 5, row: 5,
+				src: ASSETS.SHOPKEEPA, col: 6, row: 6,
 				index: 23,
 				combine: (item, game) => {
 					if (item === "photo") {
@@ -962,23 +1028,29 @@ gameConfig.scenes.push(
 							game.currentScene.startTalk(game, "shopkeepa", [
 								"Yeah yeah I know...",
 								"You get to go to Ecsta City.",
-								"I'm so jealous."
+								"I envy you."
 							]);
 							game.dialog.index = 9;
 						} else {
 							game.situation.showedTickets = game.now;
 							game.currentScene.startTalk(game, "shopkeepa2", [
 								"Wow! you got tickets to Ecsta City!",
-								"Oh right, that's your first time here. Pedro must have given you a free pass.",
-								"I'm so envious! I really wanted to see...",
-								"TAMMY SLOW\nin concert!",
 							], game => {
-								game.useItem = null;
 								game.currentScene.startTalk(game, "shopkeepa", [
-									"But the tickets to Ecsta City are now so\nexpensive!",
-									"If I miss her this time, I'm sure I'll never see her in concert.",
+									"Oh right, that's your first time here. Pedro must have given you a free pass.",
 								], game => {
-									game.dialog.index = 9;
+									game.currentScene.startTalk(game, "shopkeepa2", [
+										"I'm so envious! I really wanted to see...",
+										"TAMMY SLOW\nin concert!",
+									], game => {
+										game.useItem = null;
+										game.currentScene.startTalk(game, "shopkeepa", [
+											"But the tickets to Ecsta City are sooo\nexpensive!",
+											"If I miss her this time, I'm sure I'll never see her in concert.",
+										], game => {
+											game.dialog.index = 9;
+										});
+									})
 								});
 							});
 						}
@@ -992,7 +1064,7 @@ gameConfig.scenes.push(
 				},
 			},
 			{
-				src: ASSETS.SHOPKEEPA, col: 5, row: 5,
+				src: ASSETS.SHOPKEEPA, col: 6, row: 6,
 				index: (game, sprite) => {
 					const { pendingTip, currentScene, now, sceneData } = game;
 					if (sceneData.takeTicket) {
@@ -1029,6 +1101,12 @@ gameConfig.scenes.push(
 					if (pendingTip && pendingTip.talker==="yupa2") {
 						return 22;
 					}
+					if (game.sceneData.shopkeepaCuteSmile) {
+						if (pendingTip && (pendingTip.talker==="shopkeepa" || pendingTip.talker==="shopkeepa2")) {
+							return 24 + (pendingTip.progress < 1 ? Math.floor((now - game.sceneData.shopkeepaCuteSmile) / 100) % 7 : 0);
+						}
+						return 24;
+					}
 					if (pendingTip && pendingTip.talker==="shopkeepa") {
 						return pendingTip.progress < 1 ? Math.floor(now / 100) % 4 : 0;
 					}
@@ -1038,11 +1116,14 @@ gameConfig.scenes.push(
 					if (game.sceneData.shopkeepaSmiles) {
 						return 4;
 					}
+					if (game.sceneData.shopkeepaLookAtYupa) {
+						return 22;
+					}
 					return 0;
 				},
 			},
 			{
-				src: ASSETS.YUPA_IN_SHOP, col: 3, row: 3,
+				src: ASSETS.YUPA_IN_SHOP, col: 3, row: 4,
 				index: (game, sprite) => {
 					const { pendingTip, currentScene, now, sceneData } = game;
 					if (pendingTip && pendingTip.talker==="yupa") {
@@ -1057,7 +1138,8 @@ gameConfig.scenes.push(
 					if (sceneData.yupaLookAtShopkeepa) {
 						return 4;
 					}
-					return 0;
+					const frame = Math.floor((game.now - game.sceneTime) / 100);
+					return frame > 2 ? 0 : frame + 8;
 				},
 				combine: (item, game) => {
 					game.useItem = null;

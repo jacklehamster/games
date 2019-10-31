@@ -12,31 +12,31 @@ gameConfig.scenes.push(
 				index: ({sceneData, pendingTip, dialog, now}) => {
 					if (pendingTip) {
 						if (pendingTip.talker === "human") {
-							return (Math.floor(now / 100) % 2) * 2 + 7;						
+							return (pendingTip.progress >= 1 ? 0 : Math.floor(now / 100) % 2) * 2 + 7;						
 						}
 						if (pendingTip.talker === "human2") {
-							return Math.floor(now / 100) % 2 + 11;
+							return Math.floor(pendingTip.progress >= 1 ? 0 : now / 100) % 2 + 11;
 						}
 						if (pendingTip.talker === "human3") {
-							return Math.floor(now / 100) % 2 + 18;
+							return Math.floor(pendingTip.progress >= 1 ? 0 : now / 100) % 2 + 18;
 						}
 						if (pendingTip.talker === "doctar") {
-							return (Math.floor(now / 100) % 2) + 7;						
+							return (pendingTip.progress >= 1 ? 0 : Math.floor(now / 100) % 2) + 7;						
 						}
 						if (pendingTip.talker === "doctar2") {
-							return (Math.floor(now / 100) % 2) * 2 + 15;						
+							return (pendingTip.progress >= 1 ? 0 : Math.floor(now / 100) % 2) * 2 + 15;						
 						}
 						if (pendingTip.talker === "doctarzoom") {
-							return (Math.floor(now / 100) % 4) + 2;						
+							return (pendingTip.progress >= 1 ? 0 : Math.floor(now / 100) % 4) + 2;						
 						}
 						if (pendingTip.talker === "yupa2") {
 							if (game.now < pendingTip.time + 500) {
-								return (Math.floor(now / 100) % 2) + 13;
+								return (pendingTip.progress >= 1 ? 0 : Math.floor(now / 100) % 2) + 13;
 							}
-							return (Math.floor(now / 100) % 2) + 15;
+							return (pendingTip.progress >= 1 ? 0 : Math.floor(now / 100) % 2) + 15;
 						}
 						if (pendingTip.talker === "yupa") {
-							return (Math.floor(now / 100) % 2) + 15;
+							return (pendingTip.progress >= 1 ? 0 : Math.floor(now / 100) % 2) + 15;
 						}
 					}
 					if (dialog) {
@@ -287,11 +287,13 @@ gameConfig.scenes.push(
 						},
 						({pendingTip}) => !pendingTip,
 						({now, sceneTime, sceneData}) => {
-							game.sceneData.timeline = 0;
+							sceneData.timeline = 0;
+							sceneData.jumpin = now;
 							sprite.startTalk(game, "human4", [
 								"Really doctor?",
-								"Tell me, what do I have to do?",
-								"I'll do it.",
+								"Please tell me!",
+								"What do I have to do?",
+								"I'll do it!",
 							 ]);
 							return true;							
 						},
@@ -389,7 +391,7 @@ gameConfig.scenes.push(
 					const phase6_start = phase5_start + phase5_duration;
 					const phase6_duration = 1000;
 					const phase6_progress = Math.min(1, (game.now - phase6_start) / phase6_duration);
-					return Math.max(.2, 1 - (game.now - phase4_start - 11000)/5000);
+					return Math.max(.2, 1 - (game.now - phase4_start - 10500)/5000);
 				},
 				offsetX: 46, offsetY: 1,
 				hidden: game => {
@@ -435,7 +437,7 @@ gameConfig.scenes.push(
 					const phase6_start = phase5_start + phase5_duration;
 					const phase6_duration = 1000;
 					const phase6_progress = Math.min(1, (game.now - phase6_start) / phase6_duration);
-					return Math.max(.2, 1 - (game.now - phase4_start - 11000)/5000);
+					return Math.max(.2, 1 - (game.now - phase4_start - 10500)/5000);
 				},
 				offsetX: 46, offsetY: 1,
 				hidden: game => {
@@ -487,7 +489,7 @@ gameConfig.scenes.push(
 					ctx.setLineDash([]);
 					ctx.beginPath();
 					ctx.moveTo(2, shiftY + 40.5);
-					ctx.lineTo(2 + phase1_progress * 42, shiftY + 40.5);
+					ctx.lineTo(2 + Math.sqrt(phase1_progress) * 42, shiftY + 40.5);
 
 					if (phase3_progress > 0) {
 						ctx.moveTo(8, shiftY + 40.5);
@@ -557,18 +559,18 @@ gameConfig.scenes.push(
 				index: ({pendingTip, now, sceneData}) => {
 					if (sceneData.human_wah) {
 						if (pendingTip) {
-							return 4 + Math.floor(now / 100) % 4;
+							return 4 + (pendingTip && pendingTip.progress >= 1 ? 0 : Math.floor(now / 100) % 4);
 						}
 						return 4;
 					}
-					return pendingTip.talker === "human4" ? Math.floor(now / 100) % 4 : 0;
+					return pendingTip.talker === "human4" && pendingTip.progress < 1 ? Math.floor(now / 100) % 4 : 0;
 				},
 				hidden: ({pendingTip, sceneData}) => !sceneData.human_wah && (!pendingTip || pendingTip.talker !== "human4"),
 				offsetY: ({pendingTip, now, sceneData}) => {
 					if (sceneData.human_wah) {
 						return 0;
 					}
-					return pendingTip && pendingTip.talker === "human4" ? Math.max(0, 50 - (now - pendingTip.time)) : 0;
+					return pendingTip && pendingTip.talker === "human4" ? Math.max(0, 50 - (now - sceneData.jumpin)) : 0;
 				},
 			},
 		],

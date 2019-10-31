@@ -35,6 +35,8 @@ gameConfig.scenes.push(
 						[20,21,22,23],	//	NE
 					],
 				};
+			} else {
+				game.situation.hitman.goal.y = 42;
 			}
 
 			if (!game.situation.yupa) {
@@ -63,7 +65,12 @@ gameConfig.scenes.push(
 			const { pos, goal, speed } = game.situation.hitman;
 			const dx = pos.x > goal.x ? -1 : pos.x < goal.x ? 1 : 0;
 			const dy = pos.y > goal.y ? -1 : pos.y < goal.y ? 1 : 0;
-			if (Math.abs(pos.x-goal.x) >= 1 || Math.abs(pos.y-goal.y) >= 1) {
+
+			if (Math.abs(pos.x-goal.x) - Math.abs(pos.y-goal.y) > 1) {
+				pos.x += dx * Math.min(Math.abs(pos.x - goal.x), speed);
+			} else if (Math.abs(pos.y-goal.y) - Math.abs(pos.x-goal.x) > 1) {
+				pos.y += dy * Math.min(Math.abs(pos.y - goal.y), speed);
+			} else if (Math.abs(pos.x-goal.x) >= 1 || Math.abs(pos.y-goal.y) >= 1) {
 				const dist = Math.sqrt(dx*dx + dy*dy);
 				pos.x += dx * Math.min(Math.abs(pos.x - goal.x), speed / dist);
 				pos.y += dy * Math.min(Math.abs(pos.y - goal.y), speed / dist);
@@ -292,9 +299,15 @@ gameConfig.scenes.push(
 				offsetY: (game, {scale}) => Math.round(game.situation.hitman.pos.y - 32 * game.evaluate(scale)),
 				index: game => {
 					const { pos, goal, anim } = game.situation.hitman;
-					const dx = pos.x > goal.x ? -1 : pos.x < goal.x ? 1 : 0;
-					const dy = pos.y > goal.y ? -1 : pos.y < goal.y ? 1 : 0;
+					let dx = pos.x > goal.x ? -1 : pos.x < goal.x ? 1 : 0;
+					let dy = pos.y > goal.y ? -1 : pos.y < goal.y ? 1 : 0;
 					const moving = Math.abs(pos.x-goal.x) >= 1 || Math.abs(pos.y-goal.y) >= 1;
+					if (Math.abs(pos.x - goal.x) > Math.abs(pos.y - goal.y) + 1) {
+						dy = 0;
+					} else if (Math.abs(pos.y - goal.y) > Math.abs(pos.x - goal.x) + 1) {
+						dx = 0;
+					}
+
 					const animation = game.getAnimation(dx, dy);
 					const frame = moving ? Math.floor(game.now/100) % 4 : 0;
 					return anim[animation][frame];
@@ -316,11 +329,7 @@ gameConfig.scenes.push(
 					return anim[animation][frame];
 				},
 				scale: game => game.sceneData.zoom,
-				hidden: game => {
-					const { img, org } = game.imageStock[ASSETS.BEARD_SHAVED];
-					return img !== org;
-				},
-				hidden: game => !game.situation.hitman.visible,
+				hidden: game => game.data.shaved || !game.situation.hitman.visible,
 			},			
 			{
 				offsetX: (game, {scale}) => {
@@ -353,9 +362,7 @@ gameConfig.scenes.push(
 					if (!game.situation.hitman.visible) {
 						return true;
 					}
-
-					const { img, org } = game.imageStock[ASSETS.BEARD_SHAVED];
-					if (img === org) {
+					if (!game.data.shaved) {
 						return true;
 					}
 					const { pos, goal, anim } = game.situation.hitman;

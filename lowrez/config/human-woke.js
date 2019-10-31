@@ -140,13 +140,13 @@ gameConfig.scenes.push(
 											onSelect: game => {
 												currentScene.startTalk(game, "human", [
 													"I wanna live this time!",
-													"I don't want to go through this again!",
+													"I don't want to go through this hell again!",
 													"Let's go Yupa, we're gonna find dat damn baby!"
 												], game => {
 													currentScene.startTalk(game, "yupa", [
-														`Sure thing, ${game.data.name || "hitman"}`,
+														`Sura think, ${game.data.name || "hitman"}`,
 														"Letz stard wid da shopkeepa.",
-														"Docta said he knowz lotz piple.",
+														"Docta said he knowz lotza piple.",
 													], game => {
 														game.dialog = null;
 														game.data.seen.doctor = game.now;

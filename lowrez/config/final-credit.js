@@ -19,7 +19,7 @@ gameConfig.scenes.push(
 				Music made with BeepBox
 
 				This game is a sequel to Kill Baby Hitler. The first part of this game was releazed for
-				#LOWREZJAM2019 as Escape from Labbyrithe.
+				#LOWREZJAM\n2019\nas Escape from Labbyrithe.
 
 				I worked more on this game to continue the story, until the point where you reach Baby Hitler.
 				
@@ -28,7 +28,7 @@ gameConfig.scenes.push(
 				(I'm kidding, it was the noble thing to do.)
 
 				Anyway, thanks for playing.
-				Please make sure to follow my games, share them, and say great things about them to your friends.
+				Please make sure to follow my games, share them, and say great things about them to your family and friends.
 
 				You have finished the game, with
 				NOBLE ENDING.
@@ -67,7 +67,7 @@ gameConfig.scenes.push(
 				index: (game, {scale}) => {
 					const {dialog, now, pendingTip, moving} = game;
 					if (pendingTip && pendingTip.talker === "yupa") {
-						return 8 + Math.floor(now / 100) % 3;
+						return 8 + (pendingTip.progress < 1 ? Math.floor(now / 100) % 3: 0);
 					}
 					return game.evaluate(scale) < 1 ? Math.floor(now / 120) % 4 + 12 : 0;
 				},
@@ -82,7 +82,7 @@ gameConfig.scenes.push(
 							"Ya made the nuble choize, saving mankind",
 							"Yadi yada",
 							"Letz be real. Ya curius abowt findin Baby Hitler, rite?",
-							"Juz hit dat tryagain buttun and letz go find da baby, for goat seak!!!",
+							"Juz hit dat tryagain buttun and letz go find da baby, for goat steak!!!",
 						], game => {
 							game.gameOver();
 						}, null, {

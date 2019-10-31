@@ -10,8 +10,8 @@ gameConfig.scenes.push(
 				"Turns out, it wasn't painful at all.",
 				"That drug to simulate death was just a scam.",
 				"As my spirit fades away",
-				"I felt absolutely...",
-				"NOTHING.",
+				"I felt ...",
+				"absolutely NOTHING.",
 			], game => {
 				game.gotoScene("final-credit");
 			}, 100, {maxLines: 10});

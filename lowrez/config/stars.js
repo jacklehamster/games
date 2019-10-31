@@ -21,6 +21,8 @@ gameConfig.scenes.push(
 			delete game.inventory["key"];
 			delete game.inventory["lighter"];
 			delete game.inventory["water bottle"];
+			/** restore health */
+			game.data.stats.life = game.data.stats.maxLife;
 
 		},
 		onSceneRefresh: game => {

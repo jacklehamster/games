@@ -13,7 +13,7 @@ gameConfig.scenes.push(
 				"Future generations will live in peace, not ever knowing what it was like...",
 				"to live in a world, where Hitler rose to power.",
 				"As I contemplate that future I imagined, my mind started to fade, peacefully...",
-				"Actually, it didn't feel peaceful at all, I was feeling pain",
+				"Actually, it didn't really feel that peaceful at all, I was feeling pain",
 				"Hey, did that medecine they give me really work? I'm feeling very painful here!",
 				"The pain, the suffering, it is getting worst and worst...",
 				"Is this really how it feels like to die!?!",
