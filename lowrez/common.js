@@ -249,9 +249,21 @@ const ASSETS = {
 	YUPA_IN_SHOP: "assets/yupa-in-shop.png",
 	SLOTS: "assets/slots.png",
 	GRAB_WARP_DRIVE: "assets/grab-warp-drive.png",
-	THE_DATE: "assets/the-date.png",
+	DATE_NIGHT: "assets/date-night.png",
 	MONSTER_PLANET: "assets/monster-planet.png",
 	SHOP_DOOR: "assets/shop-door.png",
+	CAFEE: "assets/cafee.png",
+	DATE_TABLE: "assets/date-table.png",
+	CANDLE: "assets/candle.png",
+	WAITER: "assets/waiter.png",
+	DANCER: "assets/dancer.png",
+	DANCER_2: "assets/dancer.png|darken",
+	DANCER_3: "assets/dancer.png|darken|darken",
+	DANCER_4: "assets/dancer.png|darken|darken|darken",
+	TAMMY_SLOW: "assets/tammy-slow.png",
+	NEXT_SCENE: "assets/next-scene.png",
+	EVENING_DATE: "assets/evening-date.png",
+	DOCTOR_LOBBY: "assets/doctor-lobby.png",
 };
 
 const SOUNDS = {
@@ -293,6 +305,8 @@ const SOUNDS = {
 	HUHUH: 'sounds/huhuh.mp3',
 	SOFT_THEME: 'sounds/soft-song.mp3',
 	ANIMAL_CRY: 'sounds/animal-cry.mp3',
+	MUSETTE: 'sounds/musette.mp3',
+	WAITER: 'sounds/waiter.mp3',
 };
 
 const ALPHAS = (() => {

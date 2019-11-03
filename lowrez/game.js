@@ -262,7 +262,7 @@ const Game = (() => {
 				}				
 				if (this.dialog && this.dialog.hovered) {
 					if (this.dialog.hovered.onSelect) {
-						this.dialog.hovered.onSelect(this, this.dialog, this.dialog.conversation[this.dialog.index]);
+						this.dialog.hovered.onSelect(this, this.dialog, this.dialog.conversation[this.dialog.index], this.dialog.hovered);
 					}
 					return;
 				}
@@ -913,28 +913,30 @@ const Game = (() => {
 				let index = 0;
 
 				message = message.filter(a => a);
-				const tip = this.pendingTip = {
-					maxLines,
-					index,
-					text: message[index],
-					time: this.now + 200,
-					speed: (speed || 80) * TEXTSPEEDER,
-					end: 0,
-					x, y,
-					talker,
-					moreText: message.length > 1,
-					onDone: message.length === 1 ? onDone : game => {
-						index++;
-						tip.index = index;
-						tip.text = message[index];
-						tip.time = game.now + 200;
-						if (index === message.length-1) {
-							tip.onDone = onDone;
-						}
-						this.pendingTip = tip;
-					},
-					removeLock,
-				};
+				if (message.length) {
+					const tip = this.pendingTip = {
+						maxLines,
+						index,
+						text: message[index],
+						time: this.now + 200,
+						speed: (speed || 80) * TEXTSPEEDER,
+						end: 0,
+						x, y,
+						talker,
+						moreText: message.length > 1,
+						onDone: message.length === 1 ? onDone : game => {
+							index++;
+							tip.index = index;
+							tip.text = message[index];
+							tip.time = game.now + 200;
+							if (index === message.length-1) {
+								tip.onDone = onDone;
+							}
+							this.pendingTip = tip;
+						},
+						removeLock,
+					};
+				}
 			} else {
 				this.pendingTip = {
 					maxLines,
@@ -953,6 +955,7 @@ const Game = (() => {
 		startDialog(dialog) {
 			this.dialog = dialog;
 			dialog.time = game.now;
+			dialog.index = dialog.index || 0;
 		}
 
 		checkMouseHover() {
@@ -2328,7 +2331,7 @@ const Game = (() => {
 			}
 
 			const {options} = conversation[index];
-			const filteredOptions = options.filter(({hidden}) => !hidden || !this.evaluate(hidden));
+			const filteredOptions = options.filter(option => !option.hidden || !this.evaluate(option.hidden, option));
 			const y = this.mouse ? Math.floor((this.mouse.y - 43) / 7) : -1;
 			ctx.fillStyle = this.dialog.highlightColor || "#009988aa";
 			if (y >= 0 && y < filteredOptions.length) {
@@ -2782,6 +2785,18 @@ const Game = (() => {
 			dx = dx < 0 ? -1 : dx > 0 ? 1 : 0;
 			dy = dy < 0 ? -1 : dy > 0 ? 1 : 0;
 			return ROTATION_FRAMES[dy + 1][dx + 1];
+		}
+
+		getSceneCount() {
+			const srcs = {};
+			let count = 0;
+			const scripts = document.querySelectorAll("script");
+			for (let i = 0; i < scripts.length; i++) {
+				if (scripts[i].src.indexOf("config/") >= 0) {
+					count++;
+				}
+			}
+			return count;
 		}
 	}
 

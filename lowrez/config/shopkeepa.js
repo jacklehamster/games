@@ -732,7 +732,7 @@ gameConfig.scenes.push(
 														game.sceneData.yupaLookAtShopkeepa = 0;
 														game.sceneData.shopkeepaLookAtYupa = game.now;
 														game.currentScene.startTalk(game, "yupa", [
-															"Hey! Waida minute!",
+															"Hey! Waida minut!",
 															"One of thoze tickets iz mine!",
 															"Ya cant just givewai ma ticket fo free!",
 														], game => {
@@ -741,30 +741,8 @@ gameConfig.scenes.push(
 															}, 500);
 															game.currentScene.startTalk(game, "human", [
 																"You're right Yupa.",
-																"Thanks for your ticket. I'll owe you one.",
 															], game => {
-																game.currentScene.startTalk(game, "yupa", [
-																	"Scuw ya!",
-																], game => {
-																	game.currentScene.startTalk(game, "human", [
-																		"So what do you say, will you join me this evening?",
-																	], game => {
-																		game.dialog.paused = true;
-																		game.delayAction(game => {
-																			game.sceneData.shopkeepaCuteSmile = game.now;
-																			game.delayAction(game => {
-																				game.currentScene.startTalk(game, "shopkeepa2", [
-																					"Okay",
-																				], game => {
-																					game.delayAction(game => {
-																						game.dialog = null;
-																						game.fadeToScene("the-date", null, 3000);
-																					}, 1000);
-																				}, null, 200);
-																			}, 2000);
-																		}, 4000);
-																	});
-																});
+																game.dialog.index = 14;
 															});
 														});
 													});
@@ -903,6 +881,93 @@ gameConfig.scenes.push(
 							},
 						],
 					},
+					{
+						options: [
+							{
+								msg: "I'll owe you",
+								onSelect: game => {
+									game.currentScene.startTalk(game, "human", [
+										"Thanks for your ticket Yupa. I'll owe you one.",
+									], game => {
+										game.currentScene.startTalk(game, "yupa", [
+											"Scuw ya!",
+										], game => {
+											game.currentScene.startTalk(game, "human", [
+												"So what do you say, will you join me this evening?",
+											], game => {
+												game.dialog.paused = true;
+												game.delayAction(game => {
+													game.sceneData.shopkeepaCuteSmile = game.now;
+													game.delayAction(game => {
+														game.currentScene.startTalk(game, "shopkeepa2", [
+															"Okay",
+														], game => {
+															game.delayAction(game => {
+																game.dialog = null;
+																game.fadeToScene("tammy-slow", null, 3000);
+															}, 1000);
+														}, null, 200);
+													}, 2000);
+												}, 4000);
+											});
+										});
+									});
+								},
+							},
+							{
+								msg: "We'll sneak you in",
+								onSelect: game => {
+									game.delayAction(game => {
+										game.sceneData.shopkeepaLookAtYupa = game.now;
+									}, 1000);
+									game.currentScene.startTalk(game, "human", [
+										"Don't worry Yupa. I have a plan.",
+										"We'll put you inside a bottle like last time and sneak you in!",
+									], game => {
+										game.currentScene.startTalk(game, "yupa", [
+											"Scuw ya!",
+										], game => {
+											game.delayAction(game => {
+												game.sceneData.shopkeepaLookAtYupa = 0;
+											}, 100);
+											game.currentScene.startTalk(game, "human", [
+												"So what do you say, will you join me this evening?",
+											], game => {
+												game.dialog.paused = true;
+												game.delayAction(game => {
+													game.sceneData.shopkeepaCuteSmile = game.now;
+													game.delayAction(game => {
+														game.currentScene.startTalk(game, "shopkeepa2", [
+															"Okay",
+														], game => {
+															game.delayAction(game => {
+																game.dialog = null;
+																game.fadeToScene("the-date", null, 3000);
+															}, 1000);
+														}, null, 200);
+													}, 2000);
+												}, 4000);
+											});
+										});
+									});
+								},
+							},
+							{
+								msg: "Nevermind",
+								onSelect: game => {
+									game.currentScene.startTalk(game, "human", [
+										"Sorry, Yupa's right. I can't really give you his ticket.",
+									], game => {
+										game.currentScene.startTalk(game, "shopkeepa", [
+											"Don't worry, I understand.",
+										], game => {
+											game.dialog.index = 0;
+										})
+									});
+								},
+							},
+						],
+					}
 				],
 			});
 		},

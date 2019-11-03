@@ -17,6 +17,7 @@ gameConfig.scenes.push(
 				with Sublime Text
 				Art made with Piskel
 				Music made with BeepBox
+				Sound effects made with VoiceChanger.io and Brfx
 
 				This game is a sequel to Kill Baby Hitler. The first part of this game was releazed for
 				#LOWREZJAM\n2019\nas Escape from Labbyrithe.
