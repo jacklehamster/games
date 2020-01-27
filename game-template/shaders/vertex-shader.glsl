@@ -77,8 +77,9 @@ void main(void) {
 		vPos.y += getSinWaveOffset(now, isSprite ? aPosition : vPos.xyz, aWave);
 	}
 
-	//	curvature of the earth
 	vec4 position = uProjectionMatrix * uViewMatrix * vPos;
+	
+	//	curvature of the earth
 	position.y -= (position.z * position.z + position.x * position.x) / 100.0;
 //	position.y -= (position.x * position.x) / 100.0 * 5.0;
 
