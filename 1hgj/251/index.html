@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+        <title>Game</title>
+		<meta charset="utf-8"/>
+
+		<link rel="stylesheet" type="text/css" href="css/game.css" media="print" onload="this.media='all'">
+
+		<meta name="mobile-web-app-capable" content="yes">
+		<meta name="viewport" content="minimal-ui, user-scalable=no, initial-scale=1">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+	</head>
+
+	<body class="container">
+		<canvas id="canvas" width=360 height=240 style="width: 720px; height: 480px; background: #007721"></canvas>
+		<img id="rober" src="rober.png">
+		<img id="robo" src="robo.png" style="width: 1px; height: 1px">
+		<script>
+
+function formatAMPM(date) { // This is to display 12 hour format like you asked
+  var hours = date.getHours();
+  var minutes = date.getMinutes();
+  var sec = date.getSeconds();
+  var ampm = hours >= 12 ? 'pm' : 'am';
+  hours = hours % 12;
+  hours = hours ? hours : 12; // the hour '0' should be '12'
+  minutes = minutes < 10 ? '0'+minutes : minutes;
+  sec = sec < 10 ? '0' + sec : sec;
+  var strTime = hours + ':' + minutes + ":" + sec;
+  return strTime;
+}			
+			const canvas = document.getElementById("canvas");
+			const ctx = canvas.getContext("2d");
+			let startTime = new Date(new Date().getTime() + 60000);
+
+			const pos = {
+				x: 150,
+				y: 100,
+				dx: 0,
+				dy: 0,
+			};
+
+			const computers = [
+				{
+					index: 0,
+					x: 20,
+					y: 60,
+					hacked: 0,
+					hackeasy: 0.01,
+				},
+
+				{
+					index: 1,
+					x: 260,
+					y: 80,
+					hacked: 0,
+					hackeasy: 0.005,
+				},
+
+				{
+					index: 2,
+					x: 20,
+					y: 150,
+					hacked: 0,
+					hackeasy: 0.001,
+				},
+
+				{
+					index: 3,
+					x: 270,
+					y: 170,
+					hacked: 0,
+					hackeasy: 0.0004,
+				},
+			];
+
+			let cheat = false;
+
+			let win = false;
+			const keyboard = {};
+			document.addEventListener("keydown", e => {
+				keyboard[e.keyCode] = true;
+				console.log(keyboard);
+				e.preventDefault();
+			});
+			document.addEventListener("keyup", e => {
+				keyboard[e.keyCode] = false;
+				console.log(keyboard);
+				e.preventDefault();
+			});
+
+			let hacking = false;
+
+			function refresh(t) {
+
+				if (new Date() > startTime) {
+					ctx.clearRect(0, 0, 720, 480);
+					ctx.fillStyle = "#FFFFFF";
+					ctx.font = "40px Courier New";
+					ctx.fillText("GAME OVER", 60, 100);
+					ctx.font = "15px Courier New";
+					ctx.fillText("Press R to restart", 75, 150);
+					if (keyboard[82]) {
+
+						for (let i in keyboard) {
+							delete keyboard[i];
+						}
+
+						startTime = new Date(new Date().getTime() + 60000);
+						computers.forEach(comp => {
+							comp.hacked = 0;
+						});
+						pos.dx = 0;
+						pos.dy = 0;
+
+
+					}
+					requestAnimationFrame(refresh);
+
+					return;
+				}
+
+				const frame = Math.floor(t / 300);
+
+				ctx.clearRect(0, 0, 720, 480);
+
+
+				ctx.fillStyle = "#000000";
+				if (!win) {
+					ctx.font = "16px Courier New";
+					ctx.fillText("Hack the computers before:", 20, 20);
+					ctx.fillText(formatAMPM(startTime), 280, 20);
+					ctx.fillText("[space] to hack", 20, 35);
+				}
+				ctx.fillText("Time: " + formatAMPM(new Date()), 80, 50);
+
+
+				let ddx = 0, ddy = 0;
+				if (keyboard[37]) {
+					ddx--;
+				}
+				if (keyboard[39]) {
+					ddx++;
+				}
+				if (keyboard[38]) {
+					ddy--;
+				}
+				if (keyboard[40]) {
+					ddy++;
+				}
+				hacking = keyboard[32];
+				pos.dx = ddx;
+				pos.dy = ddy;
+
+				pos.x += pos.dx;
+				pos.y += pos.dy;
+				ctx.drawImage(rober, 0, (frame % 2) * 64, 64, 64, pos.x, pos.y, 64, 64);
+
+				ctx.fillStyle = "#FFFFFF";
+				ctx.font = "12px Courier New";
+				let allHacked = true;
+				computers.forEach(comp => {
+
+					if (hacking) {
+						const dx = pos.x - comp.x;
+						const dy = pos.y - comp.y;
+						const dist = Math.sqrt(dx*dx + dy*dy);
+						if (dist < 30) {
+							comp.hacked += comp.hackeasy * (cheat ? 10 : 1);
+						}
+					}
+
+					ctx.drawImage(robo, comp.index * 128, comp.hacked >= 1 ? 128 : 0, 128, 128, comp.x, comp.y, 64, 64);
+					if (comp.hacked && comp.hacked < 1) {
+						ctx.fillText(Math.min(100, Math.floor(100 * comp.hacked)) + "%", comp.x+20, comp.y+35);
+					}
+					if (comp.hacked < 1) {
+						allHacked = false;
+					}
+				});
+				if (allHacked) {
+					win = true;
+				}
+
+				if (win) {
+					ctx.fillStyle = "#00772133";
+					ctx.fillRect(0, 0, 720, 480);
+					ctx.fillStyle = "#FFFFFF";
+					ctx.font = "40px Courier New";
+					ctx.fillText("YOU WIN!", 80, 100);
+					return;
+				}
+
+				requestAnimationFrame(refresh);
+			}
+
+			requestAnimationFrame(refresh);
+		</script>
+	</body>
+</html>
