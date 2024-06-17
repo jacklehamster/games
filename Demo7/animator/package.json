@@ -24,6 +24,6 @@
     "read-chunk": "^3.0.0"
   },
   "devDependencies": {
-    "nodemon": "^1.18.5"
+    "nodemon": "^3.1.3"
   }
 }
